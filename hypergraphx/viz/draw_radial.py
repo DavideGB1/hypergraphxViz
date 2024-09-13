@@ -1,8 +1,6 @@
 from math import cos, sin
-
 import numpy as np
 from hypergraphx import Hypergraph
-from hypergraphx.readwrite import load_hypergraph
 from matplotlib import pyplot as plt
 
 
@@ -76,15 +74,20 @@ def draw_radial_layout(h: Hypergraph):
     nodes_mapping = h.get_mapping()
     alpha = (2*np.pi)/h.num_nodes()
     sector_list , binary_edges = radial_edge_placemente_calculation(h)
-    plt.figure(constrained_layout=True, figsize=(100,100))
+
+    dim = min(((len(sector_list)*0.25)+2.5)*R, (2**16)/100)
+    dim = round(dim, 0)
+    plt.figure(constrained_layout=True, figsize=(dim,dim))
 
 
     for edge in binary_edges:
-        x1 = round(cos(alpha * nodes_mapping.transform([edge[0]])), 5) * R
-        x2 = round(cos(alpha * nodes_mapping.transform([edge[1]])), 5) * R
+        node1 = nodes_mapping.transform([edge[0]])[0]
+        node2 = nodes_mapping.transform([edge[1]])[0]
+        x1 = round(cos(alpha * node1), 5) * R
+        x2 = round(cos(alpha * node2), 5) * R
         x = [x1, x2]
-        y1 = round(sin(alpha * nodes_mapping.transform([edge[0]])), 5) * R
-        y2 = round(sin(alpha * nodes_mapping.transform([edge[1]])), 5) * R
+        y1 = round(sin(alpha * node1), 5) * R
+        y2 = round(sin(alpha * node2), 5) * R
         y = [y1, y2]
         plt.plot(x, y, color='black')
 
@@ -93,7 +96,9 @@ def draw_radial_layout(h: Hypergraph):
         sector = sorted(sector)
         for edge in sector:
             edge = sorted(edge)
-            theta = np.linspace(alpha*nodes_mapping.transform([edge[0]]), alpha*nodes_mapping.transform([edge[-1]]), 100)
+            start_node = nodes_mapping.transform([edge[0]])[0]
+            end_node = nodes_mapping.transform([edge[-1]])[0]
+            theta = np.linspace(alpha * start_node, alpha * end_node, 100)
             x = list()
             y = list()
             for angle in theta:
