@@ -172,3 +172,45 @@ def line_graph(h: Hypergraph, distance='intersection', s=1, weighted=False):
                             g.add_edge(edge_to_id[adj[n][i]], edge_to_id[adj[n][j]], weight=1)
                     vis[k] = True
     return g, id_to_edge
+
+def extra_node_projection(h: Hypergraph):
+    """
+        Returns a graph representation of the hypergraph using the extra-node projection method.
+
+        Parameters
+        ----------
+        h : Hypergraph
+            The hypergraph to be projected.
+
+        Returns
+        -------
+        networkx.Graph
+            The graph representation of the hypergraph.
+
+        """
+    g = nx.Graph()
+    id_to_obj = {}
+    obj_to_id = {}
+    idx = 0
+
+    for node in h.get_nodes():
+        id_to_obj['N' + str(idx)] = node
+        obj_to_id[node] = 'N' + str(idx)
+        idx += 1
+        g.add_node(obj_to_id[node], group=1, x=0, y=0)
+
+    idx = 0
+    binary_edges = list()
+    for edge in h.get_edges():
+        edge = tuple(sorted(edge))
+        if len(edge) == 2:
+            binary_edges.append((obj_to_id[edge[0]], obj_to_id[edge[1]]))
+        else:
+            obj_to_id[edge] = 'E' + str(idx)
+            id_to_obj['E' + str(idx)] = edge
+            g.add_node(obj_to_id[edge], group=2, size=15, physics=False, x=0, y=0)
+            for node in edge:
+                 g.add_edge(obj_to_id[edge], obj_to_id[node], weight=1000)
+        idx += 1
+
+    return g, obj_to_id, binary_edges
