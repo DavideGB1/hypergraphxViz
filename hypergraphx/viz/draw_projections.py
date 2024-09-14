@@ -43,7 +43,7 @@ def draw_bipartite(h: Hypergraph, pos=None, ax=None, align='vertical', **kwargs)
     return ax
 
 
-def draw_clique(h: Hypergraph, pos=None, ax=None, **kwargs):
+def draw_clique(h: Hypergraph, pos=None, ax=None, iterations: int = 1000,  **kwargs):
     """
     Draws a clique projection of the hypergraph.
     Parameters
@@ -63,8 +63,28 @@ def draw_clique(h: Hypergraph, pos=None, ax=None, **kwargs):
     """
     g = clique_projection(h)
 
+    forceatlas2 = ForceAtlas2(
+        # Behavior alternatives
+        outboundAttractionDistribution=True,  # Dissuade hubs
+        linLogMode=False,  # NOT IMPLEMENTED
+        adjustSizes=False,  # Prevent overlap (NOT IMPLEMENTED)
+        edgeWeightInfluence=1.0,
+
+        # Performance
+        jitterTolerance=1.0,  # Tolerance
+        barnesHutOptimize=True,
+        barnesHutTheta=1.2,
+        multiThreaded=False,  # NOT IMPLEMENTED
+
+        # Tuning
+        scalingRatio=2.0,
+        strongGravityMode=False,
+        gravity=1.0,
+        # Log
+        verbose=True)
+
     if pos is None:
-        pos = nx.spring_layout(g)
+        pos = forceatlas2.forceatlas2_networkx_layout(G=g, iterations=iterations, weight_attr="weight")
 
     if ax is None:
         ax = plt.gca()
@@ -98,6 +118,9 @@ def draw_extra_node(h: Hypergraph, pos=None, ax=None, ignore_binary_relations: b
         ax : matplotlib.axes.Axes. The axes the graph was drawn on.
     """
     g, obj_to_id, binary_edges = extra_node_projection(h)
+
+    if ax is None:
+        ax = plt.gca()
 
     forceatlas2 = ForceAtlas2(
         # Behavior alternatives
@@ -143,7 +166,7 @@ def __draw_in_plot(g, pos, node_shapes = None, colors = None, show_edge_nodes: b
     ax = plt.gca()
     labels = dict((n, n) for n in g.nodes() if n.startswith('N'))
     if node_shapes is None:
-        node_shapes = {"node": "s", "edge_node": "p"}
+        node_shapes = {"node": "o", "edge_node": "p"}
     if colors is None:
         colors = {"node": "#3264a8", "edge_node": "#8a0303"}
 
