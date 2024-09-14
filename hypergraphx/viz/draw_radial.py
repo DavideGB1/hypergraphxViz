@@ -3,6 +3,8 @@ import numpy as np
 from hypergraphx import Hypergraph
 from matplotlib import pyplot as plt
 
+from hypergraphx.viz.draw_PAOH import check_edge_intersection
+
 
 def radial_edge_placemente_calculation(h: Hypergraph):
     """
@@ -46,29 +48,18 @@ def radial_edge_placemente_calculation(h: Hypergraph):
 
     return sector_list, binary_edges
 
-def check_edge_intersection(set1, set2):
+def draw_radial_layout(h: Hypergraph, k = 1.0):
     """
-    Check if two sets overlaps.
+    Draws a PAOH representation of the hypergraph.
     Parameters
     ----------
-        set1 : Set.
-        set2 : Set.
+        h : Hypergraph.
+            The hypergraph to be projected.
+        k : float, optional
+            Scale for the Radius value.
     Returns
     -------
-        res : Bool
     """
-    set1 = sorted(set1)
-    set2 = sorted(set2)
-    res = False
-    for x in set2:
-        if set1[0] <= x <= set1[-1]:
-            res = True
-            break
-
-    return res
-
-def draw_radial_layout(h: Hypergraph):
-    k = 1
 
     R = (h.num_nodes()*k) / (2*np.pi)
     nodes_mapping = h.get_mapping()
