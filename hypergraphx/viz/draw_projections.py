@@ -54,6 +54,8 @@ def draw_clique(h: Hypergraph, pos=None, ax=None, iterations: int = 1000,  **kwa
         A dictionary with nodes as keys and positions as values.
     ax : matplotlib.axes.Axes.
         The axes to draw the graph on.
+    iterations : int
+        The number of iterations to run the position algorithm.
     kwargs : dict.
         Keyword arguments to be passed to networkx.draw_networkx.
 
@@ -117,7 +119,7 @@ def draw_extra_node(h: Hypergraph, pos=None, ax=None, ignore_binary_relations: b
     -------
         ax : matplotlib.axes.Axes. The axes the graph was drawn on.
     """
-    g, obj_to_id, binary_edges = extra_node_projection(h)
+    g, binary_edges = extra_node_projection(h)
 
     if ax is None:
         ax = plt.gca()
