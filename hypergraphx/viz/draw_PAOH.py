@@ -22,7 +22,7 @@ def draw_PAOH(h: Hypergraph):
 
     column_list = PAOH_edge_placemente_calculation(h)
     idx = 0
-    plt.figure(constrained_layout=True, figsize=(len(column_list)/3, h.num_nodes()/3))
+    plt.figure(constrained_layout=True, figsize=(len(column_list)/2, h.num_nodes()/3))
     for column_set in column_list:
         column_set = sorted(column_set)
         for edge in column_set:
@@ -38,7 +38,7 @@ def draw_PAOH(h: Hypergraph):
     plt.ylabel('Nodes')
     plt.yticks(range(0, h.num_nodes()), nodes_mapping.classes_)
     ax = plt.gca()
-    ax.set_xticks([x - 0.5 for x in range(0, len(column_list))], minor=True)
+    ax.set_xticks([x - 0.5 for x in range(0, len(column_list)+1)], minor=True)
     ax.set_yticks([y - 0.5 for y in range(0, h.num_nodes())], minor=True)
     plt.grid(which="minor", ls="--", lw=1)
     plt.show()

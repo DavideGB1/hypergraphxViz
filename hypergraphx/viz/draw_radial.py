@@ -1,3 +1,4 @@
+import math
 from math import cos, sin
 import numpy as np
 from hypergraphx import Hypergraph
@@ -39,6 +40,7 @@ def radial_edge_placemente_calculation(h: Hypergraph):
                     good_sector_set = True
         else:
             binary_edges.append(edge)
+            sector_found = True
         if not sector_found:
             sector_list.append(set())
             sector_list[len(sector_list) - 1].add(edge)
@@ -66,9 +68,6 @@ def draw_radial_layout(h: Hypergraph, k = 1.0):
     alpha = (2*np.pi)/h.num_nodes()
     sector_list , binary_edges = radial_edge_placemente_calculation(h)
 
-    dim = min(((len(sector_list)*0.25)+2.5)*R, (2**16)/100)
-    dim = round(dim, 0)
-    plt.figure(constrained_layout=True, figsize=(dim,dim))
 
 
     for edge in binary_edges:
@@ -83,6 +82,15 @@ def draw_radial_layout(h: Hypergraph, k = 1.0):
         plt.plot(x, y, color='black')
 
     sector_depth = 2.5
+
+    node_depth = 1
+    for node in h.get_nodes():
+        value_x = cos(alpha * nodes_mapping.transform([node])[0]) * R
+        value_y = sin(alpha * nodes_mapping.transform([node])[0]) * R
+        plt.plot(value_x, value_y, 'o', color='blue', markersize=5)
+        plt.text(value_x *1.5, value_y*1.5, node, fontsize=12)
+        node_depth += 1
+
     for sector in sector_list:
         sector = sorted(sector)
         for edge in sector:
@@ -93,29 +101,24 @@ def draw_radial_layout(h: Hypergraph, k = 1.0):
             x = list()
             y = list()
             for angle in theta:
-                x.append(round(cos(angle),5)*R*sector_depth)
+                value_x = round(cos(angle),5)*R*sector_depth
+                x.append(value_x)
+                value_y = round(sin(angle), 5) * R * sector_depth
                 y.append(round(sin(angle), 5) * R * sector_depth)
             plt.plot(x, y, color='black')
 
             for node in edge:
-                plt.plot(cos(alpha*nodes_mapping.transform([node])[0])*sector_depth*R,
-                         sin(alpha*nodes_mapping.transform([node])[0])*sector_depth*R, 'o', color='red', markersize=5)
+                value_x = cos(alpha*nodes_mapping.transform([node])[0])*sector_depth*R
+                value_y = sin(alpha*nodes_mapping.transform([node])[0])*sector_depth*R
+                plt.plot(value_x, value_y, 'o', color='red', markersize=5)
 
         sector_depth += 0.25
+        ax = plt.gca()
+        plt.axis('off')
+        ax.set_aspect('equal')
+        plt.autoscale(enable=True, axis='both')
 
-    node_depth = 1
-    for node in h.get_nodes():
-        plt.plot(cos(alpha*nodes_mapping.transform([node])[0])*R, sin(alpha*nodes_mapping.transform([node])[0])*R, 'o', color='blue', markersize=5)
-        plt.text(cos(alpha*nodes_mapping.transform([node])[0])*(R*2), sin(alpha*nodes_mapping.transform([node])[0])*(R*2), node, fontsize=12)
-        node_depth += 1
+
 
     sector_depth -= 1
-    ax = plt.gca()
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.spines['bottom'].set_visible(False)
-    ax.spines['left'].set_visible(False)
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.set(xlim=(-2-sector_depth, 2+sector_depth), ylim=(-2-sector_depth, 2+sector_depth))
     plt.show()
