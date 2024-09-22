@@ -2,7 +2,7 @@ import itertools
 import math
 import sys
 from math import trunc
-from random import random
+import random
 from typing import Union, Optional
 
 import numpy
@@ -21,338 +21,12 @@ from scipy.linalg import sqrtm
 from scipy.signal import square
 from setuptools.wheel import unpack
 
-from support import chivers_rodgers
 
 sys.path.append("..")
 
 import networkx as nx
 import matplotlib.pyplot as plt
 
-def condense_hypergraph(h: Hypergraph):
-    compressed_hypergraph = Hypergraph
-
-    one_edge_to_edge = dict()
-    only_in_one_edge = list()
-    for node in h.get_nodes():
-        if h.degree(node) == 1:
-            only_in_one_edge.append(node)
-            one_edge_to_edge[node] = h.get_incident_edges(node)[0]
-
-
-    edge_mapping = dict()
-    idx = 0;
-    for edge in h.get_edges():
-        edge_mapping[edge] = idx
-        idx += 1
-
-    compressed_nodes = dict()
-    for node in h.get_nodes():
-        if node not in only_in_one_edge:
-            incident_edges = sorted([edge_mapping[edge] for edge in h.get_incident_edges(node)])
-            incident_edges = tuple(incident_edges)
-            if incident_edges not in compressed_nodes.keys():
-                compressed_nodes[incident_edges] = node
-            else:
-                x = compressed_nodes[incident_edges]
-                compressed_nodes[incident_edges] = list()
-                if type(x) is list:
-                    compressed_nodes[incident_edges] += x
-                else:
-                    compressed_nodes[incident_edges].append(x)
-                compressed_nodes[incident_edges].append(node)
-
-    g = nx.Graph()
-
-    for compressed_node in compressed_nodes.values():
-        if type(compressed_node) is not list:
-            g.add_node(compressed_node)
-        else:
-            g.add_node(tuple(compressed_node))
-
-    edge_to_new_edge = dict()
-    new_edges = list()
-    for edge in h.get_edges():
-        edge_clone = set(edge)
-        new_edge = tuple()
-        for node in only_in_one_edge:
-            edge_clone = edge_clone.difference({node})
-        for compressed_node in compressed_nodes.values():
-            edge = set(sorted(edge))
-            if type(compressed_node) is list:
-                compressed_node = set(sorted(compressed_node))
-            else:
-                compressed_node = {compressed_node}
-            if compressed_node.issubset(edge) and len(edge.intersection(compressed_node)) > 1:
-                new_edge += (tuple(sorted(compressed_node)),)
-                for value in compressed_node:
-                    edge_clone.remove(value)
-
-        if len(edge_clone) > 0:
-            new_edge += tuple(edge_clone)
-        if len(new_edge) > 1:
-            new_edges.append(new_edge)
-            edge_to_new_edge[tuple(edge)] = new_edge
-
-    similarity = dict()
-    for node1 in compressed_nodes.values():
-        for node2 in compressed_nodes.values():
-            if node1 != node2:
-                if type(node1) is list:
-                    node1 = tuple(node1)
-                if type(node2) is list:
-                    node2 = tuple(node2)
-                incident_edges1 = calculate_incidence(node1, new_edges)
-                incident_edges2 = calculate_incidence(node2, new_edges)
-                similarity12 = len(incident_edges1.intersection(incident_edges2))
-                similarity[(node1, node2)] = similarity12
-
-
-    for edge in new_edges:
-        for i in range(len(edge) - 1):
-            for j in range(i + 1, len(edge)):
-                if similarity[(edge[i], edge[j])] != 0:
-                    similarity_weight = 1/similarity[(edge[i], edge[j])]
-                else:
-                    similarity_weight = 2
-                g.add_edge(edge[i], edge[j], weight=similarity_weight)
-
-    edge_to_path = dict()
-    paths = list()
-    for edge in new_edges:
-        edge_graph = subgraph(g, edge)
-        method = lambda G, weight: nx.approximation.simulated_annealing_tsp(edge_graph, list(edge_graph)+[next(iter(edge_graph))], weight=weight, temp=5000)
-        path = nx.approximation.traveling_salesman_problem(edge_graph, method=method, cycle=False)
-        paths.append(path)
-        edge_to_path[edge] = path
-
-    to_remove_node = list()
-    to_add_edge = list()
-    for node in g.nodes():
-        if type(node) is tuple:
-            to_remove_node.append(node)
-            neighbors = g.neighbors(node)
-            unpacked_node = [x for x in node]
-            x = 1
-
-            incident_edges = g.edges(node)
-            for edge in incident_edges:
-                new_edge = set(edge)
-                new_edge.remove(node)
-                for x in unpacked_node:
-                    new_edge.add(x)
-                    to_add_edge.append(tuple(new_edge))
-                    new_edge.remove(x)
-
-
-
-    for node in to_remove_node:
-        g.remove_node(node)
-    for edge in to_add_edge:
-        g.add_edge(edge[0], edge[1])
-    for path in paths:
-        for node in path:
-            if type(node) is tuple:
-                index = path.index(node)
-                path.pop(index)
-                for x in node:
-                    path.insert(index, x)
-                    index += 1
-
-    for node in only_in_one_edge:
-        try:
-            current_path = edge_to_path[edge_to_new_edge[one_edge_to_edge[node]]]
-            current_path.append(node)
-            index = paths.index(edge_to_path[edge_to_new_edge[one_edge_to_edge[node]]])
-            paths.pop(index)
-            paths.insert(index, current_path)
-        except KeyError:
-            if list(one_edge_to_edge[node]) not in paths:
-                paths.append(list(one_edge_to_edge[node]))
-
-    new_support = nx.Graph()
-    for path in paths:
-        for i in range(len(path) - 1):
-            new_support.add_edge(path[i], path[i + 1])
-
-
-    initial_layout = kamada_kawai_layout(new_support)
-    nx.draw(new_support,pos = initial_layout, with_labels=True)
-    plt.show()
-
-    new_support = nx.Graph()
-    for edge in paths:
-        for i in range(len(edge) - 1):
-            for j in range(i + 1, len(edge)):
-                new_support.add_edge(edge[i], edge[j])
-    new_paths = list()
-    for i in range(10):
-        entire_copy = new_support.copy()
-        for edge in paths:
-            for i in range(len(edge) - 1):
-                for j in range(i + 1, len(edge)):
-                    entire_copy.add_edge(edge[i], edge[j])
-        for node1 in entire_copy.nodes():
-            for node2 in entire_copy.nodes():
-                if node1 != node2:
-                    incident_edges1 = calculate_incidence(node1, paths)
-                    incident_edges2 = calculate_incidence(node2, paths)
-                    similarity12 = len(incident_edges1.intersection(incident_edges2))
-                    euclidean_distance = distance(initial_layout, node1, node2)
-                    try:
-                        similarity12 = 1/similarity12
-                    except ZeroDivisionError:
-                        similarity12 = 2
-                    value = math.sqrt(similarity12*euclidean_distance)
-                    if entire_copy.has_edge(node1, node2):
-                        entire_copy[node1][node2]["weight"] = value
-
-        for path in paths:
-            edge_graph = subgraph(entire_copy, path)
-            method = lambda G, weight: nx.approximation.simulated_annealing_tsp(edge_graph, "greedy", weight=weight, temp=5000)
-            new_path = nx.approximation.traveling_salesman_problem(edge_graph, method=method, cycle=False)
-            new_paths.append(new_path)
-
-        refined = nx.Graph()
-        for path in new_paths:
-            for i in range(len(path) - 1):
-                refined.add_edge(path[i], path[i + 1])
-
-        initial_layout = kamada_kawai_layout(refined, pos = initial_layout)
-        if new_paths != paths:
-            paths = new_paths.copy()
-        else:
-            break
-        new_paths.clear()
-        new_support = refined.copy()
-
-    initial_layout = chivers_rodgers(new_support, paths, initial_layout)
-    paths_in_edge = dict()
-    idx = 0
-    for path in paths:
-        for i in range(len(path) - 1):
-            key = (path[i], path[i + 1])
-            key = tuple(sorted(key))
-            try:
-                prev = paths_in_edge[key]
-            except KeyError:
-                prev = []
-            paths_in_edge[key] = list()
-            paths_in_edge[key] += prev
-            paths_in_edge[key] += [idx]
-
-        idx += 1
-
-
-    palette = ["#FF0000","#FF6A00", "#FFD800", "#00FF21", "#0094FF", "#FF00DC", "#7F3300", "#7C5D61", "#000000", "#0011FF", "#7316FF"]
-    value_edges = []
-    i = -5
-    while i < 5:
-        value_edges.append(i)
-        i+=1
-    value_edges = numpy.array(value_edges)
-    '''
-    for edge in new_support.edges():
-        edge = tuple(sorted(edge))
-        try:
-            edge_range = len(paths_in_edge[edge])
-            zero_pos = 5
-            odd = False
-            if edge_range%2 != 0:
-                odd = True
-            if odd:
-                plt.plot([initial_layout[edge[0]][0], initial_layout[edge[1]][0]],
-                     [initial_layout[edge[0]][1]+value_edges[zero_pos], initial_layout[edge[1]][1]+value_edges[zero_pos]], linewidth=2)
-                edge_range -= 1
-            for i in range(trunc(edge_range/2)):
-                plt.plot([initial_layout[edge[0]][0], initial_layout[edge[1]][0]],
-                [initial_layout[edge[0]][1]+value_edges[zero_pos+i+1], initial_layout[edge[1]][1]+value_edges[zero_pos+i+1]], linewidth=2  )
-            for i in range(trunc(edge_range/2)):
-                plt.plot([initial_layout[edge[0]][0], initial_layout[edge[1]][0]],
-                [initial_layout[edge[0]][1]+value_edges[zero_pos-i-1], initial_layout[edge[1]][1]+value_edges[zero_pos-i-1]], linewidth=2   )
-        except KeyError:
-            pass
-    '''
-    passo_edge = dict()
-    for edge in new_support.edges():
-        key = (edge[0], edge[1])
-        key = tuple(sorted(key))
-        lines_in_edge = len(paths_in_edge[key])
-        if lines_in_edge % 2 != 0:
-            passo = lines_in_edge - 1
-            passo /= 2
-        else:
-            passo = lines_in_edge / 2
-        passo_edge[key] = passo
-
-    idx = 0
-    for path in paths:
-        for i in range(len(path) - 1):
-            key = (path[i], path[i + 1])
-            key = tuple(sorted(key))
-            passo = passo_edge[key]
-            draw_line(initial_layout, palette, path, i, idx, passo)
-            passo_edge[key] -= 1
-
-        idx += 1
-
-    labels = dict((n, n) for n in new_support.nodes())
-    nx.draw_networkx_nodes(new_support, initial_layout,)
-    nx.draw_networkx_labels(new_support, pos=initial_layout, labels=labels)
-
-    plt.show()
-
-    return h
-
-def draw_metroset(h: Hypergraph):
-    condensed_h = condense_hypergraph(h)
-
-def draw_line(layout, palette, path, i:int, idx: int, passo: int):
-    offset = (passo * 3)
-    pos = find_pos(layout, path[i], path[i+1])
-    if pos == "vertical":
-        plt.plot([layout[path[i]][0]+ offset, layout[path[i + 1]][0] + offset],
-             [layout[path[i]][1], layout[path[i + 1]][1]], linewidth=1,
-             color=palette[idx])
-    elif pos == "horizontal":
-        plt.plot([layout[path[i]][0], layout[path[i + 1]][0]],
-                 [layout[path[i]][1] + offset, layout[path[i + 1]][1] + offset], linewidth=1,
-                 color=palette[idx])
-    elif pos == "oblique":
-        plt.plot([layout[path[i]][0] + offset, layout[path[i + 1]][0] + offset],
-                 [layout[path[i]][1] + offset, layout[path[i + 1]][1] + offset], linewidth=1,
-                 color=palette[idx])
-
-def calculate_incidence(node, edges):
-    if type(node) is tuple:
-        node = set(node)
-    else:
-        node = {node}
-    incident_edges = set()
-    for edge in edges:
-        edge = set(edge)
-        if len(edge.intersection(node)) > 0:
-            incident_edges.add(tuple(edge))
-
-    return incident_edges
-def distance(layout, node1, node2):
-    """
-    Given a layout, return the euclidian distance between two nodes.
-    """
-    x1, y1 = layout[node1]
-    x2, y2 = layout[node2]
-    return ((x1 - x2)**2 + (y1-y2)**2)**(1/2)
-def find_pos(layout, node1, node2):
-    x1, y1 = layout[node1]
-    x2, y2 = layout[node2]
-
-    if trunc(x1) == trunc(x2):
-        return "vertical"
-    else:
-        return "horizontal"
-
-
-h = Hypergraph([(1,2,3,4,5,6),(6,7,8,9,10,11),(3,4,5,8,7), (11,12,13,14,15,16), (15,17,18), (1,2,3,4,5,7,8,6,9,10,11,12,13,14,15,19,20,21)])
-draw_metroset(h)
 
 import numpy as np
 import scipy as sp
@@ -361,7 +35,7 @@ import numba
 import math
 
 
-def chivers_rodgers(Graph, Paths, layout, edgeLength=50):
+def chivers_rodgers(Graph, Paths, layout, edgeLength: int = 100):
     n = len(Graph.nodes())
 
     ind = []
@@ -383,7 +57,10 @@ def chivers_rodgers(Graph, Paths, layout, edgeLength=50):
 
     for i, node in enumerate(Graph.nodes()):
         for j, node2 in enumerate(Graph.nodes()):
-            shortestPaths[i, j] = shortestPathsIter[node][node2]
+            try:
+                shortestPaths[i, j] = shortestPathsIter[node][node2]
+            except KeyError:
+                pass
 
     k = shortestPaths.max()
 
@@ -797,4 +474,302 @@ def phase3(pos, adj, n, k, degree):
 
     return pos
 
+
+
+
+def condense_hypergraph(h: Hypergraph):
+    compressed_hypergraph = Hypergraph
+
+    one_edge_to_edge = dict()
+    only_in_one_edge = list()
+    for node in h.get_nodes():
+        if h.degree(node) == 1:
+            only_in_one_edge.append(node)
+            one_edge_to_edge[node] = h.get_incident_edges(node)[0]
+
+
+    edge_mapping = dict()
+    idx = 0;
+    for edge in h.get_edges():
+        edge_mapping[edge] = idx
+        idx += 1
+
+    compressed_nodes = dict()
+    for node in h.get_nodes():
+        if node not in only_in_one_edge:
+            incident_edges = sorted([edge_mapping[edge] for edge in h.get_incident_edges(node)])
+            incident_edges = tuple(incident_edges)
+            if incident_edges not in compressed_nodes.keys():
+                compressed_nodes[incident_edges] = node
+            else:
+                x = compressed_nodes[incident_edges]
+                compressed_nodes[incident_edges] = list()
+                if type(x) is list:
+                    compressed_nodes[incident_edges] += x
+                else:
+                    compressed_nodes[incident_edges].append(x)
+                compressed_nodes[incident_edges].append(node)
+
+    g = nx.Graph()
+
+    for compressed_node in compressed_nodes.values():
+        if type(compressed_node) is not list:
+            g.add_node(compressed_node)
+        else:
+            g.add_node(tuple(compressed_node))
+
+    edge_to_new_edge = dict()
+    new_edges = list()
+    for edge in h.get_edges():
+        edge_clone = set(edge)
+        new_edge = tuple()
+        for node in only_in_one_edge:
+            edge_clone = edge_clone.difference({node})
+        for compressed_node in compressed_nodes.values():
+            edge = set(sorted(edge))
+            if type(compressed_node) is list:
+                compressed_node = set(sorted(compressed_node))
+            else:
+                compressed_node = {compressed_node}
+            if compressed_node.issubset(edge) and len(edge.intersection(compressed_node)) > 1:
+                new_edge += (tuple(sorted(compressed_node)),)
+                for value in compressed_node:
+                    edge_clone.remove(value)
+
+        if len(edge_clone) > 0:
+            new_edge += tuple(edge_clone)
+        if len(new_edge) > 1:
+            new_edges.append(new_edge)
+            edge_to_new_edge[tuple(edge)] = new_edge
+
+    similarity = dict()
+    for node1 in compressed_nodes.values():
+        for node2 in compressed_nodes.values():
+            if node1 != node2:
+                if type(node1) is list:
+                    node1 = tuple(node1)
+                if type(node2) is list:
+                    node2 = tuple(node2)
+                incident_edges1 = calculate_incidence(node1, new_edges)
+                incident_edges2 = calculate_incidence(node2, new_edges)
+                similarity12 = len(incident_edges1.intersection(incident_edges2))
+                similarity[(node1, node2)] = similarity12
+
+
+    for edge in new_edges:
+        for i in range(len(edge) - 1):
+            for j in range(i + 1, len(edge)):
+                if similarity[(edge[i], edge[j])] != 0:
+                    similarity_weight = 1/similarity[(edge[i], edge[j])]
+                else:
+                    similarity_weight = 2
+                g.add_edge(edge[i], edge[j], weight=similarity_weight)
+
+    edge_to_path = dict()
+    paths = list()
+    for edge in new_edges:
+        edge_graph = subgraph(g, edge)
+        method = lambda G, weight: nx.approximation.simulated_annealing_tsp(edge_graph, list(edge_graph)+[next(iter(edge_graph))], weight=weight, temp=5000)
+        path = nx.approximation.traveling_salesman_problem(edge_graph, method=method, cycle=False)
+        paths.append(path)
+        edge_to_path[edge] = path
+
+    to_remove_node = list()
+    to_add_edge = list()
+    for node in g.nodes():
+        if type(node) is tuple:
+            to_remove_node.append(node)
+            neighbors = g.neighbors(node)
+            unpacked_node = [x for x in node]
+            x = 1
+
+            incident_edges = g.edges(node)
+            for edge in incident_edges:
+                new_edge = set(edge)
+                new_edge.remove(node)
+                for x in unpacked_node:
+                    new_edge.add(x)
+                    to_add_edge.append(tuple(new_edge))
+                    new_edge.remove(x)
+
+
+
+    for node in to_remove_node:
+        g.remove_node(node)
+    for edge in to_add_edge:
+        g.add_edge(edge[0], edge[1])
+    for path in paths:
+        for node in path:
+            if type(node) is tuple:
+                index = path.index(node)
+                path.pop(index)
+                for x in node:
+                    path.insert(index, x)
+                    index += 1
+
+    for node in only_in_one_edge:
+        try:
+            current_path = edge_to_path[edge_to_new_edge[one_edge_to_edge[node]]]
+            current_path.append(node)
+            index = paths.index(edge_to_path[edge_to_new_edge[one_edge_to_edge[node]]])
+            paths.pop(index)
+            paths.insert(index, current_path)
+        except KeyError:
+            if list(one_edge_to_edge[node]) not in paths:
+                paths.append(list(one_edge_to_edge[node]))
+
+    new_support = nx.Graph()
+    for path in paths:
+        for i in range(len(path) - 1):
+            new_support.add_edge(path[i], path[i + 1])
+
+
+    initial_layout = kamada_kawai_layout(new_support)
+
+    new_support = nx.Graph()
+    for edge in paths:
+        for i in range(len(edge) - 1):
+            for j in range(i + 1, len(edge)):
+                new_support.add_edge(edge[i], edge[j])
+    new_paths = list()
+    for i in range(10):
+        entire_copy = new_support.copy()
+        for edge in paths:
+            for i in range(len(edge) - 1):
+                for j in range(i + 1, len(edge)):
+                    entire_copy.add_edge(edge[i], edge[j])
+        for node1 in entire_copy.nodes():
+            for node2 in entire_copy.nodes():
+                if node1 != node2:
+                    incident_edges1 = calculate_incidence(node1, paths)
+                    incident_edges2 = calculate_incidence(node2, paths)
+                    similarity12 = len(incident_edges1.intersection(incident_edges2))
+                    euclidean_distance = distance(initial_layout, node1, node2)
+                    try:
+                        similarity12 = 1/similarity12
+                    except ZeroDivisionError:
+                        similarity12 = 2
+                    value = math.sqrt(similarity12*euclidean_distance)
+                    if entire_copy.has_edge(node1, node2):
+                        entire_copy[node1][node2]["weight"] = value
+
+        for path in paths:
+            edge_graph = subgraph(entire_copy, path)
+            method = lambda G, weight: nx.approximation.simulated_annealing_tsp(edge_graph, "greedy", weight=weight, temp=5000)
+            new_path = nx.approximation.traveling_salesman_problem(edge_graph, method=method, cycle=False)
+            new_paths.append(new_path)
+
+        refined = nx.Graph()
+        for path in new_paths:
+            for i in range(len(path) - 1):
+                refined.add_edge(path[i], path[i + 1])
+
+        initial_layout = kamada_kawai_layout(refined, pos = initial_layout)
+        if new_paths != paths:
+            paths = new_paths.copy()
+        else:
+            break
+        new_paths.clear()
+        new_support = refined.copy()
+
+    initial_layout = chivers_rodgers(new_support, paths, initial_layout)
+    paths_in_edge = dict()
+    idx = 0
+    for path in paths:
+        for i in range(len(path) - 1):
+            key = (path[i], path[i + 1])
+            key = tuple(sorted(key))
+            try:
+                prev = paths_in_edge[key]
+            except KeyError:
+                prev = []
+            paths_in_edge[key] = list()
+            paths_in_edge[key] += prev
+            paths_in_edge[key] += [idx]
+
+        idx += 1
+
+
+    palette = list()
+    while len(palette) < len(paths):
+        color = "#%06x" % random.randint(0, 0xFFFFFF)
+        if color not in palette:
+            palette.append(color)
+
+    passo_edge = dict()
+    for edge in new_support.edges():
+        key = (edge[0], edge[1])
+        key = tuple(sorted(key))
+        lines_in_edge = len(paths_in_edge[key])
+        if lines_in_edge % 2 != 0:
+            passo = lines_in_edge - 1
+            passo /= 2
+        else:
+            passo = lines_in_edge / 2
+        passo_edge[key] = passo
+
+    idx = 0
+    for path in paths:
+        for i in range(len(path) - 1):
+            key = (path[i], path[i + 1])
+            key = tuple(sorted(key))
+            passo = passo_edge[key]
+            draw_line(initial_layout, palette, path, i, idx, passo)
+            passo_edge[key] -= 1
+
+        idx += 1
+
+    labels = dict((n, n) for n in new_support.nodes())
+    nx.draw_networkx_nodes(new_support, initial_layout,)
+    nx.draw_networkx_labels(new_support, pos=initial_layout, labels=labels)
+
+
+    return h
+
+def draw_metroset(h: Hypergraph):
+    condensed_h = condense_hypergraph(h)
+
+def draw_line(layout, palette, path, i:int, idx: int, passo: int):
+    offset = (passo * 3)
+    pos = find_pos(layout, path[i], path[i+1])
+    if pos == "vertical":
+        plt.plot([layout[path[i]][0]+ offset, layout[path[i + 1]][0] + offset],
+             [layout[path[i]][1], layout[path[i + 1]][1]], linewidth=1,
+             color=palette[idx])
+    elif pos == "horizontal":
+        plt.plot([layout[path[i]][0], layout[path[i + 1]][0]],
+                 [layout[path[i]][1] + offset, layout[path[i + 1]][1] + offset], linewidth=1,
+                 color=palette[idx])
+    elif pos == "oblique":
+        plt.plot([layout[path[i]][0] + offset, layout[path[i + 1]][0] + offset],
+                 [layout[path[i]][1] + offset, layout[path[i + 1]][1] + offset], linewidth=1,
+                 color=palette[idx])
+
+def calculate_incidence(node, edges):
+    if type(node) is tuple:
+        node = set(node)
+    else:
+        node = {node}
+    incident_edges = set()
+    for edge in edges:
+        edge = set(edge)
+        if len(edge.intersection(node)) > 0:
+            incident_edges.add(tuple(edge))
+
+    return incident_edges
+def distance(layout, node1, node2):
+    """
+    Given a layout, return the euclidian distance between two nodes.
+    """
+    x1, y1 = layout[node1]
+    x2, y2 = layout[node2]
+    return ((x1 - x2)**2 + (y1-y2)**2)**(1/2)
+def find_pos(layout, node1, node2):
+    x1, y1 = layout[node1]
+    x2, y2 = layout[node2]
+
+    if trunc(x1) == trunc(x2):
+        return "vertical"
+    else:
+        return "horizontal"
 
