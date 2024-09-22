@@ -214,7 +214,7 @@ def extra_node_projection(h: Hypergraph):
             id_to_obj['E' + str(idx)] = edge
             g.add_node(obj_to_id[edge], group=2, size=15, physics=False, x=0, y=0)
             for node in edge:
-                 g.add_edge(obj_to_id[edge], obj_to_id[node], weight=1000)
+                 g.add_edge(obj_to_id[edge], obj_to_id[node])
         idx += 1
 
     return g, binary_edges

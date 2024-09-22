@@ -95,7 +95,7 @@ def draw_clique(h: Hypergraph, pos=None, ax=None, iterations: int = 1000,  **kwa
     plt.show()
     return ax
 
-def draw_extra_node(h: Hypergraph, pos=None, ax=None, ignore_binary_relations: bool = True, show_edge_nodes=True, iterations: int = 1000, **kwargs):
+def draw_extra_node(h: Hypergraph, pos=None, ax=None, ignore_binary_relations: bool = True, show_edge_nodes=True, iterations: int = 50000, **kwargs):
     """
     Draws an extra-node projection of the hypergraph.
     Parameters
@@ -143,28 +143,28 @@ def draw_extra_node(h: Hypergraph, pos=None, ax=None, ignore_binary_relations: b
         gravity=1.0,
         # Log
         verbose=True)
-    if pos is None:
-        pos = forceatlas2.forceatlas2_networkx_layout(G=g, iterations=iterations, weight_attr="weight")
+
+    if ignore_binary_relations:
+        isolated = list(nx.isolates(g))
+        g.remove_nodes_from(isolated)
+    else:
+        for edge in binary_edges:
+            g.add_edge(edge[0], edge[1])
+    if is_planar(g):
+        pos = planar_layout(g)
         __draw_in_plot(g, pos, show_edge_nodes=show_edge_nodes, **kwargs)
     else:
-        if ignore_binary_relations:
-            isolated = list(nx.isolates(g))
-            g.remove_nodes_from(isolated)
-            pos = forceatlas2.forceatlas2_networkx_layout(G=g, iterations=iterations, weight_attr="weight")
-            __draw_in_plot(g, pos, show_edge_nodes=show_edge_nodes, **kwargs)
-        else:
-            for edge in binary_edges:
-                g.add_edge(edge[0], edge[1])
-            pos = forceatlas2.forceatlas2_networkx_layout(G = g, iterations= iterations, weight_attr = "weight")
-            __draw_in_plot(g,pos, show_edge_nodes=show_edge_nodes, **kwargs)
+        if pos is None:
+            pos = kamada_kawai_layout(g)
 
+        pos = forceatlas2.forceatlas2_networkx_layout(G=g, pos=pos, iterations=iterations, weight_attr="weight")
+        __draw_in_plot(g, pos, show_edge_nodes=show_edge_nodes, **kwargs)
+
+    ax.autoscale(enable=True, axis='both', tight=True)
+    plt.axis('off')
     return ax
 
 def __draw_in_plot(g, pos, node_shapes = None, colors = None, show_edge_nodes: bool = False,**kwargs):
-    px = 1 / plt.rcParams['figure.dpi']
-    dim = (g.number_of_nodes()*50)*px
-    dim = min(dim, 2**16)
-    plt.figure(3, figsize=(dim,dim))
     ax = plt.gca()
     labels = dict((n, n) for n in g.nodes() if n.startswith('N'))
     if node_shapes is None:
@@ -183,4 +183,3 @@ def __draw_in_plot(g, pos, node_shapes = None, colors = None, show_edge_nodes: b
         nx.draw_networkx_nodes(g, ax=ax, pos=pos, node_shape=node_shapes["edge_node"], node_color=colors["edge_node"],nodelist=edge_list, **kwargs)
 
     nx.draw_networkx_labels(g, ax=ax, pos=pos, labels=labels)
-    plt.show()
