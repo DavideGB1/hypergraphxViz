@@ -3,20 +3,21 @@ from typing import Optional
 import numpy as np
 from hypergraphx import Hypergraph
 from matplotlib import pyplot as plt
-from hypergraphx.viz.draw_PAOH import check_edge_intersection
+
+from hypergraphx.viz.__support import check_edge_intersection
 
 
-def radial_edge_placemente_calculation(h: Hypergraph) -> (list,list):
+def __radial_edge_placemente_calculation(h: Hypergraph) -> (list,list):
     """
     Calculate how to place the edges in order to optimize space in the grid.
     Parameters
     ----------
-        h : Hypergraph.
-            The hypergraph to be projected.
+    h : Hypergraph.
+        The hypergraph to be projected.
     Returns
     -------
-        sector_list : List of Set of Edges
-            The sectors' list. Each sector contain various edges
+    sector_list : List of Set of Edges
+        The sectors' list. Each sector contain various edges
     """
     sector_found = False
     good_sector_set = True
@@ -54,21 +55,21 @@ def radial_edge_placemente_calculation(h: Hypergraph) -> (list,list):
 
     return sector_list, binary_edges
 
-def _calculate_node_position(h: Hypergraph, alpha: float, radius: float) -> dict:
+def __calculate_node_position(h: Hypergraph, alpha: float, radius: float) -> dict:
     """
     Calculate the position of each node in the image.
     Parameters
     ----------
-        h : Hypergraph.
-            The hypergraph to be projected.
-        alpha : float
-            Starting angle position needed for the edge placement.
-        radius : float
-            Radius of the inner circle.
+    h : Hypergraph.
+        The hypergraph to be projected.
+    alpha : float
+        Starting angle position needed for the edge placement.
+    radius : float
+        Radius of the inner circle.
     Returns
     -------
-        pos : Dictionary
-            Dictionary with the position of each node
+    pos : Dictionary
+        Dictionary with the position of each node
     """
     pos = dict()
     for node in h.get_nodes():
@@ -100,35 +101,35 @@ def draw_radial_layout(
     Draws a Radial representation of the hypergraph.
     Parameters
     ----------
-        h : Hypergraph.
-            The hypergraph to be projected.
-        k : float, optional
-            Scale for the Radius value.
-        figsize : tuple, optional
-            Tuple of float used to specify the image size. Used only if ax is None
-        dpi : int, optional
-            The dpi for the figsize. Used only if ax is None
-        ax : plt.Axes, optional
-            Axis if the user wants to specify an image
-        node_shape : str, optional
-            The shape of the nodes in the image. Use standard MathPlotLib values.
-        node_color : str, optional
-            HEX value for the nodes color.
-        node_size: int, optional
-            The size of the nodes in the image.
-        marker_color : str, optional
-            HEX value for the node markers along the hyperedges.
-        marker_size : int, optional
-            The size of the node markers along the hyperedges.
-        edge_color : str, optional
-            HEX value for the edges color.
-        font_size : int, optional
-            The size of the font.
-        font_spacing_multiplier : float, optional
-            Value used to place the labels in a circle different from the inner one. 0 means that the labels position is
-            the inner circle position.
-        kwargs : dict.
-            Keyword arguments to be passed to the various MathPlotLib function.
+    h : Hypergraph.
+       The hypergraph to be projected.
+    k : float, optional
+        Scale for the Radius value.
+    figsize : tuple, optional
+        Tuple of float used to specify the image size. Used only if ax is None.
+    dpi : int, optional
+        The dpi for the figsize. Used only if ax is None.
+    ax : plt.Axes, optional
+        Axis if the user wants to specify an image.
+    node_shape : str, optional
+        The shape of the nodes in the image. Use standard MathPlotLib values.
+    node_color : str, optional
+        HEX value for the nodes color.
+    node_size : int, optional
+        The size of the nodes in the image.
+    marker_color : str, optional
+        HEX value for the node markers along the hyperedges.
+    marker_size : int, optional
+        The size of the node markers along the hyperedges.
+    edge_color : str, optional
+        HEX value for the edges color.
+    font_size : int, optional
+        The size of the font.
+    font_spacing_multiplier : float, optional
+        Value used to place the labels in a circle different from the inner one. 0 means that the labels position is
+        the inner circle position.
+    kwargs : dict.
+        Keyword arguments to be passed to the various MathPlotLib function.
     Returns
     -------
     """
@@ -143,8 +144,8 @@ def draw_radial_layout(
     alpha = (2*np.pi)/h.num_nodes()
 
     nodes_mapping = h.get_mapping()
-    sector_list , binary_edges = radial_edge_placemente_calculation(h)
-    pos = _calculate_node_position(h,alpha,radius)
+    sector_list , binary_edges = __radial_edge_placemente_calculation(h)
+    pos = __calculate_node_position(h,alpha,radius)
     #Draw the binary edges in the inner circle
     for edge in binary_edges:
         pos_node_1 = pos[edge[0]]
@@ -194,4 +195,5 @@ def draw_radial_layout(
     plt.axis('off')
     ax.axis('off')
     ax.set_aspect('equal')
+    ax.autoscale(enable = True, axis = 'both')
     plt.autoscale(enable=True, axis='both')
