@@ -1,3 +1,5 @@
+from typing import Optional
+
 import matplotlib.pyplot as plt
 import networkx as nx
 from fa2_modified import ForceAtlas2
@@ -43,7 +45,20 @@ def draw_bipartite(h: Hypergraph, pos=None, ax=None, align='vertical', **kwargs)
     return ax
 
 
-def draw_clique(h: Hypergraph, pos=None, ax=None, iterations: int = 1000,  **kwargs):
+def draw_clique(
+        h: Hypergraph,
+        pos=None,
+        ax: Optional[plt.Axes] = None,
+        figsize: tuple[float, float] = (10, 10),
+        dpi: int = 300,
+        node_shape: str = "o",
+        node_color: str = "#1f78b4",
+        node_size: int = 300,
+        edge_color: str = "#000000",
+        edge_width: float = 2,
+        iterations: int = 1000,
+        strong_gravity: bool = True,
+        **kwargs):
     """
     Draws a clique projection of the hypergraph.
     Parameters
@@ -54,8 +69,24 @@ def draw_clique(h: Hypergraph, pos=None, ax=None, iterations: int = 1000,  **kwa
         A dictionary with nodes as keys and positions as values.
     ax : matplotlib.axes.Axes.
         The axes to draw the graph on.
+    figsize : tuple, optional
+        Tuple of float used to specify the image size. Used only if ax is None.
+    dpi : int, optional
+        The dpi for the figsize. Used only if ax is None.
+    node_shape : str, optional
+        The shape of the nodes in the image. Use standard MathPlotLib values.
+    node_color : str, optional
+        HEX value for the nodes color.
+    node_size : int, optional
+        The size of the nodes in the image.
+    edge_color : str, optional
+        HEX value for the edges color.edge_width: float = 2
+    edge_width : float, optional
+        Width of the edges in the grid.
     iterations : int
         The number of iterations to run the position algorithm.
+    strong_gravity : bool
+        Decide if the ForceAtlas2 Algorithm must use strong gravity or no.
     kwargs : dict.
         Keyword arguments to be passed to networkx.draw_networkx.
 
@@ -80,20 +111,32 @@ def draw_clique(h: Hypergraph, pos=None, ax=None, iterations: int = 1000,  **kwa
 
         # Tuning
         scalingRatio=2.0,
-        strongGravityMode=False,
+        strongGravityMode=strong_gravity,
         gravity=1.0,
         # Log
         verbose=True)
 
     if pos is None:
         pos = forceatlas2.forceatlas2_networkx_layout(G=g, iterations=iterations, weight_attr="weight")
+    else:
+        pos = forceatlas2.forceatlas2_networkx_layout(G=g, pos=pos,iterations=iterations, weight_attr="weight")
 
     if ax is None:
+        plt.figure(figsize=figsize, dpi=dpi)
+        plt.subplot(1, 1, 1)
         ax = plt.gca()
 
-    nx.draw_networkx(g, pos=pos, ax=ax, **kwargs)
-    plt.show()
-    return ax
+    labels = dict((n, n) for n in g.nodes())
+
+    nx.draw_networkx_edges(G=g, pos=pos, ax=ax,edge_color=edge_color, width=edge_width)
+    nx.draw_networkx_nodes(G=g, pos=pos, ax=ax, node_color=node_color, node_size=node_size, node_shape=node_shape)
+    nx.draw_networkx_labels(G=g, pos=pos, ax=ax, labels=labels)
+
+    plt.axis('off')
+    ax.axis('off')
+    ax.set_aspect('equal')
+    ax.autoscale(enable=True, axis='both')
+    plt.autoscale(enable=True, axis='both')
 
 def draw_extra_node(h: Hypergraph, pos=None, ax=None, ignore_binary_relations: bool = True, show_edge_nodes=True, iterations: int = 50000, **kwargs):
     """
