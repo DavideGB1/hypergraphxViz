@@ -173,44 +173,51 @@ def line_graph(h: Hypergraph, distance='intersection', s=1, weighted=False):
                     vis[k] = True
     return g, id_to_edge
 
-def extra_node_projection(h: Hypergraph):
+def extra_node_projection(h: Hypergraph) -> [nx.Graph,list]:
     """
-        Returns a graph representation of the hypergraph using the extra-node projection method.
-
-        Parameters
-        ----------
-        h : Hypergraph
-            The hypergraph to be projected.
-
-        Returns
-        -------
-        networkx.Graph
-            The graph representation of the hypergraph.
-
-        """
+    Returns a graph representation of the hypergraph using the extra-node projection method.
+    Parameters
+    ----------
+    h : Hypergraph
+        The hypergraph to be projected.
+    Returns
+    -------
+    networkx.Graph
+        The graph representation of the hypergraph.
+    """
     g = nx.Graph()
     id_to_obj = {}
     obj_to_id = {}
     idx = 0
 
+    #Add normal nodes
     for node in h.get_nodes():
         id_to_obj['N' + str(idx)] = node
         obj_to_id[node] = 'N' + str(idx)
         idx += 1
-        g.add_node(obj_to_id[node], group=1, x=0, y=0)
+        g.add_node(obj_to_id[node])
 
     idx = 0
     binary_edges = list()
+    #Manage Hyperedges
     for edge in h.get_edges():
         edge = tuple(sorted(edge))
+        #Manage binary relations
         if len(edge) == 2:
-            binary_edges.append((obj_to_id[edge[0]], obj_to_id[edge[1]]))
+            weight = 1
+            if h.is_weighted():
+                weight = h.get_weight(edge)
+            binary_edges.append((obj_to_id[edge[0]], obj_to_id[edge[1]], weight))
+        #Any other type of relation
         else:
             obj_to_id[edge] = 'E' + str(idx)
             id_to_obj['E' + str(idx)] = edge
-            g.add_node(obj_to_id[edge], group=2, size=15, physics=False, x=0, y=0)
+            g.add_node(obj_to_id[edge])
+            weight = 1
+            if h.is_weighted():
+                weight = h.get_weight(edge)
             for node in edge:
-                 g.add_edge(obj_to_id[edge], obj_to_id[node])
+                 g.add_edge(obj_to_id[edge], obj_to_id[node], weight=weight)
         idx += 1
 
     return g, binary_edges

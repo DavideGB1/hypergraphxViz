@@ -85,6 +85,7 @@ def __calculate_node_position(h: Hypergraph, alpha: float, radius: float) -> dic
 def draw_radial_layout(
     h: Hypergraph,
     k: int = 1.0,
+    draw_labels:bool = True,
     figsize: tuple[float,float] = (10,10),
     dpi: int = 300,
     ax: Optional[plt.Axes] = None,
@@ -105,6 +106,8 @@ def draw_radial_layout(
        The hypergraph to be projected.
     k : float, optional
         Scale for the Radius value.
+    draw_labels : bool
+        Decide if the labels should be drawn.
     figsize : tuple, optional
         Tuple of float used to specify the image size. Used only if ax is None.
     dpi : int, optional
@@ -161,10 +164,13 @@ def draw_radial_layout(
         value_x = pos[node][0]
         value_y = pos[node][1]
         ax.plot(value_x, value_y, node_shape, color=node_color, markersize=node_size, **kwargs)
-        ax.text(value_x *font_spacing_multiplier, value_y*font_spacing_multiplier, node, fontsize=font_size, **kwargs)
+        if draw_labels:
+            ax.text(value_x *font_spacing_multiplier, value_y*font_spacing_multiplier, node, fontsize=font_size, **kwargs)
         node_depth += 1
 
-    sector_depth = font_spacing_multiplier+1
+    sector_depth = font_spacing_multiplier
+    if draw_labels:
+        sector_depth+=1
     #Draw the various sectors' circles
     for sector in sector_list:
         sector = sorted(sector)
