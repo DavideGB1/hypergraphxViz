@@ -229,13 +229,19 @@ def draw_extra_node(
         pos = planar_layout(g)
     else:
         if pos is None:
+            #First layout to optimize
             pos = kamada_kawai_layout(g)
         pos = forceatlas2.forceatlas2_networkx_layout(G=g, pos=pos, iterations=iterations, weight_attr="weight")
 
     __draw_in_plot(g, pos, ax = ax, show_edge_nodes=show_edge_nodes, draw_labels=draw_labels, node_shape=node_shape,
                    node_color=node_color, node_size=node_size, edge_shape=edge_shape, edge_node_color=edge_node_color,
                    edge_color=edge_color, edge_width=edge_width, **kwargs)
-    ax.autoscale(enable=True, axis='both', tight=True)
+
+    plt.axis('off')
+    ax.axis('off')
+    ax.set_aspect('equal')
+    ax.autoscale(enable=True, axis='both')
+    plt.autoscale(enable=True, axis='both')
 
 def __draw_in_plot(
     g,
@@ -287,16 +293,17 @@ def __draw_in_plot(
     """
     if ax is None:
         ax = plt.gca()
-
+    #Draw edges and nodes
     labels = dict((n, n) for n in g.nodes() if n.startswith('N'))
     node_list = [x for x in g.nodes() if x.startswith('N')]
     nx.draw_networkx_edges(g, pos, ax=ax, edge_color=edge_color, width=edge_width)
     nx.draw_networkx_nodes(g, ax=ax, pos=pos, nodelist=node_list, node_shape=node_shape,node_color=node_color, node_size=node_size, **kwargs)
-
+    #Draw nodes that represents edges
     if show_edge_nodes:
         edge_list = [x for x in g.nodes() if x.startswith('E')]
         labels_edges = dict((n, n) for n in g.nodes() if n.startswith('E'))
         labels.update(labels_edges)
         nx.draw_networkx_nodes(g, ax=ax, pos=pos, node_shape=edge_shape, node_color=edge_node_color,nodelist=edge_list, **kwargs)
+    #Draw labels
     if draw_labels:
         nx.draw_networkx_labels(g, ax=ax, pos=pos, labels=labels)
