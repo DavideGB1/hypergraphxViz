@@ -4,7 +4,7 @@ import numpy as np
 from hypergraphx import Hypergraph
 from matplotlib import pyplot as plt
 
-from hypergraphx.viz.__support import check_edge_intersection
+from hypergraphx.viz.__support import __check_edge_intersection
 
 
 def __radial_edge_placemente_calculation(h: Hypergraph) -> (list,list):
@@ -32,7 +32,7 @@ def __radial_edge_placemente_calculation(h: Hypergraph) -> (list,list):
                 for edge_in_column in sector_set:
                     set1 = set(edge_in_column)
                     set2 = set(edge)
-                    if check_edge_intersection(set1, set2):
+                    if __check_edge_intersection(set1, set2):
                         good_sector_set = False
                 #If the sector has been found we stop
                 if good_sector_set:

@@ -2,7 +2,7 @@ from typing import Optional
 
 import matplotlib.pyplot as plt
 from hypergraphx import Hypergraph
-from hypergraphx.viz.__support import check_edge_intersection
+from hypergraphx.viz.__support import __check_edge_intersection
 
 
 def draw_PAOH(
@@ -111,7 +111,7 @@ def __PAOH_edge_placemente_calculation(h: Hypergraph)  -> list:
             for edge_in_column in column_set:
                 set1 = set(edge_in_column)
                 set2 = set(edge)
-                if check_edge_intersection(set1, set2):
+                if __check_edge_intersection(set1, set2):
                     good_column_set = False
             # If the column has been found we stop
             if good_column_set:
