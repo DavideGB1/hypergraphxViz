@@ -1,499 +1,37 @@
-import itertools
-import math
-import sys
-from math import trunc
 import random
-from typing import Union, Optional
+import sys
+from typing import Optional
 
-import numpy
-import numpy as np
-from PIL.ImageChops import offset
-from fa2_modified import ForceAtlas2
-from hypergraphx import Hypergraph
-from hypergraphx.readwrite import load_hypergraph
-from hypergraphx.representations.projections import clique_projection
-from hypergraphx.viz import draw_clique, draw_hypergraph
-from hypergraphx.viz.draw_hypergraph import Object
+from matplotlib import pyplot as plt
 from networkx import subgraph, kamada_kawai_layout
-from networkx.algorithms.approximation import simulated_annealing_tsp, greedy_tsp
-from numpy.ma.core import floor
-from scipy.linalg import sqrtm
-from scipy.signal import square
-from setuptools.wheel import unpack
-
+from hypergraphx import Hypergraph
+from hypergraphx.viz.__chivers_rodgers import chivers_rodgers
+from hypergraphx.viz.__support import __draw_line, __distance, __calculate_incidence
 
 sys.path.append("..")
-
 import networkx as nx
-import matplotlib.pyplot as plt
-
-
-import numpy as np
-import scipy as sp
-import networkx as nx
-import numba
 import math
 
-
-def chivers_rodgers(Graph, Paths, layout, edgeLength: int = 100):
-    n = len(Graph.nodes())
-
-    ind = []
-    adj = nx.adjacency_matrix(Graph)
-    adj = adj.todense()
-
-    pos = np.zeros((n, 2))
-    degree = np.zeros(n)
-
-    #### Read Position of the graph nodes
-    for i, node in enumerate(Graph.nodes()):
-        pos[i, 0] = layout[node][0]
-        pos[i, 1] = layout[node][1]
-
-        degree[i] = Graph.degree[node]
-
-    shortestPathsIter = dict(nx.shortest_path_length(Graph))
-    shortestPaths = np.zeros((n, n))
-
-    for i, node in enumerate(Graph.nodes()):
-        for j, node2 in enumerate(Graph.nodes()):
-            try:
-                shortestPaths[i, j] = shortestPathsIter[node][node2]
-            except KeyError:
-                pass
-
-    k = shortestPaths.max()
-
-    ####  do algorithm
-    # pos = slow(pos, adj, n)
-    pos = phase2(pos, adj, n, edgeLength, degree)
-    pos = phase3(pos, adj, n, edgeLength, degree)
-
-    for i, idx in enumerate(ind):
-        node = Graph.nodes[idx]["data"]
-
-        node.X = pos[i, 0]
-        node.Y = pos[i, 1]
-
-    for i, node in enumerate(Graph.nodes()):
-        layout[node][0]  = pos[i, 0]
-        layout[node][1] = pos[i, 1]
-
-        degree[i] = Graph.degree[node]
-
-    return layout
-    # postProcessing(Graph)
-
-
-def postProcessing(Graph):
-    processed = set()
-    paths = []
-
-    for node in Graph.nodes():
-
-        if node in processed:
-            continue
-
-        if Graph.degree(node) == 1:
-
-            path = []
-            node1 = node
-
-            while True:
-                neighbours = Graph.neighbors(node1)
-                path.append(node1)
-
-                if Graph.degree(node1) <= 2:
-
-                    for node2 in neighbours:
-                        if node1 != node2 and not node2 in path:
-                            node1 = node2
-                            continue
-                else:
-                    break
-
-            path.reverse()
-            for n in path:
-                data = Graph.nodes[n]["data"]
-                print(data.Label)
-
-            print(path, '\n')
-
-            processed.add(node)
-
-            if len(path) < 3:
-                continue
-
-            segments = []
-            segment = []
-
-            v1 = Graph.nodes[segments[0]]["data"]
-            v2 = Graph.nodes[segments[1]]["data"]
-
-            dX = node2.X - node1.X
-            dY = node2.Y - node1.Y
-
-            angle1 = np.arctan2(-dY, dX) * 180 / math.pi
-            if angle1 < 0:
-                angle1 = 360 + angle1
-
-            segment.add(segments[0])
-            segment.add(segments[1])
-
-            for n2 in path[2:]:
-                v3 = Graph.nodes[n2]["data"]
-
-                dX = node2.X - node1.X
-                dY = node2.Y - node1.Y
-
-                angle2 = np.arctan2(-dY, dX) * 180 / math.pi
-                if angle2 < 0:
-                    angle2 = 360 + angle2
-
-                if abs(angle1 - angle2) > 22.5:
-                    segment.add(n2)
-                    segments.add(segment)
-                    segment = []
-                    segment.add(n2)
-                else:
-                    segment.add(n2)
-
-                angle1 = angle2
-                v1 = v2
-                v2 = v3
-
-            for s in segments:
-                for n in s:
-                    data = Graph.nodes[n]["data"]
-                    print(data.Label)
-                print("\n")
-
-
-@numba.jit(nopython=True)
-def phase2(pos, adj, n, k, degree):
-    k = 50
-    # k = 1 / n
-    minMaxFactor = 0
-    factor = max(degree) - 2
-
-    if factor == 0:
-        factor = 1
-
-    degree[degree < 2] = 2
-    degree = 1.0 * k + minMaxFactor * k * (degree - 2) / factor
-
-    energyDiff = 100.0
-
-    alpha = 50
-    iterations = 600
-
-    i = 0
-
-    posNew = np.zeros((n, 2))
-
-    t = alpha
-    dt = (t / iterations)
-
-    temp = np.ones(n) * 0.5
-    velocityAngle = np.zeros(n)
-    factor = 1
-    df = factor / iterations
-
-    while i <= iterations:
-
-        # force = np.zeros((n, 2))
-        velocity = np.zeros((n, 2))
-        velocityM = np.zeros((n, 2))
-
-        for idx1 in range(n):
-            # print(idx1)
-            for idx2 in range(idx1, n):
-
-                if idx1 == idx2:
-                    continue
-
-                pos1 = pos[idx1, :]
-                pos2 = pos[idx2, :]
-
-                k1 = degree[idx1]
-                k2 = degree[idx2]
-
-                delta = pos1 - pos2
-                dist = np.sqrt(delta.dot(delta))
-
-                if dist <= 0.0001:
-                    dist = 0.0001
-
-                delta = delta / dist
-
-                if adj[idx1, idx2]:
-                    k = (k1 + k2) / 2
-
-                    force = ((0.1 * dist))
-                    if force > alpha:
-                        force = alpha
-
-                    velocity[idx1] = velocity[idx1] - delta * force
-                    velocity[idx2] = velocity[idx2] + delta * force
-
-                    center = (pos1 + pos2) / 2
-                    centerToNode = pos1 - center
-
-                    theta = np.arctan2(delta[1], delta[0])
-                    # print(theta * 180 / math.pi)
-
-                    isNeg = 1
-                    if theta < 0:
-                        theta = abs(theta)
-                        isNeg = -1
-
-                    theta = np.fmod(theta, math.pi / 4.0)  # Rotate to nearest resolution
-
-                    if theta < math.pi / 8.0:
-                        theta = -theta
-                    else:
-                        theta = math.pi / 4.0 - theta
-
-                    # if isNeg:
-                    #    theta = -theta
-                    theta = theta * isNeg
-
-                    # print(theta * 180 / math.pi)
-
-                    rotPos = np.zeros((2))
-                    rotPos[0] = center[0] + centerToNode[0] * math.cos(theta) - centerToNode[1] * math.sin(theta)
-                    rotPos[1] = center[1] + centerToNode[0] * math.sin(theta) + centerToNode[1] * math.cos(theta)
-
-                    vecToNew = rotPos - pos1
-                    length = np.sqrt(vecToNew.dot(vecToNew))
-
-                    if length <= 0.0:
-                        length = 1
-
-                    vecToNew = vecToNew / length
-
-                    force = length / 2
-                    if force > alpha:
-                        force = alpha
-
-                    velocityM[idx1] = velocityM[idx1] + vecToNew * force
-                    velocityM[idx2] = velocityM[idx2] - vecToNew * force
-
-                    # print(force)
-                    # print(vecToNew)
-
-                    force = 0.01 * (k - dist)
-                    if force > alpha:
-                        force = alpha
-
-                    velocityM[idx1] = velocityM[idx1] + delta * force
-                    velocityM[idx2] = velocityM[idx2] - delta * force
-
-                force = ((5000) / (dist ** 2))
-                if force > alpha:
-                    force = alpha
-
-                velocity[idx1] = velocity[idx1] + delta * force
-                velocity[idx2] = velocity[idx2] - delta * force
-
-            # print(velocity[idx1])
-            # print(velocityM[idx1])
-
-            v = velocity[idx1] * factor + velocityM[idx1] * (1 - factor)
-            angle = np.arctan2(v[1], v[0])
-            if angle < 0:
-                angle += 2 * math.pi
-
-            d1 = abs(angle - velocityAngle[idx1])
-            d2 = 2 * math.pi - d1
-            diff = d1 if d1 < d2 else d2;
-
-            if diff <= math.pi / 8:
-                temp[idx1] += 0.1
-            elif diff >= 3 * math.pi / 8:
-                temp[idx1] -= 0.1
-
-            if temp[idx1] < 0.1:
-                temp[idx1] = 0.1
-            elif temp[idx1] > 1.0:
-                temp[idx1] = 1.0
-
-            velocityAngle[idx1] = angle
-
-            posNew[idx1] = pos[idx1] + velocity[idx1] * temp[idx1] * factor + velocityM[idx1] * temp[idx1] * factor
-
-        d = pos - posNew
-        dd = np.sum(np.abs(d) ** 2, axis=-1) ** (1. / 2)
-        for idx1 in range(n):
-            pos[idx1] = posNew[idx1]
-
-        energyDiff = max(dd)
-        factor -= df
-        i = i + 1
-
-    print(energyDiff)
-    print(i)
-
-    return pos
-
-
-@numba.jit(nopython=True)
-def phase3(pos, adj, n, k, degree):
-    # k = 1 / n
-    minMaxFactor = 0
-    factor = max(degree) - 2
-
-    if factor == 0:
-        factor = 1
-
-    degree[degree < 2] = 2
-    degree = 1.0 * k + minMaxFactor * k * (degree - 2) / factor
-
-    energyDiff = 100.0
-
-    alpha = 50
-
-    iterations = 400
-    i = 0
-
-    posNew = np.zeros((n, 2))
-
-    temp = np.ones(n) * 0.5
-    velocityAngle = np.zeros(n)
-    factor = 1
-    df = factor / iterations
-
-    while i <= iterations:
-
-        # force = np.zeros((n, 2))
-        velocity = np.zeros((n, 2))
-        velocityM = np.zeros((n, 2))
-
-        for idx1 in range(n):
-            # print(idx1)
-            for idx2 in range(idx1, n):
-
-                if idx1 == idx2:
-                    continue
-
-                pos1 = pos[idx1, :]
-                pos2 = pos[idx2, :]
-
-                k1 = degree[idx1]
-                k2 = degree[idx2]
-
-                # print(delta)
-                delta = pos1 - pos2
-                dist = np.sqrt(delta.dot(delta))
-
-                if dist <= 0.0001:
-                    dist = 0.0001
-
-                delta = delta / dist
-
-                if adj[idx1, idx2]:
-                    k = (k1 + k2) / 2
-
-                    center = (pos1 + pos2) / 2
-                    centerToNode = pos1 - center
-
-                    theta = np.arctan2(delta[1], delta[0])
-
-                    isNeg = 1
-                    if theta < 0:
-                        theta = abs(theta)
-                        isNeg = -1
-
-                    theta = np.fmod(theta, math.pi / 4.0)  # Rotate to nearest resolution
-
-                    if theta < math.pi / 8.0:
-                        theta = -theta
-                    else:
-                        theta = math.pi / 4.0 - theta
-
-                    theta = theta * isNeg
-
-                    rotPos = np.zeros((2))
-                    rotPos[0] = center[0] + centerToNode[0] * math.cos(theta) - centerToNode[1] * math.sin(theta)
-                    rotPos[1] = center[1] + centerToNode[0] * math.sin(theta) + centerToNode[1] * math.cos(theta)
-
-                    vecToNew = rotPos - pos1
-                    length = np.sqrt(vecToNew.dot(vecToNew))
-                    if length == 0:
-                        length = 0.0001
-                    vecToNew = vecToNew / length
-
-                    force = length / 2
-                    if force > alpha:
-                        force = alpha
-
-                    velocityM[idx1] = velocityM[idx1] + vecToNew * force
-                    velocityM[idx2] = velocityM[idx2] - vecToNew * force
-
-                    force = 0.01 * (k - dist)
-                    if force > alpha:
-                        force = alpha
-
-                    velocityM[idx1] = velocityM[idx1] + delta * force
-                    velocityM[idx2] = velocityM[idx2] - delta * force
-
-            v = velocityM[idx1]
-            angle = np.arctan2(v[1], v[0])
-            if angle < 0:
-                angle += 2 * math.pi
-
-            d1 = abs(angle - velocityAngle[idx1])
-            d2 = 2 * math.pi - d1
-            diff = d1 if d1 < d2 else d2;
-
-            if diff <= math.pi / 8:
-                temp[idx1] += 0.1
-            elif diff >= 3 * math.pi / 8:
-                temp[idx1] -= 0.1
-
-            if temp[idx1] < 0.1:
-                temp[idx1] = 0.1
-            elif temp[idx1] > 1.0:
-                temp[idx1] = 1.0
-
-            velocityAngle[idx1] = angle
-
-            posNew[idx1] = pos[idx1] + velocityM[idx1] * temp[idx1]
-
-        d = pos - posNew
-        dd = np.sum(np.abs(d) ** 2, axis=-1) ** (1. / 2)
-        for idx1 in range(n):
-            pos[idx1] = posNew[idx1]
-
-        energyDiff = max(dd)
-        factor -= df
-        i = i + 1
-
-    # print(energyDiff)
-    print(i)
-
-    return pos
-
-
-
-
-def condense_hypergraph(h: Hypergraph):
-    compressed_hypergraph = Hypergraph
-
-    one_edge_to_edge = dict()
-    only_in_one_edge = list()
-    for node in h.get_nodes():
-        if h.degree(node) == 1:
-            only_in_one_edge.append(node)
-            one_edge_to_edge[node] = h.get_incident_edges(node)[0]
-
-
-    edge_mapping = dict()
-    idx = 0;
-    for edge in h.get_edges():
-        edge_mapping[edge] = idx
-        idx += 1
-
+def __compress_nodes(
+        h: Hypergraph,
+        only_in_one_edge: list,
+        edge_mapping: dict) -> dict:
+    """
+    Compress the hypergraph nodes in order to optimize the calculations.
+    Parameters
+    ----------
+        h : Hypergraph
+            The starting Hypergraph
+        only_in_one_edge : list
+            A list of all the nodes that are only in one hyperedge.
+        edge_mapping : dict
+            A mapping for each hyperedge.
+    Returns
+    -------
+         compressed_nodes : list
+            The new compressed nodes' list.
+    """
+    # Identify similar nodes and compress them in one big node
     compressed_nodes = dict()
     for node in h.get_nodes():
         if node not in only_in_one_edge:
@@ -510,94 +48,198 @@ def condense_hypergraph(h: Hypergraph):
                     compressed_nodes[incident_edges].append(x)
                 compressed_nodes[incident_edges].append(node)
 
-    g = nx.Graph()
+    return compressed_nodes
 
-    for compressed_node in compressed_nodes.values():
-        if type(compressed_node) is not list:
-            g.add_node(compressed_node)
-        else:
-            g.add_node(tuple(compressed_node))
 
-    edge_to_new_edge = dict()
-    new_edges = list()
+def __compress_edges(
+        h: Hypergraph,
+        only_in_one_edge: list,
+        compressed_nodes: list) -> [list, dict]:
+    """
+    Compress the hypergraph edges in order to optimize the calculations.
+    Parameters
+    ----------
+       h : Hypergraph
+           The starting Hypergraph
+       only_in_one_edge : list
+           A list of all the nodes that are only in one hyperedge.
+       compressed_nodes : list
+              A list with the compressed nodes.
+    Returns
+    -------
+         compressed_edges : list
+            A list with the compressed nodes.
+         edge_to_compressed_edge : dict
+            A mapping from the original edges to the compressed ones.
+    """
+    edge_to_compressed_edge = dict()
+    compressed_edges = list()
     for edge in h.get_edges():
         edge_clone = set(edge)
-        new_edge = tuple()
+        compressed_edge = tuple()
         for node in only_in_one_edge:
             edge_clone = edge_clone.difference({node})
-        for compressed_node in compressed_nodes.values():
+        for compressed_node in compressed_nodes:
             edge = set(sorted(edge))
             if type(compressed_node) is list:
                 compressed_node = set(sorted(compressed_node))
             else:
                 compressed_node = {compressed_node}
             if compressed_node.issubset(edge) and len(edge.intersection(compressed_node)) > 1:
-                new_edge += (tuple(sorted(compressed_node)),)
+                compressed_edge += (tuple(sorted(compressed_node)),)
                 for value in compressed_node:
                     edge_clone.remove(value)
 
         if len(edge_clone) > 0:
-            new_edge += tuple(edge_clone)
-        if len(new_edge) > 1:
-            new_edges.append(new_edge)
-            edge_to_new_edge[tuple(edge)] = new_edge
+            compressed_edge += tuple(edge_clone)
+        if len(compressed_edge) > 1:
+            compressed_edges.append(compressed_edge)
+            edge_to_compressed_edge[tuple(edge)] = compressed_edge
 
-    similarity = dict()
-    for node1 in compressed_nodes.values():
-        for node2 in compressed_nodes.values():
+    return compressed_edges, edge_to_compressed_edge
+
+
+def __compress_hypergraph(h: Hypergraph) -> [nx.Graph, dict, list]:
+    """
+    Compress the hypergraph in order to optimize the calculations.
+    Parameters
+    ----------
+        h : Hypergraph
+            The starting Hypergraph
+    Returns
+    -------
+        compressed_graph : nx.Graph
+            The compressed graph.
+        one_edge_to_edge : dict
+            A mapping used to retrieve the original edge of the nodes present in only one hyperedge.
+        only_in_one_edge : list
+            A list of all the nodes that are only in one hyperedge.
+    """
+    # Identify Nodes that are only in one hyperedge
+    one_edge_to_edge = dict()
+    only_in_one_edge = list()
+    for node in h.get_nodes():
+        if h.degree(node) == 1:
+            only_in_one_edge.append(node)
+            one_edge_to_edge[node] = h.get_incident_edges(node)[0]
+
+    edge_mapping = dict()
+    idx = 0
+    for edge in h.get_edges():
+        edge_mapping[edge] = idx
+        idx += 1
+
+    compressed_nodes = __compress_nodes(h, only_in_one_edge, edge_mapping)
+
+    # Add compressed nodes to the support graph
+    compressed_graph = nx.Graph()
+    for compressed_node in compressed_nodes:
+        if type(compressed_node) is not list:
+            compressed_graph.add_node(compressed_node)
+        else:
+            compressed_graph.add_node(tuple(compressed_node))
+
+    return compressed_graph, one_edge_to_edge, only_in_one_edge
+
+
+def __calculate_similarity_matrix(
+        node_list: list,
+        edge_list: list) -> dict:
+    """
+    Create the similarity matrix for the node placement calculations.
+    Parameters
+    ----------
+        node_list: list
+        edge_list: list
+    Returns
+    -------
+        similarity_matrix : dict
+            Matrix with the similarity between nodes.
+    """
+    similarity_matrix = dict()
+    for node1 in node_list:
+        for node2 in node_list:
             if node1 != node2:
                 if type(node1) is list:
                     node1 = tuple(node1)
                 if type(node2) is list:
                     node2 = tuple(node2)
-                incident_edges1 = calculate_incidence(node1, new_edges)
-                incident_edges2 = calculate_incidence(node2, new_edges)
-                similarity12 = len(incident_edges1.intersection(incident_edges2))
-                similarity[(node1, node2)] = similarity12
+                incident_edges1 = __calculate_incidence(node1, edge_list)
+                incident_edges2 = __calculate_incidence(node2, edge_list)
+                similarity = len(incident_edges1.intersection(incident_edges2))
+                similarity_matrix[(node1, node2)] = similarity
+    return similarity_matrix
 
 
-    for edge in new_edges:
+def __similarity_graph(
+        g: nx.Graph,
+        edge_list: list,
+        similarity_matrix: dict) -> nx.Graph:
+    """
+    Create the similarity matrix for the node placement calculations.
+    Parameters
+    ----------
+        g : nx.Graph
+            Starting graph.
+        edge_list : list
+        similarity_matrix : dict
+            Matrix with the similarity between nodes.
+    Returns
+    -------
+        g : nx.Graph
+            New graph with the similarity between nodes as edge weight.
+    """
+    for edge in edge_list:
         for i in range(len(edge) - 1):
             for j in range(i + 1, len(edge)):
-                if similarity[(edge[i], edge[j])] != 0:
-                    similarity_weight = 1/similarity[(edge[i], edge[j])]
+                if similarity_matrix[(edge[i], edge[j])] != 0:
+                    similarity_weight = 1 / similarity_matrix[(edge[i], edge[j])]
                 else:
                     similarity_weight = 2
                 g.add_edge(edge[i], edge[j], weight=similarity_weight)
+    return g
 
+def __calculate_compressed_paths(
+        g: nx.Graph,
+        edge_list: list) -> [dict,list]:
+    """
+    Decide how to place the nodes inside the compressed paths.
+    Parameters
+    ----------
+        g : nx.Graph
+            Starting graph.
+        edge_list : list
+    Returns
+    -------
+        edge_to_path : dict
+            Mapping from edge to path.
+        paths : list
+            A list with the new ordered paths.
+    """
     edge_to_path = dict()
     paths = list()
-    for edge in new_edges:
+    for edge in edge_list:
         edge_graph = subgraph(g, edge)
-        method = lambda G, weight: nx.approximation.simulated_annealing_tsp(edge_graph, list(edge_graph)+[next(iter(edge_graph))], weight=weight, temp=5000)
+        method = lambda G, weight: nx.approximation.simulated_annealing_tsp(edge_graph,
+            list(edge_graph) + [next(iter(edge_graph))], weight=weight, temp=5000)
         path = nx.approximation.traveling_salesman_problem(edge_graph, method=method, cycle=False)
         paths.append(path)
         edge_to_path[edge] = path
 
-    to_remove_node = list()
-    to_add_edge = list()
-    for node in g.nodes():
-        if type(node) is tuple:
-            to_remove_node.append(node)
-            neighbors = g.neighbors(node)
-            unpacked_node = [x for x in node]
-            x = 1
+    return edge_to_path, paths
 
-            incident_edges = g.edges(node)
-            for edge in incident_edges:
-                new_edge = set(edge)
-                new_edge.remove(node)
-                for x in unpacked_node:
-                    new_edge.add(x)
-                    to_add_edge.append(tuple(new_edge))
-                    new_edge.remove(x)
-
-
-
-    for node in to_remove_node:
-        g.remove_node(node)
-    for edge in to_add_edge:
-        g.add_edge(edge[0], edge[1])
+def __unpack_paths(paths: list) -> list:
+    """
+    Decide how to place the nodes inside the compressed paths.
+    Parameters
+    ----------
+        paths : list
+            A list of compressed paths.
+    Returns
+    -------
+        paths : list
+            The list of unpacked paths.
+    """
     for path in paths:
         for node in path:
             if type(node) is tuple:
@@ -607,7 +249,34 @@ def condense_hypergraph(h: Hypergraph):
                     path.insert(index, x)
                     index += 1
 
-    for node in only_in_one_edge:
+    return paths
+
+def __add_only_in_one_edge(
+        paths: list,
+        node_list: list,
+        edge_to_path: dict,
+        edge_to_new_edge: dict,
+        one_edge_to_edge: dict) -> list:
+    """
+    Add back the nodes present in only one hyperedge.
+    Parameters
+    ----------
+        paths : list
+            A list of  paths.
+        node_list : list
+            The list with the nodes to add.
+        edge_to_path : dict
+            Mapping used to determine the paths that are present in the edges.
+        edge_to_new_edge : dict
+            Mapping from compressed edges to normal edges.
+        one_edge_to_edge : dict
+            A mapping used to retrieve the original edge of the nodes present in only one hyperedge.
+    Returns
+    -------
+        paths : list
+            The paths' list with the new nodes.
+    """
+    for node in node_list:
         try:
             current_path = edge_to_path[edge_to_new_edge[one_edge_to_edge[node]]]
             current_path.append(node)
@@ -617,62 +286,186 @@ def condense_hypergraph(h: Hypergraph):
         except KeyError:
             if list(one_edge_to_edge[node]) not in paths:
                 paths.append(list(one_edge_to_edge[node]))
-
-    new_support = nx.Graph()
-    for path in paths:
-        for i in range(len(path) - 1):
-            new_support.add_edge(path[i], path[i + 1])
+    return paths
 
 
-    initial_layout = kamada_kawai_layout(new_support)
-
-    new_support = nx.Graph()
+def __to_complete_path_graph(paths: list) -> nx.Graph:
+    """
+    Creates a completed graph using the paths.
+    Parameters
+    ----------
+        paths : list
+            A list of  paths.
+    Returns
+    -------
+        g : nx.Graph
+            The new complete graph.
+    """
+    g = nx.Graph()
     for edge in paths:
         for i in range(len(edge) - 1):
             for j in range(i + 1, len(edge)):
-                new_support.add_edge(edge[i], edge[j])
+                g.add_edge(edge[i], edge[j])
+    return g
+
+
+def __calculate_distances(
+        node_list: list,
+        similarity_matrix: dict,
+        layout: dict) -> dict:
+    """
+    Modify the similarity matrix adding the euclidean distance factors.
+    Parameters
+    ----------
+        node_list : list
+            The list with all the nodes.
+        similarity_matrix : dict
+            The matrix to edit.
+        layout : dict
+            Position of all the nodes in the 2D plane.
+    Returns
+    -------
+        similarity_matrix : dict
+            The new similarity matrix.
+    """
+    for node1 in node_list:
+        for node2 in node_list:
+            if node1 != node2:
+                euclidean_distance = __distance(layout, node1, node2)
+                similarity = similarity_matrix[node1, node2]
+                try:
+                    similarity = 1 / similarity
+                except ZeroDivisionError:
+                    similarity = 2
+                value = math.sqrt(similarity * euclidean_distance)
+                similarity_matrix[node1, node2] = value
+    return similarity_matrix
+
+
+def __calculate_paths(
+        paths: list,
+        layout: dict) -> [nx.Graph, list]:
+    """
+    Rearrange the nodes in the paths in order to improve the layout.
+    Parameters
+    ----------
+        paths : list
+            A list of  paths.
+        layout : dict
+            Position of all the nodes in the 2D plane.
+    Returns
+    -------
+        refined : nx.Graph
+            The new refined graph.
+        new_paths : list
+            A list with the new paths.
+    """
     new_paths = list()
-    for i in range(10):
-        entire_copy = new_support.copy()
-        for edge in paths:
-            for i in range(len(edge) - 1):
-                for j in range(i + 1, len(edge)):
-                    entire_copy.add_edge(edge[i], edge[j])
-        for node1 in entire_copy.nodes():
-            for node2 in entire_copy.nodes():
-                if node1 != node2:
-                    incident_edges1 = calculate_incidence(node1, paths)
-                    incident_edges2 = calculate_incidence(node2, paths)
-                    similarity12 = len(incident_edges1.intersection(incident_edges2))
-                    euclidean_distance = distance(initial_layout, node1, node2)
-                    try:
-                        similarity12 = 1/similarity12
-                    except ZeroDivisionError:
-                        similarity12 = 2
-                    value = math.sqrt(similarity12*euclidean_distance)
-                    if entire_copy.has_edge(node1, node2):
-                        entire_copy[node1][node2]["weight"] = value
+    entire_copy = __to_complete_path_graph(paths)
+    similarity_matrix = __calculate_similarity_matrix(entire_copy.nodes(), entire_copy.edges())
+    similarity_matrix = __calculate_distances(entire_copy.nodes(), similarity_matrix, layout)
+    entire_copy = __similarity_graph(entire_copy, paths, similarity_matrix)
+    for path in paths:
+        edge_graph = subgraph(entire_copy, path)
+        method = lambda G, weight: nx.approximation.simulated_annealing_tsp(edge_graph, "greedy",
+            weight=weight, temp=5000)
+        new_path = nx.approximation.traveling_salesman_problem(edge_graph, method=method, cycle=False)
+        new_paths.append(new_path)
 
-        for path in paths:
-            edge_graph = subgraph(entire_copy, path)
-            method = lambda G, weight: nx.approximation.simulated_annealing_tsp(edge_graph, "greedy", weight=weight, temp=5000)
-            new_path = nx.approximation.traveling_salesman_problem(edge_graph, method=method, cycle=False)
-            new_paths.append(new_path)
+    refined = nx.Graph()
+    for path in new_paths:
+        for i in range(len(path) - 1):
+            refined.add_edge(path[i], path[i + 1])
 
-        refined = nx.Graph()
-        for path in new_paths:
-            for i in range(len(path) - 1):
-                refined.add_edge(path[i], path[i + 1])
+    return refined, new_paths
 
-        initial_layout = kamada_kawai_layout(refined, pos = initial_layout)
+
+def __calculate_new_paths(
+        paths: list,
+        layout: dict,
+        iterations: int = 10) -> [nx.Graph, list]:
+    """
+    Rearrange the nodes in the paths in order to improve the layout.
+    Parameters
+    ----------
+        paths : list
+            A list of  paths.
+        layout : dict
+            Position of all the nodes in the 2D plane.
+        iterations : int
+            Number of iterations.
+    Returns
+    -------
+        refined : nx.Graph
+            The new refined graph.
+        paths : list
+            A list with the new paths.
+    """
+    refined = nx.Graph()
+    for i in range(iterations):
+        refined, new_paths = __calculate_paths(paths, layout)
         if new_paths != paths:
-            paths = new_paths.copy()
+            paths = new_paths
         else:
             break
-        new_paths.clear()
-        new_support = refined.copy()
+    return refined, paths
 
-    initial_layout = chivers_rodgers(new_support, paths, initial_layout)
+
+def __calculate_palette(paths: list) -> list:
+    """
+    Create a palette with a color for each path.
+    Parameters
+    ----------
+        paths : list
+            A list of  paths.
+    Returns
+    -------
+        palette : list
+            A list of colors.
+    """
+    palette = list()
+    while len(palette) < len(paths):
+        color = "#%06x" % random.randint(0, 0xFFFFFF)
+        if color not in palette:
+            palette.append(color)
+    return palette
+
+
+def __draw_metrograph(
+        g: nx.Graph,
+        paths: list,
+        layout: dict,
+        ax: plt.Axes,
+        palette: list = None,
+        draw_labels: bool = True,
+        node_size: int = 300,
+        node_color: str = "#1f48b4",
+        node_shape: str = "o") -> None:
+    """
+    Draw the graph as a metro map.
+    Parameters
+    ----------
+        g : nx.Graph
+           The graph to draw.
+        paths : list
+            A list of  paths.
+        layout : dict
+            Position of all the nodes in the 2D plane.
+        ax : plt.Axes
+            Axis if the user wants to specify an image.
+        palette : list
+            A list of colors.
+        draw_labels : bool
+            Decide if labels should be drawn.
+        node_size : int
+            Size of the nodes.
+        node_color : str
+            HEX value that determines the color of the nodes.
+        node_shape : str
+            Use standard networkx shapes.
+    Returns
+    -------
+    """
     paths_in_edge = dict()
     idx = 0
     for path in paths:
@@ -688,88 +481,106 @@ def condense_hypergraph(h: Hypergraph):
             paths_in_edge[key] += [idx]
 
         idx += 1
-
-
-    palette = list()
-    while len(palette) < len(paths):
-        color = "#%06x" % random.randint(0, 0xFFFFFF)
-        if color not in palette:
-            palette.append(color)
+    if palette is None:
+        palette = __calculate_palette(paths)
+    else:
+        if len(palette) != len(paths):
+            raise Exception("There are more hyperedges than colors in the palette")
 
     passo_edge = dict()
-    for edge in new_support.edges():
+    for edge in g.edges():
         key = (edge[0], edge[1])
         key = tuple(sorted(key))
-        lines_in_edge = len(paths_in_edge[key])
-        if lines_in_edge % 2 != 0:
-            passo = lines_in_edge - 1
-            passo /= 2
-        else:
-            passo = lines_in_edge / 2
-        passo_edge[key] = passo
+        try:
+            lines_in_edge = len(paths_in_edge[key])
+            if lines_in_edge % 2 != 0:
+                passo = lines_in_edge - 1
+                passo /= 2
+            else:
+                passo = lines_in_edge / 2
+            passo_edge[key] = passo
+        except KeyError:
+            pass
+
 
     idx = 0
     for path in paths:
         for i in range(len(path) - 1):
             key = (path[i], path[i + 1])
             key = tuple(sorted(key))
-            passo = passo_edge[key]
-            draw_line(initial_layout, palette, path, i, idx, passo)
-            passo_edge[key] -= 1
+            try:
+                passo = passo_edge[key]
+                __draw_line(layout, palette, path, i, idx, passo, ax = ax)
+                passo_edge[key] -= 1
+            except KeyError:
+                pass
 
         idx += 1
 
-    labels = dict((n, n) for n in new_support.nodes())
-    nx.draw_networkx_nodes(new_support, initial_layout,)
-    nx.draw_networkx_labels(new_support, pos=initial_layout, labels=labels)
+    nx.draw_networkx_nodes(g, layout, ax = ax, node_size = node_size, node_shape=node_shape, node_color = node_color)
+    if draw_labels:
+        labels = dict((n, n) for n in g.nodes())
+        nx.draw_networkx_labels(g, pos=layout, labels=labels, ax = ax)
 
 
-    return h
-
-def draw_metroset(h: Hypergraph):
-    condensed_h = condense_hypergraph(h)
-
-def draw_line(layout, palette, path, i:int, idx: int, passo: int):
-    offset = (passo * 3)
-    pos = find_pos(layout, path[i], path[i+1])
-    if pos == "vertical":
-        plt.plot([layout[path[i]][0]+ offset, layout[path[i + 1]][0] + offset],
-             [layout[path[i]][1], layout[path[i + 1]][1]], linewidth=1,
-             color=palette[idx])
-    elif pos == "horizontal":
-        plt.plot([layout[path[i]][0], layout[path[i + 1]][0]],
-                 [layout[path[i]][1] + offset, layout[path[i + 1]][1] + offset], linewidth=1,
-                 color=palette[idx])
-    elif pos == "oblique":
-        plt.plot([layout[path[i]][0] + offset, layout[path[i + 1]][0] + offset],
-                 [layout[path[i]][1] + offset, layout[path[i + 1]][1] + offset], linewidth=1,
-                 color=palette[idx])
-
-def calculate_incidence(node, edges):
-    if type(node) is tuple:
-        node = set(node)
-    else:
-        node = {node}
-    incident_edges = set()
-    for edge in edges:
-        edge = set(edge)
-        if len(edge.intersection(node)) > 0:
-            incident_edges.add(tuple(edge))
-
-    return incident_edges
-def distance(layout, node1, node2):
+def draw_metroset(
+        h: Hypergraph,
+        iterations: int = 10,
+        figsize: tuple[float, float] = (10, 10),
+        dpi: int = 300,
+        ax: Optional[plt.Axes] = None,
+        palette: list = None,
+        edge_lenght: int = 300,
+        draw_labels: bool = True,
+        node_size: int = 300,
+        node_color: str = "#1f48b4",
+        node_shape: str = "o") -> None:
     """
-    Given a layout, return the euclidian distance between two nodes.
+    Draw the hypergraph using the MetroSet pipeline.
+    Parameters
+    ----------
+        h : Hypergraph
+           The hypergraph to draw.
+        iterations : int
+            Number of iterations for the optimization algorithm.
+        figsize : tuple, optional
+            Tuple of float used to specify the image size. Used only if ax is None.
+        dpi : int, optional
+            The dpi for the figsize. Used only if ax is None.
+        ax : plt.Axes, optional
+            Axis if the user wants to specify an image.
+        edge_lenght : int
+            Ideal lenght for the metro edges.
+        palette : list
+            A list of colors.
+        draw_labels : bool
+            Decide if labels should be drawn.
+        node_size : int
+            Size of the nodes.
+        node_color : str
+            HEX value that determines the color of the nodes.
+        node_shape : str
+            Use standard networkx shapes.
+    Returns
+    -------
     """
-    x1, y1 = layout[node1]
-    x2, y2 = layout[node2]
-    return ((x1 - x2)**2 + (y1-y2)**2)**(1/2)
-def find_pos(layout, node1, node2):
-    x1, y1 = layout[node1]
-    x2, y2 = layout[node2]
-
-    if trunc(x1) == trunc(x2):
-        return "vertical"
-    else:
-        return "horizontal"
-
+    if ax is None:
+        plt.figure(figsize=figsize, dpi=dpi)
+        plt.subplot(1, 1, 1)
+        ax = plt.gca()
+    compressed_graph, one_edge_to_edge, only_in_one_edge = __compress_hypergraph(h)
+    compressed_edges, edge_to_new_edge = __compress_edges(h, only_in_one_edge, list(compressed_graph.nodes()))
+    for edge in compressed_edges:
+        for i in range(len(edge) - 1):
+            compressed_graph.add_edge(edge[i], edge[i+1])
+    similarity_matrix = __calculate_similarity_matrix(list(compressed_graph.nodes()), compressed_edges)
+    compressed_graph = __similarity_graph(compressed_graph, compressed_edges, similarity_matrix)
+    edge_to_path, paths = __calculate_compressed_paths(compressed_graph, compressed_edges)
+    paths = __unpack_paths(paths)
+    paths = __add_only_in_one_edge(paths, only_in_one_edge, edge_to_path, edge_to_new_edge, one_edge_to_edge)
+    path_graph = __to_complete_path_graph(paths)
+    initial_layout = kamada_kawai_layout(path_graph)
+    refined_graph, paths = __calculate_new_paths(paths, initial_layout, iterations)
+    initial_layout = chivers_rodgers(refined_graph, paths, initial_layout, edgeLength=edge_lenght)
+    __draw_metrograph(refined_graph, paths, initial_layout, draw_labels = draw_labels, node_size = node_size,
+                      node_color = node_color, node_shape = node_shape, palette = palette, ax = ax)
