@@ -1,6 +1,10 @@
 from math import cos, sin
 from typing import Optional
+
+import matplotlib
 import numpy as np
+from matplotlib.widgets import Slider
+
 from hypergraphx import Hypergraph
 from matplotlib import pyplot as plt
 
@@ -84,6 +88,7 @@ def __calculate_node_position(h: Hypergraph, alpha: float, radius: float) -> dic
 
 def draw_radial_layout(
     h: Hypergraph,
+    cardinality: int = -1,
     k: int = 1.0,
     draw_labels:bool = True,
     figsize: tuple[float,float] = (10,10),
@@ -104,6 +109,8 @@ def draw_radial_layout(
     ----------
     h : Hypergraph.
        The hypergraph to be projected.
+    cardinality: int, optional
+        Only the hyperedges with this cardinality will be drawn. -1 means that all edges will be drawn.
     k : float, optional
         Scale for the Radius value.
     draw_labels : bool
@@ -140,14 +147,23 @@ def draw_radial_layout(
         plt.figure(figsize=figsize, dpi = dpi)
         plt.subplot(1, 1, 1)
         ax = plt.gca()
+    hypergraph = Hypergraph()
+    if cardinality != -1:
+        for node in h.get_nodes():
+            hypergraph.add_node(node)
+        for edge in h.get_edges():
+            if len(edge)==cardinality:
+                hypergraph.add_edge(edge)
+    else:
+        hypergraph = h
 
 
     #Calculate the radius and the necessary alpha value
-    radius = (h.num_nodes()*k) / (2*np.pi)
-    alpha = (2*np.pi)/h.num_nodes()
+    radius = (hypergraph.num_nodes()*k) / (2*np.pi)
+    alpha = (2*np.pi)/hypergraph.num_nodes()
 
-    nodes_mapping = h.get_mapping()
-    sector_list , binary_edges = __radial_edge_placemente_calculation(h)
+    nodes_mapping = hypergraph.get_mapping()
+    sector_list , binary_edges = __radial_edge_placemente_calculation(hypergraph)
     pos = __calculate_node_position(h,alpha,radius)
     #Draw the binary edges in the inner circle
     for edge in binary_edges:
@@ -160,7 +176,7 @@ def draw_radial_layout(
 
     #Draw the nodes with their own label in the inner circle
     node_depth = 1
-    for node in h.get_nodes():
+    for node in hypergraph.get_nodes():
         value_x = pos[node][0]
         value_y = pos[node][1]
         ax.plot(value_x, value_y, node_shape, color=node_color, markersize=node_size, **kwargs)
@@ -198,8 +214,86 @@ def draw_radial_layout(
 
         sector_depth += 0.25
 
-    plt.axis('off')
     ax.axis('off')
     ax.set_aspect('equal')
     ax.autoscale(enable = True, axis = 'both')
-    plt.autoscale(enable=True, axis='both')
+
+
+def draw_radial_interactive(
+    h: Hypergraph,
+    k: int = 1.0,
+    draw_labels: bool = True,
+    ax: Optional[plt.Axes] = None,
+    node_shape: str = "o",
+    node_color: str = "#0000FF",
+    node_size: int = 5,
+    marker_color: str = "#FF0000",
+    marker_size: int = 5,
+    edge_color: str = "#000000",
+    font_size: int = 12,
+    font_spacing_multiplier: float = 1.5,
+    **kwargs) -> Slider:
+    """
+    Draws an interactive radial representation of the hypergraph.
+    Parameters
+    ----------
+    h : Hypergraph.
+       The hypergraph to be projected.
+    k : float, optional
+        Scale for the Radius value.
+    draw_labels : bool
+        Decide if the labels should be drawn.
+    ax : plt.Axes, optional
+        Axis if the user wants to specify an image.
+    node_shape : str, optional
+        The shape of the nodes in the image. Use standard MathPlotLib values.
+    node_color : str, optional
+        HEX value for the nodes color.
+    node_size : int, optional
+        The size of the nodes in the image.
+    marker_color : str, optional
+        HEX value for the node markers along the hyperedges.
+    marker_size : int, optional
+        The size of the node markers along the hyperedges.
+    edge_color : str, optional
+        HEX value for the edges color.
+    font_size : int, optional
+        The size of the font.
+    font_spacing_multiplier : float, optional
+        Value used to place the labels in a circle different from the inner one. 0 means that the labels position is
+        the inner circle position.
+    kwargs : dict.
+        Keyword arguments to be passed to the various MathPlotLib function.
+    Returns
+    slider : Slider
+        A reference to the slider. It must be collected and saved or the interactive representation will not work.
+    -------
+    """
+    matplotlib.use('TkAgg')
+
+    max_edge = 0
+    for edge in h.get_edges():
+        if len(edge)>max_edge:
+            max_edge = len(edge)
+    fig, ax = plt.subplots()
+    draw_radial_layout(h, cardinality= 2, ax=ax)
+    fig.subplots_adjust(bottom=0.25)
+    # Make a horizontal slider to control the frequency.
+    ax_slider = fig.add_axes([0.25, 0.1, 0.65, 0.03])
+    slider = Slider(
+        ax=ax_slider,
+        label='Cardinality',
+        valmin=2,
+        valmax=max_edge,
+        valinit=2,
+        valstep=1
+    )
+    def update(val):
+        ax.cla()
+        draw_radial_layout(h,cardinality=int(slider.val),ax=ax, k = k, draw_labels=draw_labels,node_shape=node_shape,node_color=node_color,
+                           node_size=node_size,marker_size=marker_size,edge_color=edge_color,marker_color=marker_color,font_size=font_size,font_spacing_multiplier=font_spacing_multiplier,**kwargs)
+        fig.canvas.draw()
+
+    slider.on_changed(update)
+
+    return slider
