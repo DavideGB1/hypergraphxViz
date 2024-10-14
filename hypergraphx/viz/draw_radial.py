@@ -84,6 +84,7 @@ def __calculate_node_position(h: Hypergraph, alpha: float, radius: float) -> dic
 
 def draw_radial_layout(
     h: Hypergraph,
+    cardinality: int = -1,
     k: int = 1.0,
     draw_labels:bool = True,
     figsize: tuple[float,float] = (10,10),
@@ -104,6 +105,8 @@ def draw_radial_layout(
     ----------
     h : Hypergraph.
        The hypergraph to be projected.
+    cardinality: int, optional
+        Only the hyperedges with this cardinality will be drawn. -1 means that all edges will be drawn.
     k : float, optional
         Scale for the Radius value.
     draw_labels : bool
@@ -140,14 +143,23 @@ def draw_radial_layout(
         plt.figure(figsize=figsize, dpi = dpi)
         plt.subplot(1, 1, 1)
         ax = plt.gca()
+    hypergraph = Hypergraph()
+    if cardinality != -1:
+        for node in h.get_nodes():
+            hypergraph.add_node(node)
+        for edge in h.get_edges():
+            if len(edge)==cardinality:
+                hypergraph.add_edge(edge)
+    else:
+        hypergraph = h
 
 
     #Calculate the radius and the necessary alpha value
-    radius = (h.num_nodes()*k) / (2*np.pi)
-    alpha = (2*np.pi)/h.num_nodes()
+    radius = (hypergraph.num_nodes()*k) / (2*np.pi)
+    alpha = (2*np.pi)/hypergraph.num_nodes()
 
-    nodes_mapping = h.get_mapping()
-    sector_list , binary_edges = __radial_edge_placemente_calculation(h)
+    nodes_mapping = hypergraph.get_mapping()
+    sector_list , binary_edges = __radial_edge_placemente_calculation(hypergraph)
     pos = __calculate_node_position(h,alpha,radius)
     #Draw the binary edges in the inner circle
     for edge in binary_edges:
@@ -160,7 +172,7 @@ def draw_radial_layout(
 
     #Draw the nodes with their own label in the inner circle
     node_depth = 1
-    for node in h.get_nodes():
+    for node in hypergraph.get_nodes():
         value_x = pos[node][0]
         value_y = pos[node][1]
         ax.plot(value_x, value_y, node_shape, color=node_color, markersize=node_size, **kwargs)
@@ -198,8 +210,6 @@ def draw_radial_layout(
 
         sector_depth += 0.25
 
-    plt.axis('off')
     ax.axis('off')
     ax.set_aspect('equal')
     ax.autoscale(enable = True, axis = 'both')
-    plt.autoscale(enable=True, axis='both')
