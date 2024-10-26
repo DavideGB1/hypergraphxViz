@@ -219,7 +219,7 @@ class Window(QWidget):
     def assign_clique_projection(self):
         self.current_function = draw_clique
         self.iterations = 1000
-        self.options.set_default_clique_expasion_bipartite()
+        self.options.set_default_extra_node_bipartite()
         remove_last_x_elements_from_layout(self.vbox, 2)
         vbox_clique_expasion_option = QVBoxLayout()
         strong_gravity_btn = QCheckBox("Use Strong Gravity")
@@ -298,7 +298,7 @@ class Window(QWidget):
 
     def assign_bipartite(self):
         self.current_function = draw_bipartite
-        self.options.set_default_clique_expasion_bipartite()
+        self.options.set_default_extra_node_bipartite()
         remove_last_x_elements_from_layout(self.vbox, 2)
         vbox_bipartite_option = QVBoxLayout()
 

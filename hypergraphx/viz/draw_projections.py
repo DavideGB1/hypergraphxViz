@@ -14,8 +14,22 @@ from hypergraphx.representations.projections import (
 from __support import filter_hypergraph, ignore_unused_args
 
 @ignore_unused_args
-def draw_bipartite(h: Hypergraph, cardinality: tuple[int,int]|int = -1,
-    x_heaviest: float = 1.0, pos=None, ax=None, align='vertical', **kwargs):
+def draw_bipartite(
+        h: Hypergraph,
+        cardinality: tuple[int,int]|int = -1,
+        x_heaviest: float = 1.0,
+        draw_labels=True,
+        pos=None,
+        ax=None,
+        align='vertical',
+        node_shape: str = "o",
+        node_color: str = "#1f78b4",
+        node_size: int = 300,
+        edge_shape: str = 'p',
+        edge_node_color: str = '#8a0303',
+        edge_color: str = "#000000",
+        edge_width: float = 2,
+        **kwargs):
     """
     Draws a bipartite graph representation of the hypergraph.
     Parameters
@@ -28,6 +42,8 @@ def draw_bipartite(h: Hypergraph, cardinality: tuple[int,int]|int = -1,
         If -1, all the hyperedges will be visible.
     x_heaviest: float, optional
         Allows you to filter the hyperedges so that only the heaviest x's are shown.
+    draw_labels : bool
+        Decide if the labels should be drawn.
     pos : dict.
         A dictionary with nodes as keys and positions as values.
     ax : matplotlib.axes.Axes.
@@ -36,6 +52,20 @@ def draw_bipartite(h: Hypergraph, cardinality: tuple[int,int]|int = -1,
         Keyword arguments to be passed to networkx.draw_networkx.
     align : str.
         The alignment of the nodes. Can be 'vertical' or 'horizontal'.
+    node_shape : str, optional
+        The shape of the nodes in the image. Use standard MathPlotLib values.
+    node_color : str, optional
+        HEX value for the nodes color.
+    node_size : int, optional
+        The size of the nodes in the image.
+    edge_shape : str, optional
+        The shape of the nodes used to represent edges. Use standard MathPlotLib values.
+    edge_node_color : str, optional
+        HEX value for the nodes color of the nodes that represents edges.
+    edge_color : str, optional
+        HEX value for the edges color.
+    edge_width : float, optional
+        Width of the edges in the grid.
     Returns
     -------
     ax : matplotlib.axes.Axes.
@@ -50,7 +80,19 @@ def draw_bipartite(h: Hypergraph, cardinality: tuple[int,int]|int = -1,
     if ax is None:
         ax = plt.gca()
 
-    nx.draw_networkx(g, pos=pos, ax=ax, **kwargs)
+    # Draw edges and nodes
+    labels = dict((n, n) for n in g.nodes())
+    node_list = [x for x in g.nodes() if x.startswith('N')]
+    nx.draw_networkx_edges(g, pos, ax=ax, edge_color=edge_color, width=edge_width)
+    nx.draw_networkx_nodes(g, ax=ax, pos=pos, nodelist=node_list, node_shape=node_shape, node_color=node_color,
+                           node_size=node_size, **kwargs)
+    # Draw nodes that represents edges
+    edge_list = [x for x in g.nodes() if x.startswith('E')]
+    nx.draw_networkx_nodes(g, ax=ax, pos=pos, node_shape=edge_shape, node_color=edge_node_color, nodelist=edge_list,
+                               **kwargs)
+    # Draw labels
+    if draw_labels:
+        nx.draw_networkx_labels(g, ax=ax, pos=pos, labels=labels)
     return ax
 
 @ignore_unused_args
