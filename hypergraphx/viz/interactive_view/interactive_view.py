@@ -77,9 +77,8 @@ class Window(QWidget):
         self.range_slider = QRangeSlider(Qt.Horizontal, self)
         self.range_slider.setTickPosition(QSlider.TicksBelow)
         self.range_slider.setTickInterval(1)
-        self.range_slider.setValue((2, self.max_edge))
-        self.range_slider.setMinimum(2)
-        self.range_slider.setMaximum(self.max_edge)
+        self.range_slider.setMinimum(1)
+        self.range_slider.setMaximum(self.max_edge+1)
         self.range_slider.setPageStep(0)
         self.range_slider.valueChanged.connect(self.plot)
         self.range_slider.setVisible(False)
@@ -447,22 +446,15 @@ def remove_last_x_elements_from_layout(layout, x=1):
         else:
             widget_layout.deleteLater()
 
-
-
-if __name__ == '__main__':
-    # creating apyqt5 application
+def start_interactive_view(h: Hypergraph):
     app = QApplication(sys.argv)
-    h = Hypergraph(weighted=True)
-    h.add_edge((1,2),5)
-    h.add_edge((42,3,4),1)
-    h.add_edge((1,2,3,4,5),3)
-    h._weighted = True
-    # creating a window object
     main = Window(hypergraph=h)
-
-    # showing the window
     main.show()
-
-    # loop
     sys.exit(app.exec_())
 
+h = Hypergraph(weighted=True)
+h.add_edge((1, 2), 5)
+h.add_edge((42, 3, 4), 1)
+h.add_edge((1, 2, 3, 4, 5), 3)
+h._weighted = True
+start_interactive_view(h)
