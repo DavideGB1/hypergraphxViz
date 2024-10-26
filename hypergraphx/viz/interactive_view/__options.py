@@ -31,14 +31,14 @@ class Options():
         self.spinbox_dict["Node Size"] = 5
         self.spinbox_dict["Marker Size"] = 5
         self.spinbox_dict["Font Size"] = 12
-    def set_default_clique_expasion_bipartite(self):
+    def set_default_clique_expasion(self):
         self.clear()
         self.lineEditColor_dict["Node Color"] = "#1f78b4"
         self.lineEditColor_dict["Edge Color"] = "#000000"
         self.combobox_dict["Node Shape"] = "o"
         self.spinbox_dict["Node Size"] = 300
         self.spinbox_dict["Edge Width"] = 2
-    def set_default_extra_node(self):
+    def set_default_extra_node_bipartite(self):
         self.clear()
         self.lineEditColor_dict["Node Color"] = "#1f78b4"
         self.lineEditColor_dict["Edge Color"] = "#000000"
