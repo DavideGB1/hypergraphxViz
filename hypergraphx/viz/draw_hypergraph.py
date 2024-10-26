@@ -7,6 +7,7 @@ import random
 
 from hypergraphx import Hypergraph
 from hypergraphx.representations.projections import clique_projection
+from hypergraphx.viz.__support import ignore_unused_args, filter_hypergraph
 
 
 def Sum_points(P1, P2):
@@ -22,8 +23,8 @@ def Multiply_point(multiplier, P):
 
 def Check_if_object_is_polygon(Cartesian_coords_list):
     if (
-        Cartesian_coords_list[0]
-        == Cartesian_coords_list[len(Cartesian_coords_list) - 1]
+            Cartesian_coords_list[0]
+            == Cartesian_coords_list[len(Cartesian_coords_list) - 1]
     ):
         return True
     else:
@@ -71,27 +72,30 @@ class Object:
         return self.Cartesian_coords_list
 
 
+@ignore_unused_args
 def draw_hypergraph(
-    hypergraph: Hypergraph,
-    figsize: tuple = (12, 7),
-    ax: Optional[plt.Axes] = None,
-    pos: Optional[dict] = None,
-    edge_color: str = "lightgrey",
-    hyperedge_color_by_order: Optional[dict] = None,
-    hyperedge_facecolor_by_order: Optional[dict] = None,
-    edge_width: float = 1.2,
-    hyperedge_alpha: Union[float, np.array] = 0.8,
-    node_size: Union[int, np.array] = 150,
-    node_color: Union[str, np.array] = "#E2E0DD",
-    node_facecolor: Union[str, np.array] = "black",
-    node_shape: str = "o",
-    with_node_labels: bool = False,
-    label_size: float = 10,
-    label_col: str = "black",
-    seed: int = 10,
-    scale: int = 1,
-    iterations: int = 100,
-    opt_dist: float = 0.5,
+        hypergraph: Hypergraph,
+        figsize: tuple = (12, 7),
+        cardinality: tuple[int, int] | int = -1,
+        x_heaviest: float = 1.0,
+        ax: Optional[plt.Axes] = None,
+        pos: Optional[dict] = None,
+        edge_color: str = "lightgrey",
+        hyperedge_color_by_order: Optional[dict] = None,
+        hyperedge_facecolor_by_order: Optional[dict] = None,
+        edge_width: float = 1.2,
+        hyperedge_alpha: Union[float, np.array] = 0.8,
+        node_size: Union[int, np.array] = 150,
+        node_color: Union[str, np.array] = "#E2E0DD",
+        node_facecolor: Union[str, np.array] = "black",
+        node_shape: str = "o",
+        with_node_labels: bool = False,
+        label_size: float = 10,
+        label_col: str = "black",
+        seed: int = 10,
+        scale: int = 1,
+        iterations: int = 100,
+        opt_dist: float = 0.5,
 ):
     """Visualize a hypergraph."""
     # Initialize figure.
@@ -99,6 +103,8 @@ def draw_hypergraph(
         plt.figure(figsize=figsize)
         plt.subplot(1, 1, 1)
         ax = plt.gca()
+
+    hypergraph = filter_hypergraph(hypergraph, cardinality, x_heaviest)
 
     # Extract node positions based on the hypergraph clique projection.
     if pos is None:
@@ -181,7 +187,7 @@ def draw_hypergraph(
             if order not in hyperedge_color_by_order.keys():
                 std_color = "#" + "%06x" % random.randint(0, 0xFFFFFF)
                 hyperedge_color_by_order[order] = std_color
-            
+
             if order not in hyperedge_facecolor_by_order.keys():
                 std_face_color = "#" + "%06x" % random.randint(0, 0xFFFFFF)
                 hyperedge_facecolor_by_order[order] = std_face_color

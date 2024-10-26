@@ -1,4 +1,8 @@
+import inspect
+import math
 from math import trunc
+
+from hypergraphx import Hypergraph
 from matplotlib import pyplot as plt
 
 
@@ -116,3 +120,65 @@ def __find_pos(layout, node1, node2):
         return "vertical"
     else:
         return "horizontal"
+
+def x_heaviest_edges_hypergraph(h, x_heaviest):
+    edge_list = h.get_edges()
+    weight_dict = dict()
+    for edge in edge_list:
+        weight_dict[edge] = h.get_weight(edge)
+    weight_list = weight_dict.values()
+    weight_list = sorted(weight_list, reverse=True)
+    num_weights = int(math.ceil(len(weight_list) * x_heaviest))
+    weight_list = weight_list[:num_weights]
+    hypergraph = Hypergraph(weighted=True)
+    for node in h.get_nodes():
+        hypergraph.add_node(node)
+    key_list = list(weight_dict.keys())
+    for weight in weight_list:
+        hypergraph.add_edge(key_list[weight_list.index(weight)], weight)
+
+    return hypergraph
+
+def cardinality_hypergraph(h, cardinality):
+    if h.is_weighted():
+        hypergraph = Hypergraph(weighted=True)
+    else:
+        hypergraph = Hypergraph()
+    for node in h.get_nodes():
+        hypergraph.add_node(node)
+    if isinstance(cardinality, tuple):
+        for edge in h.get_edges():
+            if cardinality[0] <= len(edge) <= cardinality[1]:
+                if h.is_weighted():
+                    hypergraph.add_edge(edge, h.get_weight(edge))
+                else:
+                    hypergraph.add_edge(edge)
+    else:
+        for edge in h.get_edges():
+            if len(edge) == cardinality:
+                if h.is_weighted():
+                    hypergraph.add_edge(edge, h.get_weight(edge))
+                else:
+                    hypergraph.add_edge(edge)
+    return hypergraph
+
+def filter_hypergraph(h, cardinality, x_heaviest):
+    if cardinality != -1:
+        hypergraph = cardinality_hypergraph(h, cardinality)
+    else:
+        hypergraph = h
+    if x_heaviest != 1.0:
+        if hypergraph.is_weighted():
+            hypergraph = x_heaviest_edges_hypergraph(hypergraph, x_heaviest)
+    else:
+        pass
+
+    return hypergraph
+
+def ignore_unused_args(func):
+    def wrapper(*args, **kwargs):
+        sig = inspect.signature(func)
+        kwargs = {k: v for k, v in kwargs.items() if k in sig.parameters}
+        return func(*args, **kwargs)
+
+    return wrapper
