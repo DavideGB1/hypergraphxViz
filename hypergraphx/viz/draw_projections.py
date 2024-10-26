@@ -8,17 +8,26 @@ from networkx import is_planar, planar_layout, kamada_kawai_layout
 from hypergraphx import Hypergraph
 from hypergraphx.representations.projections import (
     bipartite_projection,
-    clique_projection, extra_node_projection,
-)
+    clique_projection, extra_node_projection)
 
 
-def draw_bipartite(h: Hypergraph, pos=None, ax=None, align='vertical', **kwargs):
+from __support import filter_hypergraph, ignore_unused_args
+
+@ignore_unused_args
+def draw_bipartite(h: Hypergraph, cardinality: tuple[int,int]|int = -1,
+    x_heaviest: float = 1.0, pos=None, ax=None, align='vertical', **kwargs):
     """
     Draws a bipartite graph representation of the hypergraph.
     Parameters
     ----------
     h : Hypergraph.
         The hypergraph to be projected.
+    cardinality: tuple[int,int]|int. optional
+        Allows you to filter hyperedges so that only those with the default cardinality are visible.
+        If it is a tuple, hyperedges with cardinality included in the tuple values will be displayed.
+        If -1, all the hyperedges will be visible.
+    x_heaviest: float, optional
+        Allows you to filter the hyperedges so that only the heaviest x's are shown.
     pos : dict.
         A dictionary with nodes as keys and positions as values.
     ax : matplotlib.axes.Axes.
@@ -32,22 +41,24 @@ def draw_bipartite(h: Hypergraph, pos=None, ax=None, align='vertical', **kwargs)
     ax : matplotlib.axes.Axes.
         The axes the graph was drawn on.
     """
-    g, id_to_obj = bipartite_projection(h)
+    hypergraph = filter_hypergraph(h,cardinality, x_heaviest)
+    g, id_to_obj = bipartite_projection(hypergraph)
 
     if pos is None:
-        pos = nx.bipartite_layout(g, nodes=[n for n, d in g.nodes(data=True) if d['bipartite'] == 0])
+        pos = nx.bipartite_layout(g, nodes=[n for n, d in g.nodes(data=True) if d['bipartite'] == 0],align=align)
 
     if ax is None:
         ax = plt.gca()
 
     nx.draw_networkx(g, pos=pos, ax=ax, **kwargs)
-    plt.show()
     return ax
 
-
+@ignore_unused_args
 def draw_clique(
     h: Hypergraph,
     pos=None,
+    cardinality: tuple[int,int]|int = -1,
+    x_heaviest: float = 1.0,
     ax: Optional[plt.Axes] = None,
     iterations: int = 1000,
     strong_gravity: bool = True,
@@ -68,6 +79,12 @@ def draw_clique(
         The hypergraph to be projected.
     pos : dict.
         A dictionary with nodes as keys and positions as values.
+    cardinality: tuple[int,int]|int. optional
+        Allows you to filter hyperedges so that only those with the default cardinality are visible.
+        If it is a tuple, hyperedges with cardinality included in the tuple values will be displayed.
+        If -1, all the hyperedges will be visible.
+    x_heaviest: float, optional
+        Allows you to filter the hyperedges so that only the heaviest x's are shown.
     ax : matplotlib.axes.Axes.
         The axes to draw the graph on.
     iterations : int
@@ -96,7 +113,8 @@ def draw_clique(
     -------
     ax : matplotlib.axes.Axes. The axes the graph was drawn on.
     """
-    g = clique_projection(h)
+    hypergraph = filter_hypergraph(h, cardinality, x_heaviest)
+    g = clique_projection(hypergraph)
 
     forceatlas2 = ForceAtlas2(
         outboundAttractionDistribution=True,  # Dissuade hubs
@@ -129,14 +147,15 @@ def draw_clique(
     if draw_labels:
         nx.draw_networkx_labels(G=g, pos=pos, ax=ax, labels=labels)
 
-    plt.axis('off')
-    ax.axis('off')
+
     ax.set_aspect('equal')
     ax.autoscale(enable=True, axis='both')
-    plt.autoscale(enable=True, axis='both')
 
+@ignore_unused_args
 def draw_extra_node(
     h: Hypergraph,
+    cardinality: tuple[int,int]|int = -1,
+    x_heaviest: float = 1.0,
     pos=None,
     ax=None,
     ignore_binary_relations: bool = True,
@@ -160,6 +179,12 @@ def draw_extra_node(
     ----------
     h : Hypergraph.
         The hypergraph to be projected.
+    cardinality: tuple[int,int]|int. optional
+        Allows you to filter hyperedges so that only those with the default cardinality are visible.
+        If it is a tuple, hyperedges with cardinality included in the tuple values will be displayed.
+        If -1, all the hyperedges will be visible.
+    x_heaviest: float, optional
+        Allows you to filter the hyperedges so that only the heaviest x's are shown.
     pos : dict.
         A dictionary with nodes as keys and positions as values.
     ax : matplotlib.axes.Axes.
@@ -198,7 +223,8 @@ def draw_extra_node(
     -------
         ax : matplotlib.axes.Axes. The axes the graph was drawn on.
     """
-    g, binary_edges = extra_node_projection(h)
+    hypergraph = filter_hypergraph(h, cardinality, x_heaviest)
+    g, binary_edges = extra_node_projection(hypergraph)
 
     if ax is None:
         plt.figure(figsize=figsize, dpi=dpi)
@@ -237,11 +263,8 @@ def draw_extra_node(
                    node_color=node_color, node_size=node_size, edge_shape=edge_shape, edge_node_color=edge_node_color,
                    edge_color=edge_color, edge_width=edge_width, **kwargs)
 
-    plt.axis('off')
-    ax.axis('off')
     ax.set_aspect('equal')
     ax.autoscale(enable=True, axis='both')
-    plt.autoscale(enable=True, axis='both')
 
 def __draw_in_plot(
     g,

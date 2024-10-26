@@ -5,8 +5,9 @@ from typing import Optional
 from matplotlib import pyplot as plt
 from networkx import subgraph, kamada_kawai_layout
 from hypergraphx import Hypergraph
+
 from hypergraphx.viz.__chivers_rodgers import chivers_rodgers
-from hypergraphx.viz.__support import __draw_line, __distance, __calculate_incidence
+from hypergraphx.viz.__support import filter_hypergraph, __calculate_incidence, __distance, __draw_line, ignore_unused_args
 
 sys.path.append("..")
 import networkx as nx
@@ -522,10 +523,12 @@ def __draw_metrograph(
         labels = dict((n, n) for n in g.nodes())
         nx.draw_networkx_labels(g, pos=layout, labels=labels, ax = ax)
 
-
+@ignore_unused_args
 def draw_metroset(
         h: Hypergraph,
         iterations: int = 10,
+        cardinality: tuple[int,int]|int = -1,
+        x_heaviest: float = 1.0,
         figsize: tuple[float, float] = (10, 10),
         dpi: int = 300,
         ax: Optional[plt.Axes] = None,
@@ -540,9 +543,15 @@ def draw_metroset(
     Parameters
     ----------
         h : Hypergraph
-           The hypergraph to draw.
+            The hypergraph to draw.
         iterations : int
             Number of iterations for the optimization algorithm.
+        cardinality: tuple[int,int]|int. optional
+            Allows you to filter hyperedges so that only those with the default cardinality are visible.
+            If it is a tuple, hyperedges with cardinality included in the tuple values will be displayed.
+            If -1, all the hyperedges will be visible.
+        x_heaviest: float, optional
+            Allows you to filter the hyperedges so that only the heaviest x's are shown.
         figsize : tuple, optional
             Tuple of float used to specify the image size. Used only if ax is None.
         dpi : int, optional
@@ -568,8 +577,10 @@ def draw_metroset(
         plt.figure(figsize=figsize, dpi=dpi)
         plt.subplot(1, 1, 1)
         ax = plt.gca()
-    compressed_graph, one_edge_to_edge, only_in_one_edge = __compress_hypergraph(h)
-    compressed_edges, edge_to_new_edge = __compress_edges(h, only_in_one_edge, list(compressed_graph.nodes()))
+
+    hypergraph = filter_hypergraph(h, cardinality, x_heaviest)
+    compressed_graph, one_edge_to_edge, only_in_one_edge = __compress_hypergraph(hypergraph)
+    compressed_edges, edge_to_new_edge = __compress_edges(hypergraph, only_in_one_edge, list(compressed_graph.nodes()))
     for edge in compressed_edges:
         for i in range(len(edge) - 1):
             compressed_graph.add_edge(edge[i], edge[i+1])

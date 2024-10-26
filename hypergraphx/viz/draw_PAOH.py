@@ -2,13 +2,16 @@ from typing import Optional
 
 import matplotlib.pyplot as plt
 from hypergraphx import Hypergraph
-from hypergraphx.core import TemporalHypergraph
-from hypergraphx.viz.__support import __check_edge_intersection
+from hypergraphx.core.temporal_hypergraph import TemporalHypergraph
+from hypergraphx.viz.__support import ignore_unused_args, filter_hypergraph, __check_edge_intersection
 
 
+@ignore_unused_args
 def draw_PAOH(
     h: Hypergraph | TemporalHypergraph,
     space_optimization: bool = False,
+    cardinality: tuple[int,int]|int = -1,
+    x_heaviest: float = 1.0,
     figsize: tuple[float, float] = (10, 10),
     dpi: int = 300,
     ax: Optional[plt.Axes] = None,
@@ -33,6 +36,12 @@ def draw_PAOH(
         The hypergraph to be projected.
     space_optimization: bool
         Flag used to determine if the column compression function should be used or not.
+    cardinality: tuple[int,int]|int. optional
+        Allows you to filter hyperedges so that only those with the default cardinality are visible.
+        If it is a tuple, hyperedges with cardinality included in the tuple values will be displayed.
+        If -1, all the hyperedges will be visible.
+    x_heaviest: float, optional
+        Allows you to filter the hyperedges so that only the heaviest x's are shown.
     figsize : tuple, optional
         Tuple of float used to specify the image size. Used only if ax is None.
     dpi : int, optional
@@ -73,16 +82,17 @@ def draw_PAOH(
         plt.subplot(1, 1, 1)
         ax = plt.gca()
 
+    hypergraph = filter_hypergraph(h,cardinality, x_heaviest)
     node_mapping = dict()
     idx = 0
-    for node in h.get_nodes():
+    for node in hypergraph.get_nodes():
         node_mapping[idx] = node
         idx += 1
     max_node = idx - 0.5
     timestamp_mapping = dict()
     timestamps = []
-    if isinstance(h, TemporalHypergraph):
-        for edge in h.get_edges():
+    if isinstance(hypergraph, TemporalHypergraph):
+        for edge in hypergraph.get_edges():
             if edge[0] not in timestamp_mapping:
                 timestamp_mapping[edge[0]] = []
             timestamp_mapping[edge[0]].append(edge[1])
@@ -98,17 +108,17 @@ def draw_PAOH(
     else:
         #Get the edged position
         if space_optimization:
-            column_list = __PAOH_edge_placemente_calculation(h.get_edges())
+            column_list = __PAOH_edge_placemente_calculation(hypergraph.get_edges())
         else:
             column_list = []
-            for edge in h.get_edges():
+            for edge in hypergraph.get_edges():
                 column_list.append([edge])
         timestamps.append(column_list)
     idx = 0
     idx_timestamp = 0
     #Draw each column
     for timestamp in timestamps:
-        if isinstance(h, TemporalHypergraph):
+        if isinstance(hypergraph, TemporalHypergraph):
             ax.text(idx - 0.45, max_node - 0.175, "Time: " + str(list(timestamp_mapping.keys())[idx_timestamp]),
                     fontsize=time_font_size, **kwargs)
         for column_set in timestamp:
@@ -124,13 +134,13 @@ def draw_PAOH(
                     ax.plot(idx, list(node_mapping.values()).index(y), node_shape, color=node_color,
                          markeredgecolor=marker_edge_color, markersize=node_size, markeredgewidth=marker_edge_width, **kwargs)
             idx += 0.5
-        if isinstance(h, TemporalHypergraph):
+        if isinstance(hypergraph, TemporalHypergraph):
             ax.plot([idx, idx], [-0.5, max_node], color=time_separation_line_color,
                     linewidth=time_separation_line_width, **kwargs)
             idx_timestamp += 1
             idx += 0.5
 
-    if isinstance(h, TemporalHypergraph):
+    if isinstance(hypergraph, TemporalHypergraph):
         idx -= 0.5
 
     #Initiatiate the grid for the axes
@@ -138,8 +148,9 @@ def draw_PAOH(
     ax.set_xlabel(x_label)
     ax.set_xticks([])
     ax.set_xlim([-0.5, idx])
-    ax.set_yticks(range(len(h.get_nodes())))
-    ax.set_yticklabels(h.get_nodes())
+    ax.set_ylim([-0.5,len(hypergraph.get_nodes())])
+    ax.set_yticks(range(len(hypergraph.get_nodes())))
+    ax.set_yticklabels(hypergraph.get_nodes())
     ax.grid(which="minor", ls="--", lw=1)
 
 
