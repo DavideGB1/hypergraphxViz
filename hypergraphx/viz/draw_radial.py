@@ -93,7 +93,7 @@ def draw_radial_layout(
     h: Hypergraph,
     cardinality: tuple[int,int]|int = -1,
     x_heaviest: float = 1.0,
-    radius_scale_factor: int = 1.0,
+    radius_scale_factor: float = 1.0,
     draw_labels:bool = True,
     figsize: tuple[float,float] = (10,10),
     dpi: int = 300,
