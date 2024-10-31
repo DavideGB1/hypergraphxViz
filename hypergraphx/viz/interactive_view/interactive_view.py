@@ -1,12 +1,16 @@
+import inspect
 import sys
+
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QPushButton, QVBoxLayout, QSlider, QWidget, QHBoxLayout, QLabel, \
     QDoubleSpinBox, QRadioButton, QSpacerItem, QLayout, QCheckBox
+
+from hypergraphx import Hypergraph
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from qtrangeslider import QRangeSlider
-from hypergraphx import Hypergraph
+
 from hypergraphx.viz.draw_PAOH import draw_PAOH
 from hypergraphx.viz.draw_hypergraph import draw_hypergraph
 from hypergraphx.viz.draw_metroset import draw_metroset
@@ -16,20 +20,12 @@ from hypergraphx.viz.interactive_view.__option_menu import MenuWindow
 from hypergraphx.viz.interactive_view.__options import Options
 
 
-# noinspection PyUnresolvedReferences
 class Window(QWidget):
 
     # constructor
     def __init__(self,hypergraph: Hypergraph, parent=None):
         super(Window, self).__init__(parent)
         self.setWindowTitle("HypergraphX Visualizer")
-        #Set Default Values
-        self.spin_box_label = QLabel()
-        self.spin_box = QDoubleSpinBox()
-        self.vbox = QVBoxLayout()
-        self.current_function = draw_PAOH
-        self.slider = None
-        self.ranged = True
         self.option_menu = None
         self.options = Options()
         self.active_labels = True
@@ -43,68 +39,15 @@ class Window(QWidget):
         self.strong_gravity = True
         self.iterations = 1000
         self.alignment = "vertical"
+        # a figure instance to plot on
         self.figure = plt.figure()
         self.max_edge = 0
         for edge in h.get_edges():
             if len(edge) > self.max_edge:
                 self.max_edge = len(edge)
-        #Defines Canvas and Options Toolbar
+
         self.canvas = FigureCanvas(self.figure)
         self.toolbar = NavigationToolbar(self.canvas, self)
-        options_button = self.add_options_button()
-        self.toolbar.insertWidget(self.toolbar.actions()[-1],options_button)
-        self.canvas_hbox.addWidget(self.canvas)
-
-        # Sliders Management
-        slider_hbox = self.add_sliders()
-        # Create layout and add everything
-        layout = QVBoxLayout()
-        layout.addWidget(self.toolbar)
-        layout.addLayout(self.canvas_hbox)
-        layout.addLayout(slider_hbox)
-        # setting layout to the main window
-        self.setLayout(layout)
-        self.option_vbox()
-        # action called by the push button
-    def add_sliders(self):
-        slider_label = QLabel()
-        slider_label.setAlignment(Qt.AlignLeft)
-        slider_label.setText("Edge Cardinality: " + str(self.slider_value))
-        def slider_value_changed():
-            self.slider_value = self.slider.value()
-            slider_label.setText("Edge Cardinality: " + str(self.slider_value))
-            self.plot()
-        def change_slider_type():
-            if self.ranged:
-                self.ranged = False
-                slider = QSlider(Qt.Horizontal)
-                slider.setMinimum(2)
-                slider.setMaximum(self.max_edge)
-            else:
-                self.ranged = True
-                slider = QRangeSlider(Qt.Horizontal)
-                slider.setMinimum(1)
-                slider.setMaximum(self.max_edge + 1)
-                slider.setValue((2, self.max_edge))
-            slider.setTickPosition(QSlider.TicksBelow)
-            slider.setTickInterval(1)
-            slider.setPageStep(0)
-            slider.valueChanged.connect(slider_value_changed)
-            slider_hbox.replaceWidget(self.slider, slider)
-            slider_hbox.removeWidget(self.slider)
-            self.slider = slider
-            slider_value_changed()
-        slider_hbox = QHBoxLayout()
-        change_slider_type()
-        slider_button = QPushButton("Change Slider Type")
-        slider_button.setChecked(True)
-        slider_button.toggle()
-        slider_button.clicked.connect(change_slider_type)
-        slider_hbox.addWidget(slider_label)
-        slider_hbox.addWidget(self.slider)
-        slider_hbox.addWidget(slider_button)
-        return slider_hbox
-    def add_options_button(self):
         button = QPushButton("Options")
         def open_options():
             if self.option_menu is None:
@@ -113,12 +56,81 @@ class Window(QWidget):
                 self.option_menu.show()
             else:
                 self.option_menu = None
-
         button.clicked.connect(open_options)
-        return button
-    def plot(self):
-        self.figure.clear()
+
+        self.toolbar.insertWidget(self.toolbar.actions()[-1],
+                                  button)
+        layout = QVBoxLayout()
+        layout.addWidget(self.toolbar)
+        self.canvas_hbox.addWidget(self.canvas,75)
+        layout.addLayout(self.canvas_hbox)
+        #Sliders Management
+
+
+
+        layout.addLayout(self.slider_creation())
+        # setting layout to the main window
+        self.setLayout(layout)
         ax = self.figure.add_subplot(111)
+        self.option_vbox()
+    def slider_creation(self):
+
+        slider_hbox = QHBoxLayout()
+        sliders = QWidget()
+        slider = QSlider(Qt.Horizontal, sliders)
+        slider.setMinimum(2)
+        slider.setMaximum(self.max_edge)
+        slider.setTickPosition(QSlider.TicksBelow)
+        slider.setTickInterval(1)
+        slider.setPageStep(0)
+        slider.valueChanged.connect(self.plot)
+        range_slider = QRangeSlider(Qt.Horizontal, self)
+        range_slider.setTickPosition(QSlider.TicksBelow)
+        range_slider.setTickInterval(1)
+        range_slider.setMinimum(1)
+        range_slider.setMaximum(self.max_edge + 1)
+        range_slider.setPageStep(0)
+        range_slider.valueChanged.connect(self.plot)
+        range_slider.setVisible(False)
+        # adding push button to the layout
+        slider_label = QLabel()
+        slider_label.setAlignment(Qt.AlignLeft)
+        slider_label.setText("Edge Cardinality: " + str(self.slider_value))
+        slider_button = QPushButton("Change Slider Type")
+        slider_button.setChecked(True)
+        slider_button.toggle()
+
+        def change_slider_type():
+            if range_slider.isVisible():
+                range_slider.setVisible(False)
+                slider.setValue(2)
+                slider.setVisible(True)
+                self.plot()
+            else:
+                range_slider.setVisible(True)
+                range_slider.setValue((2, self.max_edge))
+                slider.setVisible(False)
+                self.plot()
+
+        slider_button.clicked.connect(change_slider_type)
+        slider_hbox.addWidget(slider_label)
+        slider_hbox.addWidget(slider)
+        slider_hbox.addWidget(range_slider)
+        slider_hbox.addWidget(slider_button)
+
+
+        return slider_hbox
+    # action called by the push button
+    def plot(self):
+        if self.range_slider.isVisible():
+            self.slider_value = self.range_slider.value()
+        else:
+            self.slider_value = self.slider.value()
+        self.figure.clear()
+        self.slider_label.setText("Edge Cardinality: "+str(self.slider_value))
+        # create an axis
+        ax = self.figure.add_subplot(111)
+
         self.current_function(self.hypergraph, cardinality= self.slider_value, x_heaviest = float(self.spin_box.value()/100), ax=ax,
                               draw_labels=self.active_labels, space_optimization = self.space_optimization, radius_scale_factor = self.radius_scale_factor,
                               ignore_binary_relations = self.ignore_binary_relations, show_edge_nodes = self.show_edge_nodes, strong_gravity = self.strong_gravity,
@@ -129,13 +141,19 @@ class Window(QWidget):
                               edge_width = self.options.get_edge_width(), marker_edge_width = self.options.get_marker_edge_width(), time_font_size = self.options.get_time_font_size(),
                               time_separation_line_width = self.options.get_time_separation_line_width(), marker_size=self.options.get_marker_size(),
                               font_size = self.options.get_font_size(), edge_lenght = self.options.get_edge_lenght(), node_size=self.options.get_node_size())
+        # refresh canvas
         self.canvas.draw()
     def get_new_option(self, option):
         self.options = option
         self.plot()
+
+
     def heaviest_edges(self):
         self.spin_box_label.setText("Show {value}% Heaviest Edges".format(value=self.spin_box.value()))
         self.plot()
+
+
+
     def assign_radial(self):
         self.current_function = draw_radial_layout
         remove_last_x_elements_from_layout(self.vbox, 2)
@@ -175,19 +193,12 @@ class Window(QWidget):
         vbox_PAOH_option = QVBoxLayout()
         space_optimization_option_btn = QCheckBox("Optimize Space Usage")
         space_optimization_option_btn.setChecked(True)
-
-        def optimize_space_usage():
-            if self.space_optimization:
-                self.space_optimization = False
-            else:
-                self.space_optimization = True
-            self.plot()
-
-        space_optimization_option_btn.toggled.connect(optimize_space_usage)
+        space_optimization_option_btn.toggled.connect(self.optimize_space_usage)
         vbox_PAOH_option.addWidget(space_optimization_option_btn)
         self.vbox.addLayout(vbox_PAOH_option)
         self.vbox.addStretch()
         self.plot()
+
     def assign_metroset(self):
         self.current_function = draw_metroset
         self.iterations = 10
@@ -212,6 +223,7 @@ class Window(QWidget):
         self.vbox.addLayout(vbox_metroset_option)
         self.vbox.addStretch()
         self.plot()
+
     def assign_clique_projection(self):
         self.current_function = draw_clique
         self.iterations = 1000
@@ -244,35 +256,19 @@ class Window(QWidget):
         self.vbox.addLayout(vbox_clique_expasion_option)
         self.vbox.addStretch()
         self.plot()
+
     def assign_extra_node(self):
         self.current_function = draw_extra_node
         self.iterations = 1000
-        self.options.set_default_extra_node_bipartite()
+        self.options.set_default_extra_node()
         remove_last_x_elements_from_layout(self.vbox, 2)
         vbox_extra_node_option = QVBoxLayout()
         edge_nodes_btn = QCheckBox("Show Edge Nodes")
         edge_nodes_btn.setChecked(True)
-
-        def activate_edge_nodes():
-            if self.show_edge_nodes:
-                self.show_edge_nodes = False
-            else:
-                self.show_edge_nodes = True
-            self.plot()
-
-        edge_nodes_btn.toggled.connect(activate_edge_nodes)
+        edge_nodes_btn.toggled.connect(self.activate_edge_nodes)
         ignore_binary_relations_btn = QCheckBox("Ignore Binary Relations")
         ignore_binary_relations_btn.setChecked(True)
-
-        def ignore_binary_relations_funz():
-            if self.ignore_binary_relations:
-                self.ignore_binary_relations = False
-            else:
-                self.ignore_binary_relations = True
-
-            self.plot()
-
-        ignore_binary_relations_btn.toggled.connect(ignore_binary_relations_funz)
+        ignore_binary_relations_btn.toggled.connect(self.ignore_binary_relations_funz)
         strong_gravity_btn = QCheckBox("Use Strong Gravity")
         strong_gravity_btn.setChecked(True)
         strong_gravity_btn.toggled.connect(self.activate_strong_gravity)
@@ -307,6 +303,7 @@ class Window(QWidget):
         self.vbox.addLayout(vbox_extra_node_option)
         self.vbox.addStretch()
         self.plot()
+
     def assign_bipartite(self):
         self.current_function = draw_bipartite
         self.options.set_default_extra_node_bipartite()
@@ -327,6 +324,7 @@ class Window(QWidget):
         self.vbox.addLayout(vbox_bipartite_option)
         self.vbox.addStretch()
         self.plot()
+
     def assign_sets(self):
         self.current_function = draw_hypergraph
         self.iterations = 100
@@ -351,6 +349,14 @@ class Window(QWidget):
         self.vbox.addLayout(vbox_set_option)
         self.vbox.addStretch()
         self.plot()
+
+    def optimize_space_usage(self):
+        if self.space_optimization:
+            self.space_optimization = False
+        else:
+            self.space_optimization = True
+        self.plot()
+
     def option_vbox(self):
         self.vbox = QVBoxLayout()
         if self.hypergraph.is_weighted():
@@ -370,21 +376,35 @@ class Window(QWidget):
             self.vbox.addWidget(btn)
         self.vbox.addStretch()
         self.vbox.addStretch()
-        radio_btn_list[0].setChecked(True)
-        self.canvas_hbox.addLayout(self.vbox)
+        self.assign_radial()
+        self.canvas_hbox.addLayout(self.vbox,25)
     def add_radio_option(self):
         button_list = []
-        options_dict = { "Radial": self.assign_radial, "PAOH": self.assign_PAOH, "Clique Expansion": self.assign_clique_projection,
-                         "Extra-Node": self.assign_extra_node, "Bipartite": self.assign_bipartite, "Sets": self.assign_sets}
-        for val, fun in options_dict.items():
-            button = QRadioButton(val)
-            button.toggled.connect(fun)
-            button_list.append(button)
+        radio_button_radial = QRadioButton("Radial")
+        radio_button_radial.setChecked(True)
+        radio_button_radial.toggled.connect(self.assign_radial)
+        button_list.append(radio_button_radial)
+        radio_button_PAOH = QRadioButton("PAOH")
+        radio_button_PAOH.toggled.connect(self.assign_PAOH)
+        button_list.append(radio_button_PAOH)
         if not self.hypergraph.is_weighted():
             radio_button_metroset = QRadioButton("MetroSet")
             radio_button_metroset.toggled.connect(self.assign_metroset)
             button_list.append(radio_button_metroset)
+        radio_button_clique_expasion = QRadioButton("Clique Expansion")
+        radio_button_clique_expasion.toggled.connect(self.assign_clique_projection)
+        button_list.append(radio_button_clique_expasion)
+        radio_button_extra_node = QRadioButton("Extra-Node")
+        radio_button_extra_node.toggled.connect(self.assign_extra_node)
+        button_list.append(radio_button_extra_node)
+        radio_button_bipartite = QRadioButton("Bipartite")
+        radio_button_bipartite.toggled.connect(self.assign_bipartite)
+        button_list.append(radio_button_bipartite)
+        radio_button_sets = QRadioButton("Sets")
+        radio_button_sets.toggled.connect(self.assign_sets)
+        button_list.append(radio_button_sets)
         return button_list
+
     def activate_labels(self):
         if self.active_labels:
             self.active_labels = False
@@ -392,6 +412,23 @@ class Window(QWidget):
         else:
             self.active_labels = True
             self.plot()
+
+    def ignore_binary_relations_funz(self):
+        if self.ignore_binary_relations:
+            self.ignore_binary_relations = False
+            self.plot()
+        else:
+            self.ignore_binary_relations = True
+            self.plot()
+
+    def activate_edge_nodes(self):
+        if self.show_edge_nodes:
+            self.show_edge_nodes = False
+            self.plot()
+        else:
+            self.show_edge_nodes = True
+            self.plot()
+
     def activate_strong_gravity(self):
         if self.strong_gravity:
             self.strong_gravity = False
@@ -416,10 +453,7 @@ def remove_last_x_elements_from_layout(layout, x=1):
         elif isinstance(widget_layout, QLayout):
             clear_layout(widget_layout)
         else:
-            try:
-                widget_layout.deleteLater()
-            except AttributeError:
-                pass
+            widget_layout.deleteLater()
 
 def start_interactive_view(h: Hypergraph):
     app = QApplication(sys.argv)
