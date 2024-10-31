@@ -28,7 +28,6 @@ class Window(QWidget):
         self.setWindowTitle("HypergraphX Visualizer")
         self.option_menu = None
         self.options = Options()
-
         self.active_labels = True
         self.space_optimization = False
         self.slider_value = 2
@@ -46,6 +45,7 @@ class Window(QWidget):
         for edge in h.get_edges():
             if len(edge) > self.max_edge:
                 self.max_edge = len(edge)
+
         self.canvas = FigureCanvas(self.figure)
         self.toolbar = NavigationToolbar(self.canvas, self)
         button = QPushButton("Options")
@@ -62,47 +62,64 @@ class Window(QWidget):
                                   button)
         layout = QVBoxLayout()
         layout.addWidget(self.toolbar)
-        slider_hbox = QHBoxLayout()
-        self.canvas_hbox.addWidget(self.canvas)
+        self.canvas_hbox.addWidget(self.canvas,75)
         layout.addLayout(self.canvas_hbox)
         #Sliders Management
-        sliders = QWidget()
-        self.slider = QSlider(Qt.Horizontal, sliders)
-        self.slider.setMinimum(2)
-        self.slider.setMaximum(self.max_edge)
-        self.slider.setTickPosition(QSlider.TicksBelow)
-        self.slider.setTickInterval(1)
-        self.slider.setPageStep(0)
-        self.slider.valueChanged.connect(self.plot)
-        self.range_slider = QRangeSlider(Qt.Horizontal, self)
-        self.range_slider.setTickPosition(QSlider.TicksBelow)
-        self.range_slider.setTickInterval(1)
-        self.range_slider.setMinimum(1)
-        self.range_slider.setMaximum(self.max_edge+1)
-        self.range_slider.setPageStep(0)
-        self.range_slider.valueChanged.connect(self.plot)
-        self.range_slider.setVisible(False)
-        self.range_slider.valueChanged.connect(self.plot)
-        # adding push button to the layout
-        self.slider_label = QLabel()
-        self.slider_label.setAlignment(Qt.AlignLeft)
-        self.slider_label.setText("Edge Cardinality: "+str(self.slider_value))
-        self.slider_button = QPushButton("Change Slider Type")
-        self.slider_button.setChecked(True)
-        self.slider_button.toggle()
-        self.slider_button.clicked.connect(self.change_slider_type)
-        slider_hbox.addWidget(self.slider_label)
-        slider_hbox.addWidget(self.slider)
-        slider_hbox.addWidget(self.range_slider)
-        slider_hbox.addWidget(self.slider_button)
 
 
-        layout.addLayout(slider_hbox)
+
+        layout.addLayout(self.slider_creation())
         # setting layout to the main window
         self.setLayout(layout)
         ax = self.figure.add_subplot(111)
         self.option_vbox()
+    def slider_creation(self):
 
+        slider_hbox = QHBoxLayout()
+        sliders = QWidget()
+        slider = QSlider(Qt.Horizontal, sliders)
+        slider.setMinimum(2)
+        slider.setMaximum(self.max_edge)
+        slider.setTickPosition(QSlider.TicksBelow)
+        slider.setTickInterval(1)
+        slider.setPageStep(0)
+        slider.valueChanged.connect(self.plot)
+        range_slider = QRangeSlider(Qt.Horizontal, self)
+        range_slider.setTickPosition(QSlider.TicksBelow)
+        range_slider.setTickInterval(1)
+        range_slider.setMinimum(1)
+        range_slider.setMaximum(self.max_edge + 1)
+        range_slider.setPageStep(0)
+        range_slider.valueChanged.connect(self.plot)
+        range_slider.setVisible(False)
+        # adding push button to the layout
+        slider_label = QLabel()
+        slider_label.setAlignment(Qt.AlignLeft)
+        slider_label.setText("Edge Cardinality: " + str(self.slider_value))
+        slider_button = QPushButton("Change Slider Type")
+        slider_button.setChecked(True)
+        slider_button.toggle()
+
+        def change_slider_type():
+            if range_slider.isVisible():
+                range_slider.setVisible(False)
+                slider.setValue(2)
+                slider.setVisible(True)
+                self.plot()
+            else:
+                range_slider.setVisible(True)
+                range_slider.setValue((2, self.max_edge))
+                slider.setVisible(False)
+                self.plot()
+
+        slider_button.clicked.connect(change_slider_type)
+        slider_hbox.addWidget(slider_label)
+        slider_hbox.addWidget(slider)
+        slider_hbox.addWidget(range_slider)
+        slider_hbox.addWidget(slider_button)
+
+
+        return slider_hbox
     # action called by the push button
     def plot(self):
         if self.range_slider.isVisible():
@@ -129,15 +146,7 @@ class Window(QWidget):
     def get_new_option(self, option):
         self.options = option
         self.plot()
-    def change_slider_type(self):
-        if self.range_slider.isVisible():
-            self.range_slider.setVisible(False)
-            self.slider.setVisible(True)
-            self.plot()
-        else:
-            self.range_slider.setVisible(True)
-            self.slider.setVisible(False)
-            self.plot()
+
 
     def heaviest_edges(self):
         self.spin_box_label.setText("Show {value}% Heaviest Edges".format(value=self.spin_box.value()))
@@ -368,7 +377,7 @@ class Window(QWidget):
         self.vbox.addStretch()
         self.vbox.addStretch()
         self.assign_radial()
-        self.canvas_hbox.addLayout(self.vbox)
+        self.canvas_hbox.addLayout(self.vbox,25)
     def add_radio_option(self):
         button_list = []
         radio_button_radial = QRadioButton("Radial")
