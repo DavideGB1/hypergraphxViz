@@ -12,7 +12,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 from qtrangeslider import QRangeSlider
 
 from hypergraphx.viz.draw_PAOH import draw_PAOH
-from hypergraphx.viz.draw_hypergraph import draw_hypergraph
+from hypergraphx.viz.draw_sets import draw_sets
 from hypergraphx.viz.draw_metroset import draw_metroset
 from hypergraphx.viz.draw_projections import draw_extra_node, draw_bipartite, draw_clique
 from hypergraphx.viz.draw_radial import draw_radial_layout
@@ -326,7 +326,7 @@ class Window(QWidget):
         self.plot()
 
     def assign_sets(self):
-        self.current_function = draw_hypergraph
+        self.current_function = draw_sets
         self.iterations = 100
         remove_last_x_elements_from_layout(self.vbox, 2)
         vbox_set_option = QVBoxLayout()
