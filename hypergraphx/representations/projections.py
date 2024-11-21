@@ -192,10 +192,10 @@ def extra_node_projection(h: Hypergraph) -> [nx.Graph,list]:
 
     #Add normal nodes
     for node in h.get_nodes():
-        id_to_obj['N' + str(idx)] = node
-        obj_to_id[node] = 'N' + str(idx)
+        id_to_obj[idx] = node
+        obj_to_id[node] = idx
         idx += 1
-        g.add_node(obj_to_id[node])
+        g.add_node(node)
 
     idx = 0
     binary_edges = list()
@@ -207,7 +207,7 @@ def extra_node_projection(h: Hypergraph) -> [nx.Graph,list]:
             weight = 1
             if h.is_weighted():
                 weight = h.get_weight(edge)
-            binary_edges.append((obj_to_id[edge[0]], obj_to_id[edge[1]], weight))
+            binary_edges.append((edge[0], edge[1], weight))
         #Any other type of relation
         else:
             obj_to_id[edge] = 'E' + str(idx)
@@ -217,7 +217,8 @@ def extra_node_projection(h: Hypergraph) -> [nx.Graph,list]:
             if h.is_weighted():
                 weight = h.get_weight(edge)
             for node in edge:
-                 g.add_edge(obj_to_id[edge], obj_to_id[node], weight=weight)
+                 g.add_edge(obj_to_id[edge], node, weight=weight)
         idx += 1
 
     return g, binary_edges
+

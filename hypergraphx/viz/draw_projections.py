@@ -359,16 +359,17 @@ def __draw_in_plot(
     if ax is None:
         ax = plt.gca()
     #Draw edges and nodes
-    labels = dict((n, n) for n in g.nodes() if n.startswith('N'))
-    node_list = [x for x in g.nodes() if x.startswith('N')]
+    labels = dict((n, n) for n in g.nodes() if not str(n).startswith('E'))
+    node_list = [x for x in g.nodes() if not str(x).startswith('E')]
     nx.draw_networkx_edges(g, pos, ax=ax, edge_color=edge_color, width=edge_width)
     nx.draw_networkx_nodes(g, ax=ax, pos=pos, nodelist=node_list, node_shape=node_shape,node_color=node_color, node_size=node_size, **kwargs)
     #Draw nodes that represents edges
     if show_edge_nodes:
-        edge_list = [x for x in g.nodes() if x.startswith('E')]
-        labels_edges = dict((n, n) for n in g.nodes() if n.startswith('E'))
+        edge_list = [x for x in g.nodes() if str(x).startswith('E')]
+        labels_edges = dict((n, n) for n in g.nodes() if str(n).startswith('E'))
         labels.update(labels_edges)
         nx.draw_networkx_nodes(g, ax=ax, pos=pos, node_shape=edge_shape, node_color=edge_node_color,nodelist=edge_list, **kwargs)
     #Draw labels
     if draw_labels:
         nx.draw_networkx_labels(g, ax=ax, pos=pos, labels=labels)
+
