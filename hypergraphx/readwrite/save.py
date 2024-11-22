@@ -24,7 +24,9 @@ def _save_pickle(obj, file_name: str):
         pickle.dump(obj, f)
 
 
-def save_hypergraph(hypergraph: Hypergraph, file_name: str, file_type: str):
+import json
+
+def save_hypergraph(hypergraph, file_name: str, file_type='json'):
     """
     Save a hypergraph to a file.
 
@@ -54,20 +56,53 @@ def save_hypergraph(hypergraph: Hypergraph, file_name: str, file_type: str):
     if file_type == "pickle":
         _save_pickle(hypergraph, file_name)
     elif file_type == "json":
-        with open(file_name, "w+") as outfile:
+        with open(file_name + '.' + file_type, "w") as outfile:
+            hypergraph_type = str(type(hypergraph)).split('.')[-1][:-2]
             out = []
-            for node in hypergraph.get_nodes():
-                json_object = json.dumps(hypergraph.get_meta(node))
-                out.append(json_object)
 
-            for edge in hypergraph.get_edges():
-                meta = hypergraph.get_meta(edge)
-                if hypergraph.is_weighted():
-                    meta["weight"] = hypergraph.get_weight(edge)
-                json_object = json.dumps(meta)
-                out.append(json_object)
-            json.dump(out, outfile)
+            # Add hypergraph metadata
+
+            d = {
+                'hypergraph_type': hypergraph_type,
+                'hypergraph_metadata': hypergraph.get_hypergraph_metadata()
+            }
+            out.append(d)
+
+            # Add nodes
+            for node, metadata in hypergraph.get_nodes(metadata=True).items():
+                d = {
+                    'type': 'node',
+                    'idx': node,
+                    'metadata': metadata
+                }
+                out.append(d)
+
+            # Add edges
+            if hypergraph_type in ['Hypergraph', 'DirectedHypergraph']:
+                for edge, metadata in hypergraph.get_edges(metadata=True).items():
+                    d = {
+                        'type': 'edge',
+                        'interaction': edge,
+                        'metadata': metadata,
+                        'weight': hypergraph.get_weight(edge)
+                    }
+                    out.append(d)
+            elif hypergraph_type == 'MultiplexHypergraph':
+                for edge, metadata in hypergraph.get_edges(metadata=True).items():
+                    edge, layer = edge
+                    d = {
+                        'type': 'edge',
+                        'interaction': edge,
+                        'metadata': metadata,
+                        'weight': hypergraph.get_weight(edge, layer),
+                        'layer': layer
+                    }
+                    out.append(d)
+
+            # Serialize and write the entire list to the file
+            json.dump(out, outfile, indent=4)
 
     else:
         raise ValueError("Invalid file type.")
+
 
