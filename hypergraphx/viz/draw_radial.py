@@ -11,6 +11,7 @@ from matplotlib import pyplot as plt
 
 from __support import __check_edge_intersection, x_heaviest_edges_hypergraph, cardinality_hypergraph, filter_hypergraph, \
     ignore_unused_args
+from hypergraphx.viz.__options import GraphicOptions
 
 
 def __radial_edge_placemente_calculation(h: Hypergraph) -> (list,list):
@@ -93,19 +94,14 @@ def draw_radial_layout(
     h: Hypergraph,
     cardinality: tuple[int,int]|int = -1,
     x_heaviest: float = 1.0,
-    radius_scale_factor: float = 1.0,
     draw_labels:bool = True,
+    radius_scale_factor: float = 1.0,
+    marker_color: str = "#FF0000",
+    font_spacing_multiplier: float = 1.5,
+    ax: Optional[plt.Axes] = None,
     figsize: tuple[float,float] = (10,10),
     dpi: int = 300,
-    ax: Optional[plt.Axes] = None,
-    node_shape: str = "o",
-    node_color: str = "#0000FF",
-    node_size: int = 5,
-    marker_color: str = "#FF0000",
-    marker_size: int = 5,
-    edge_color: str = "#000000",
-    font_size: int = 12,
-    font_spacing_multiplier: float = 1.5,
+    graphicOptions: Optional[GraphicOptions] = None,
     **kwargs) -> None:
     """
     Draws a Radial representation of the hypergraph.
@@ -119,33 +115,23 @@ def draw_radial_layout(
         If -1, all the hyperedges will be visible.
     x_heaviest: float, optional
         Allows you to filter the hyperedges so that only the heaviest x's are shown.
-    radius_scale_factor : float, optional
-        Scale for the Radius value.
     draw_labels : bool
         Decide if the labels should be drawn.
+    radius_scale_factor : float, optional
+        Scale for the Radius value.
+    marker_color : str, optional
+        HEX value for the node markers along the hyperedges.
+    font_spacing_multiplier : float, optional
+        Value used to place the labels in a circle different from the inner one. 0 means that the labels position is
+        the inner circle position.
+    ax : plt.Axes, optional
+        Axis if the user wants to specify an image.
     figsize : tuple, optional
         Tuple of float used to specify the image size. Used only if ax is None.
     dpi : int, optional
         The dpi for the figsize. Used only if ax is None.
-    ax : plt.Axes, optional
-        Axis if the user wants to specify an image.
-    node_shape : str, optional
-        The shape of the nodes in the image. Use standard MathPlotLib values.
-    node_color : str, optional
-        HEX value for the nodes color.
-    node_size : int, optional
-        The size of the nodes in the image.
-    marker_color : str, optional
-        HEX value for the node markers along the hyperedges.
-    marker_size : int, optional
-        The size of the node markers along the hyperedges.
-    edge_color : str, optional
-        HEX value for the edges color.
-    font_size : int, optional
-        The size of the font.
-    font_spacing_multiplier : float, optional
-        Value used to place the labels in a circle different from the inner one. 0 means that the labels position is
-        the inner circle position.
+    graphicOptions: Optional[GraphicOptions].
+        Object used to store all the common graphical settings among the representation methods.
     kwargs : dict.
         Keyword arguments to be passed to the various MathPlotLib function.
     Returns
@@ -155,8 +141,10 @@ def draw_radial_layout(
         plt.figure(figsize=figsize, dpi = dpi)
         plt.subplot(1, 1, 1)
         ax = plt.gca()
+    if graphicOptions is None:
+        graphicOptions = GraphicOptions(is_PAOH=True)
     hypergraph = filter_hypergraph(h,cardinality, x_heaviest)
-
+    graphicOptions.check_if_options_are_valid(hypergraph)
     #Calculate the radius and the necessary alpha value
     radius = (hypergraph.num_nodes() * radius_scale_factor) / (2 * np.pi)
     alpha = (2*np.pi)/hypergraph.num_nodes()
@@ -170,7 +158,7 @@ def draw_radial_layout(
         pos_node_2 = pos[edge[1]]
         x = [pos_node_1[0], pos_node_2[0]]
         y = [pos_node_1[1], pos_node_2[1]]
-        ax.plot(x, y, color=edge_color, **kwargs)
+        ax.plot(x, y, color=graphicOptions.edge_color[edge], **kwargs)
 
 
     #Draw the nodes with their own label in the inner circle
@@ -186,9 +174,10 @@ def draw_radial_layout(
         min_x = min(min_x, value_x)
         max_y = max(max_y, value_y)
         min_y = min(min_y, value_y)
-        ax.plot(value_x, value_y, node_shape, color=node_color, markersize=node_size, **kwargs)
+        ax.plot(value_x, value_y, graphicOptions.node_shape[node], color=graphicOptions.node_color[node], markersize=graphicOptions.node_size[node], **kwargs)
         if draw_labels:
-            ax.text(value_x *font_spacing_multiplier, value_y*font_spacing_multiplier, node, fontsize=font_size, **kwargs)
+            ax.text(value_x *font_spacing_multiplier, value_y*font_spacing_multiplier, node,
+                    fontsize=graphicOptions.label_size, color=graphicOptions.label_col, **kwargs)
             max_x = max(max_x, value_x*font_spacing_multiplier)
             min_x = min(min_x, value_x*font_spacing_multiplier)
             max_y = max(max_y, value_y*font_spacing_multiplier)
@@ -203,6 +192,7 @@ def draw_radial_layout(
         sector = sorted(sector)
         #For each edge draw the corresponding arch
         for edge in sector:
+            original_edge = edge
             #Calculate points needed to plot the arch
             edge = sorted(edge)
             start_node = nodes_mapping.transform([edge[0]])[0]
@@ -215,7 +205,7 @@ def draw_radial_layout(
                 value_y = round(sin(angle), 5)*radius*sector_depth
                 x.append(value_x)
                 y.append(value_y)
-            ax.plot(x, y, color=edge_color, **kwargs)
+            ax.plot(x, y, color=graphicOptions.edge_color[original_edge], **kwargs)
 
             #Place the nodes along the arch
             for node in edge:
@@ -225,7 +215,7 @@ def draw_radial_layout(
                 min_x = min(min_x, value_x)
                 max_y = max(max_y, value_y)
                 min_y = min(min_y, value_y)
-                ax.plot(value_x, value_y, node_shape, color=marker_color, markersize=marker_size, **kwargs)
+                ax.plot(value_x, value_y, graphicOptions.node_shape[node], color=marker_color, markersize=graphicOptions.node_size[node], **kwargs)
 
         sector_depth += 0.25
     ax.set_aspect('equal')
@@ -235,5 +225,3 @@ def draw_radial_layout(
     max_y = max(max_y, abs(min_y))
     ax.set_xlim([-max_x-1,max_x+1])
     ax.set_ylim([-max_y-1,max_y+1])
-
-

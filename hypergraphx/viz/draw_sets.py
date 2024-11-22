@@ -1,16 +1,23 @@
 import math
 import random
-from typing import Optional, Union
+from typing import Optional
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 from networkx import kamada_kawai_layout
 from hypergraphx import Hypergraph
 from hypergraphx.representations.projections import clique_projection
+from hypergraphx.viz.__options import GraphicOptions
 from hypergraphx.viz.__support import ignore_unused_args, filter_hypergraph
 
 
-def draw_second(points, radius,hyperedge_alpha, color, facecolor, ax = None):
+def _draw_hyperedge_set(
+        points: list[tuple[float, float,float,float]],
+        radius: Optional[float] = 0.1,
+        hyperedge_alpha: Optional[float] = 0.8,
+        color: Optional[str] = "FFBC79",
+        facecolor: Optional[str] = "FFBC79",
+        ax: Optional[plt.Axes] = None):
     lenPoints = len(points)
     vertexes_x = []
     vertexes_y = []
@@ -101,39 +108,65 @@ class vector():
 
 @ignore_unused_args
 def draw_sets(
-        hypergraph: Hypergraph,
-        figsize: tuple = (12, 7),
-        cardinality: tuple[int, int] | int = -1,
-        x_heaviest: float = 1.0,
-        ax: Optional[plt.Axes] = None,
-        pos: Optional[dict] = None,
-        edge_color: str = "lightgrey",
-        hyperedge_color_by_order: Optional[dict] = None,
-        hyperedge_facecolor_by_order: Optional[dict] = None,
-        edge_width: float = 1.2,
-        hyperedge_alpha: Union[float, np.array] = 0.8,
-        node_size: Union[int, np.array] = 150,
-        node_color: str | dict = "#E2E0DD",
-        node_facecolor: str | dict = "black",
-        node_shape: str | dict = "o",
-        with_node_labels: bool = True,
-        label_size: float = 10,
-        label_col: str = "black",
-        seed: int = 10,
-        scale: int = 1,
-        iterations: int = 1000,
-        opt_dist: float = 1,
-):
-    """Visualize a hypergraph."""
+    hypergraph: Hypergraph,
+    cardinality: tuple[int, int] | int = -1,
+    x_heaviest: float = 1.0,
+    draw_labels: bool = True,
+    hyperedge_color_by_order: Optional[dict] = None,
+    hyperedge_facecolor_by_order: Optional[dict] = None,
+    hyperedge_alpha: float | dict = 0.8,
+    scale: int = 1,
+    pos: Optional[dict] = None,
+    ax: Optional[plt.Axes] = None,
+    figsize: tuple[float, float] = (10, 10),
+    dpi: int = 300,
+    graphicOptions: Optional[GraphicOptions] = None,
+    **kwargs) -> None:
+    """
+    Draws a set projection of the hypergraph.
+     Parameters
+    ----------
+    h : Hypergraph.
+        The hypergraph to be projected.
+    cardinality: tuple[int,int]|int. optional
+        Allows you to filter hyperedges so that only those with the default cardinality are visible.
+        If it is a tuple, hyperedges with cardinality included in the tuple values will be displayed.
+        If -1, all the hyperedges will be visible.
+    x_heaviest: float, optional
+        Allows you to filter the hyperedges so that only the heaviest x's are shown.
+    draw_labels : bool
+        Decide if the labels should be drawn.
+    hyperedge_color_by_order: dict, optional
+        Used to determine the border color of each hyperedge using its order.
+    hyperedge_facecolor_by_order: dict, optional
+        Used to determine the color of each hyperedge using its order.
+    hyperedge_alpha: dict | float, optional
+        It's used to specify the alpha gradient of each hyperedge polygon. Each hyperedge can have its own alpha.
+    scale: int, optional
+        Used to influence the distance between nodes
+    pos : dict.
+        A dictionary with nodes as keys and positions as values.
+    ax : matplotlib.axes.Axes.
+        The axes to draw the graph on.
+    figsize : tuple, optional
+        Tuple of float used to specify the image size. Used only if ax is None.
+    dpi : int, optional
+        The dpi for the figsize. Used only if ax is None.
+    graphicOptions: Optional[GraphicOptions].
+        Object used to store all the common graphical settings among the representation methods.
+    kwargs : dict.
+        Keyword arguments to be passed to networkx.draw_networkx.
+    """
     # Initialize figure.
     if ax is None:
-        plt.figure(figsize=figsize)
+        plt.figure(figsize=figsize, dpi=dpi)
         plt.subplot(1, 1, 1)
         ax = plt.gca()
 
     #Filter the Hypergraph nodes and edges
     hypergraph = filter_hypergraph(hypergraph, cardinality, x_heaviest)
-
+    if graphicOptions is None:
+        graphicOptions = GraphicOptions()
     # Extract node positions based on the hypergraph clique projection.
     if pos is None:
         g = clique_projection(hypergraph)
@@ -155,44 +188,38 @@ def draw_sets(
     for e in edges:
         G.add_edge(e[0], e[1])
 
-    #Create a list of shapes for the hypergraphs if the shape is not a dictionary
-    if type(node_shape) == str:
-        node_shape = {n: node_shape for n in G.nodes()}
-    elif type(node_shape) == dict:
-       for node in G.nodes():
-           if node not in node_shape:
-               node_shape[node] = "o"
-    if type(node_color) == str:
-        node_color = {n: node_color for n in G.nodes()}
-    elif type(node_color) == dict:
-        for node in G.nodes():
-            if node not in node_color:
-                node_color[node] = "E2E0DD"
-    if type(node_facecolor) == str:
-        node_facecolor = {n: node_facecolor for n in G.nodes()}
-    elif type(node_facecolor) == dict:
-        for node in G.nodes():
-            if node not in node_facecolor:
-                node_facecolor[node] = "black"
+    #Ensure that all the nodes and bianry edges have the graphical attributes specified
+    graphicOptions.check_if_options_are_valid(G)
+    #Draw the Nodes
     for node in G.nodes():
         nx.draw_networkx_nodes(
             G,
             pos,
             nodelist = [node],
-            node_size=node_size,
-            node_shape=node_shape[node],
-            node_color=node_color[node],
-            edgecolors=node_facecolor[node],
+            node_size=graphicOptions.node_size[node],
+            node_shape=graphicOptions.node_shape[node],
+            node_color=graphicOptions.node_color[node],
+            edgecolors=graphicOptions.node_facecolor[node],
             ax=ax,
+            **kwargs
         )
-    if with_node_labels:
+    #Add the labels to the nodes if necessary
+    if draw_labels:
         nx.draw_networkx_labels(
             G,
             pos,
             labels  = dict((n, n) for n in G.nodes()),
-            font_size=label_size,
-            font_color=label_col
+            font_size=graphicOptions.label_size,
+            font_color=graphicOptions.label_col,
+            **kwargs
         )
+    #Ensure that all the hyperedges have an alpha
+    if type(hyperedge_alpha) == float:
+        hyperedge_alpha = {edge: hyperedge_alpha for edge in hypergraph.get_edges()}
+    elif type(hyperedge_alpha) == dict:
+        for edge in hypergraph.get_edges():
+            if edge not in hyperedge_alpha:
+                hyperedge_alpha[edge] = 0.8
 
     # Plot the hyperedges (size>2/order>1).
     for hye in list(hypergraph.get_edges()):
@@ -206,32 +233,29 @@ def draw_sets(
 
             # Order points in a clockwise fashion.
             points = sorted(points, key=lambda x: np.arctan2(x[1] - y_c, x[0] - x_c))
-
             points = [
                 (x_c + 1.8 * (x - x_c), y_c + 1.8 * (y - y_c), a, b) for x, y, a,b in points
             ]
-
+            #Calculate Order and use it to select a color
             order = len(hye) - 1
-
             if order not in hyperedge_color_by_order.keys():
                 std_color = "#" + "%06x" % random.randint(0, 0xFFFFFF)
                 hyperedge_color_by_order[order] = std_color
-
             if order not in hyperedge_facecolor_by_order.keys():
                 std_face_color = "#" + "%06x" % random.randint(0, 0xFFFFFF)
                 hyperedge_facecolor_by_order[order] = std_face_color
-
             color = hyperedge_color_by_order[order]
             facecolor = hyperedge_facecolor_by_order[order]
-            draw_second(points, 0.1, hyperedge_alpha, color, facecolor, ax)
+            #Draw the Hyperedge
+            _draw_hyperedge_set(points, 0.1, hyperedge_alpha[hye], color, facecolor, ax)
 
     #Draws Binary Edges
-    nx.draw_networkx_edges(G, pos, width=edge_width, edge_color=edge_color, ax=ax)
+    for edge in G.edges():
+        nx.draw_networkx_edges(G, pos, edgelist=[edge],width=graphicOptions.edge_width[edge],
+                               edge_color=graphicOptions.edge_color[edge], ax=ax, **kwargs)
 
     ax.axis("equal")
     plt.axis("equal")
 
-h = Hypergraph([(1,2,3),(4,5,6),(6,7,8,9),(10,11,12,1,4),(4,1),(3,6)])
-draw_sets(h)
-plt.show()
+
 

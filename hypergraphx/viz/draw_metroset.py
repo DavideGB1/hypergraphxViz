@@ -7,6 +7,7 @@ from networkx import subgraph, kamada_kawai_layout
 from hypergraphx import Hypergraph
 
 from hypergraphx.viz.__chivers_rodgers import chivers_rodgers
+from hypergraphx.viz.__options import GraphicOptions
 from hypergraphx.viz.__support import filter_hypergraph, __calculate_incidence, __distance, __draw_line, ignore_unused_args
 
 sys.path.append("..")
@@ -439,9 +440,7 @@ def __draw_metrograph(
         ax: plt.Axes,
         palette: list = None,
         draw_labels: bool = True,
-        node_size: int = 300,
-        node_color: str = "#1f48b4",
-        node_shape: str = "o") -> None:
+        graphicOptions: Optional[GraphicOptions] = GraphicOptions()) -> None:
     """
     Draw the graph as a metro map.
     Parameters
@@ -517,62 +516,62 @@ def __draw_metrograph(
                 pass
 
         idx += 1
-
-    nx.draw_networkx_nodes(g, layout, ax = ax, node_size = node_size, node_shape=node_shape, node_color = node_color)
+    graphicOptions.check_if_options_are_valid(g)
+    for node in g.nodes():
+        nx.draw_networkx_nodes(g, layout, ax = ax, nodelist = [node],node_size = graphicOptions.node_size[node],
+                               node_shape=graphicOptions.node_shape[node], node_color = graphicOptions.node_color[node],
+                               edgecolors = graphicOptions.node_facecolor[node])
     if draw_labels:
         labels = dict((n, n) for n in g.nodes())
-        nx.draw_networkx_labels(g, pos=layout, labels=labels, ax = ax)
+        nx.draw_networkx_labels(g, pos=layout, labels=labels,font_size=graphicOptions.label_size,
+            font_color=graphicOptions.label_col, ax = ax)
 
 @ignore_unused_args
 def draw_metroset(
-        h: Hypergraph,
-        iterations: int = 10,
-        cardinality: tuple[int,int]|int = -1,
-        x_heaviest: float = 1.0,
-        figsize: tuple[float, float] = (10, 10),
-        dpi: int = 300,
-        ax: Optional[plt.Axes] = None,
-        palette: list = None,
-        edge_lenght: int = 300,
-        draw_labels: bool = True,
-        node_size: int = 300,
-        node_color: str = "#1f48b4",
-        node_shape: str = "o") -> None:
+    h: Hypergraph,
+    cardinality: tuple[int,int]|int = -1,
+    x_heaviest: float = 1.0,
+    draw_labels: bool = True,
+    palette: list = None,
+    edge_lenght: int = 300,
+    iterations: int = 10,
+    ax: Optional[plt.Axes] = None,
+    figsize: tuple[float, float] = (10, 10),
+    dpi: int = 300,
+    graphicOptions: Optional[GraphicOptions] = GraphicOptions()) -> None:
     """
     Draw the hypergraph using the MetroSet pipeline.
     Parameters
     ----------
-        h : Hypergraph
-            The hypergraph to draw.
-        iterations : int
-            Number of iterations for the optimization algorithm.
-        cardinality: tuple[int,int]|int. optional
-            Allows you to filter hyperedges so that only those with the default cardinality are visible.
-            If it is a tuple, hyperedges with cardinality included in the tuple values will be displayed.
-            If -1, all the hyperedges will be visible.
-        x_heaviest: float, optional
-            Allows you to filter the hyperedges so that only the heaviest x's are shown.
-        figsize : tuple, optional
-            Tuple of float used to specify the image size. Used only if ax is None.
-        dpi : int, optional
-            The dpi for the figsize. Used only if ax is None.
-        ax : plt.Axes, optional
-            Axis if the user wants to specify an image.
-        edge_lenght : int
-            Ideal lenght for the metro edges.
-        palette : list
-            A list of colors.
-        draw_labels : bool
-            Decide if labels should be drawn.
-        node_size : int
-            Size of the nodes.
-        node_color : str
-            HEX value that determines the color of the nodes.
-        node_shape : str
-            Use standard networkx shapes.
+    h : Hypergraph
+        The hypergraph to draw.
+    cardinality: tuple[int,int]|int. optional
+        Allows you to filter hyperedges so that only those with the default cardinality are visible.
+        If it is a tuple, hyperedges with cardinality included in the tuple values will be displayed.
+        If -1, all the hyperedges will be visible.
+    x_heaviest: float, optional
+        Allows you to filter the hyperedges so that only the heaviest x's are shown.
+    draw_labels : bool
+        Decide if labels should be drawn.
+    palette : list
+        A list of colors.
+    edge_lenght : int
+        Ideal lenght for the metro edges.
+    iterations : int
+        Number of iterations for the optimization algorithm.
+    ax : plt.Axes, optional
+        Axis if the user wants to specify an image.
+    figsize : tuple, optional
+        Tuple of float used to specify the image size. Used only if ax is None.
+    dpi : int, optional
+        The dpi for the figsize. Used only if ax is None.
+    graphicOptions: Optional[GraphicOptions].
+        Object used to store all the common graphical settings among the representation methods.
     Returns
     -------
     """
+
+    #To be commented. Too complex, need to find the will :)
     if ax is None:
         plt.figure(figsize=figsize, dpi=dpi)
         plt.subplot(1, 1, 1)
@@ -593,5 +592,4 @@ def draw_metroset(
     initial_layout = kamada_kawai_layout(path_graph)
     refined_graph, paths = __calculate_new_paths(paths, initial_layout, iterations)
     initial_layout = chivers_rodgers(refined_graph, paths, initial_layout, edgeLength=edge_lenght)
-    __draw_metrograph(refined_graph, paths, initial_layout, draw_labels = draw_labels, node_size = node_size,
-                      node_color = node_color, node_shape = node_shape, palette = palette, ax = ax)
+    __draw_metrograph(refined_graph, paths, initial_layout, draw_labels = draw_labels, graphicOptions = graphicOptions, palette = palette, ax = ax)
