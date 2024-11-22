@@ -3,30 +3,26 @@ from typing import Optional
 import matplotlib.pyplot as plt
 from hypergraphx import Hypergraph
 from hypergraphx.core.temporal_hypergraph import TemporalHypergraph
+from hypergraphx.viz.__options import GraphicOptions
 from hypergraphx.viz.__support import ignore_unused_args, filter_hypergraph, __check_edge_intersection
+from tests.linalg.test_hye_list_to_binary_incidence import shapes
 
 
 @ignore_unused_args
 def draw_PAOH(
     h: Hypergraph | TemporalHypergraph,
-    space_optimization: bool = False,
     cardinality: tuple[int,int]|int = -1,
     x_heaviest: float = 1.0,
-    figsize: tuple[float, float] = (10, 10),
-    dpi: int = 300,
-    ax: Optional[plt.Axes] = None,
-    node_shape: str = "o",
-    node_color: str = "#FFFFFF",
-    node_size: int = 10,
-    edge_color: str = "#000000",
-    edge_width: float = 2,
-    marker_edge_color: str = "#000000",
-    marker_edge_width: int = 3,
+    space_optimization: bool = False,
     y_label: str = "Nodes",
     x_label: str = "Edges",
     time_font_size: int = 18,
     time_separation_line_color: str = "#000000",
     time_separation_line_width: int = 4,
+    ax: Optional[plt.Axes] = None,
+    figsize: tuple[float, float] = (10, 10),
+    dpi: int = 300,
+    graphicOptions: Optional[GraphicOptions] = None,
     **kwargs) -> None:
     """
     Draws a PAOH representation of the hypergraph.
@@ -34,34 +30,14 @@ def draw_PAOH(
     ----------
     h : Hypergraph.
         The hypergraph to be projected.
-    space_optimization: bool
-        Flag used to determine if the column compression function should be used or not.
     cardinality: tuple[int,int]|int. optional
         Allows you to filter hyperedges so that only those with the default cardinality are visible.
         If it is a tuple, hyperedges with cardinality included in the tuple values will be displayed.
         If -1, all the hyperedges will be visible.
     x_heaviest: float, optional
         Allows you to filter the hyperedges so that only the heaviest x's are shown.
-    figsize : tuple, optional
-        Tuple of float used to specify the image size. Used only if ax is None.
-    dpi : int, optional
-        The dpi for the figsize. Used only if ax is None.
-    ax : plt.Axes, optional
-         Axis if the user wants to specify an image.
-    node_shape : str, optional
-        The shape of the nodes in the image. Use standard MathPlotLib values.
-    node_color : str, optional
-        HEX value for the nodes color.
-    node_size : int, optional
-        The size of the nodes in the image.
-    edge_color : str, optional
-        HEX value for the edges color.edge_width: float = 2
-    edge_width : float, optional
-        Width of the edges in the grid.
-    marker_edge_color : str, optional
-        Color of the node markers in each hyperedge.
-    marker_edge_width : int, optional
-        Width of the node markers in each hyperedge.
+    space_optimization: bool
+        Flag used to determine if the column compression function should be used or not.
     y_label : str, optional
         Label for the y-axis.
     x_label : str, optional
@@ -72,6 +48,14 @@ def draw_PAOH(
         Color of the lines that separates the timezones.
     time_separation_line_width: int, optional
         Width of the lines that separates the timezones.
+    ax : plt.Axes, optional
+         Axis if the user wants to specify an image.
+    figsize : tuple, optional
+        Tuple of float used to specify the image size. Used only if ax is None.
+    dpi : int, optional
+        The dpi for the figsize. Used only if ax is None.
+    graphicOptions: Optional[GraphicOptions].
+        Object used to store all the common graphical settings among the representation methods.
     kwargs : dict.
         Keyword arguments to be passed to the various MathPlotLib function.
     Returns
@@ -81,17 +65,25 @@ def draw_PAOH(
         plt.figure(figsize=figsize, dpi=dpi)
         plt.subplot(1, 1, 1)
         ax = plt.gca()
-
+    #Filters the hypergraph
     hypergraph = filter_hypergraph(h,cardinality, x_heaviest)
+    #Sets up the graphical options
+    if graphicOptions is None:
+        graphicOptions = GraphicOptions(is_PAOH=True)
+    graphicOptions.check_if_options_are_valid(hypergraph)
+    #Creates a custom node mapping
     node_mapping = dict()
     idx = 0
     for node in hypergraph.get_nodes():
         node_mapping[idx] = node
         idx += 1
     max_node = idx - 0.5
+    #Mapping for the time stamps
     timestamp_mapping = dict()
     timestamps = []
+    #What to if we are working with a Temporal Hypergraph
     if isinstance(hypergraph, TemporalHypergraph):
+        #Places the edges in the correct timezones
         for edge in hypergraph.get_edges():
             if edge[0] not in timestamp_mapping:
                 timestamp_mapping[edge[0]] = []
@@ -105,6 +97,7 @@ def draw_PAOH(
                 for edge in edge_set:
                     new_list.append([edge])
                 timestamps.append(new_list)
+    #In case of a normal Hypergraph
     else:
         #Get the edged position
         if space_optimization:
@@ -118,22 +111,27 @@ def draw_PAOH(
     idx_timestamp = 0
     #Draw each column
     for timestamp in timestamps:
+        #Stamp the timestamp name
         if isinstance(hypergraph, TemporalHypergraph):
             ax.text(idx - 0.45, max_node - 0.175, "Time: " + str(list(timestamp_mapping.keys())[idx_timestamp]),
                     fontsize=time_font_size, **kwargs)
+        #Plots the columns in the timestamp
         for column_set in timestamp:
             column_set = sorted(column_set)
-            #Plo each column in the relative position
+            #Plot each column in the relative position
             for edge in column_set:
+                original_edge = edge
                 edge = tuple(sorted(edge))
                 first_node = edge[0]
                 last_node = edge[len(edge) - 1]
                 ax.plot([idx, idx], [list(node_mapping.values()).index(first_node), list(node_mapping.values()).index(last_node)],
-                     color=edge_color, linewidth = edge_width, **kwargs)
+                     color=graphicOptions.edge_color[original_edge], linewidth = graphicOptions.edge_width[original_edge], **kwargs)
                 for y in edge:
-                    ax.plot(idx, list(node_mapping.values()).index(y), node_shape, color=node_color,
-                         markeredgecolor=marker_edge_color, markersize=node_size, markeredgewidth=marker_edge_width, **kwargs)
+                    ax.plot(idx, list(node_mapping.values()).index(y), marker= graphicOptions.node_shape[y],
+                        color=graphicOptions.node_color[y], markeredgecolor=graphicOptions.node_facecolor[y],
+                        markersize=graphicOptions.node_size[y], **kwargs)
             idx += 0.5
+        #Plot the separating line for the timestamps
         if isinstance(hypergraph, TemporalHypergraph):
             ax.plot([idx, idx], [-0.5, max_node], color=time_separation_line_color,
                     linewidth=time_separation_line_width, **kwargs)
