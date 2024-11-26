@@ -7,7 +7,7 @@ from networkx import subgraph, kamada_kawai_layout
 from hypergraphx import Hypergraph
 
 from hypergraphx.viz.__chivers_rodgers import chivers_rodgers
-from hypergraphx.viz.__options import GraphicOptions
+from hypergraphx.viz.__graphic_options import GraphicOptions
 from hypergraphx.viz.__support import filter_hypergraph, __calculate_incidence, __distance, __draw_line, ignore_unused_args
 
 sys.path.append("..")

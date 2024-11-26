@@ -405,7 +405,7 @@ class DirectedHypergraph:
     def get_nodes(self, metadata=False):
         """Returns the list of nodes in the hypergraph."""
         if not metadata:
-            list(self._adj_out.keys())
+            return list(self._adj_out.keys())
         else:
             return {node: self.node_metadata[node] for node in self._adj_out.keys()}
 

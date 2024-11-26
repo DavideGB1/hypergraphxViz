@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 
 from __support import __check_edge_intersection, x_heaviest_edges_hypergraph, cardinality_hypergraph, filter_hypergraph, \
     ignore_unused_args
-from hypergraphx.viz.__options import GraphicOptions
+from hypergraphx.viz.__graphic_options import GraphicOptions
 
 
 def __radial_edge_placemente_calculation(h: Hypergraph) -> (list,list):

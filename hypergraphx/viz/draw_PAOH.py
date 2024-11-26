@@ -1,12 +1,27 @@
-from typing import Optional
+from typing import Optional, Tuple
 
 import matplotlib.pyplot as plt
-from hypergraphx import Hypergraph
+from hypergraphx import Hypergraph, DirectedHypergraph
 from hypergraphx.core.temporal_hypergraph import TemporalHypergraph
-from hypergraphx.viz.__options import GraphicOptions
+from hypergraphx.viz.__graphic_options import GraphicOptions
 from hypergraphx.viz.__support import ignore_unused_args, filter_hypergraph, __check_edge_intersection
-from tests.linalg.test_hye_list_to_binary_incidence import shapes
 
+def __support_to_normal_hypergraph(directe_hg: DirectedHypergraph):
+    orginal_edges = directe_hg.get_edges()
+    new_hypergraph = Hypergraph()
+    edge_directed_mapping = dict()
+    for edge in orginal_edges:
+        compressed_edge = []
+        for node in edge[0]:
+            compressed_edge.append(node)
+        for node in edge[1]:
+            compressed_edge.append(node)
+        edge_directed_mapping[tuple(sorted(compressed_edge))] = edge
+        if tuple(sorted(compressed_edge)) not in new_hypergraph.get_edges():
+            new_hypergraph.add_edge(compressed_edge)
+        else:
+            new_hypergraph.set_edge_metadata(compressed_edge, "I/O")
+    return new_hypergraph, edge_directed_mapping
 
 @ignore_unused_args
 def draw_PAOH(
@@ -70,7 +85,7 @@ def draw_PAOH(
     #Sets up the graphical options
     if graphicOptions is None:
         graphicOptions = GraphicOptions(is_PAOH=True)
-    graphicOptions.check_if_options_are_valid(hypergraph)
+
     #Creates a custom node mapping
     node_mapping = dict()
     idx = 0
@@ -81,6 +96,10 @@ def draw_PAOH(
     #Mapping for the time stamps
     timestamp_mapping = dict()
     timestamps = []
+    isDirected = False
+    if isinstance(hypergraph, DirectedHypergraph):
+        hypergraph, edge_directed_mapping = __support_to_normal_hypergraph(hypergraph)
+        isDirected = True
     #What to if we are working with a Temporal Hypergraph
     if isinstance(hypergraph, TemporalHypergraph):
         #Places the edges in the correct timezones
@@ -109,6 +128,7 @@ def draw_PAOH(
         timestamps.append(column_list)
     idx = 0
     idx_timestamp = 0
+    graphicOptions.check_if_options_are_valid(hypergraph)
     #Draw each column
     for timestamp in timestamps:
         #Stamp the timestamp name
@@ -126,8 +146,27 @@ def draw_PAOH(
                 last_node = edge[len(edge) - 1]
                 ax.plot([idx, idx], [list(node_mapping.values()).index(first_node), list(node_mapping.values()).index(last_node)],
                      color=graphicOptions.edge_color[original_edge], linewidth = graphicOptions.edge_width[original_edge], **kwargs)
-                for y in edge:
-                    ax.plot(idx, list(node_mapping.values()).index(y), marker= graphicOptions.node_shape[y],
+                if isDirected:
+                    true_edge = edge_directed_mapping[original_edge]
+                    edge_metadata =  hypergraph.get_edge_metadata(original_edge)
+                    if edge_metadata != "I/O":
+                        in_edge_color = graphicOptions.in_edge_color
+                        out_edge_color = graphicOptions.out_edge_color
+                    else:
+                        in_edge_color = graphicOptions.default_node_color
+                        out_edge_color = graphicOptions.default_node_color
+                    for node in true_edge[0]:
+                        ax.plot(idx, list(node_mapping.values()).index(node), marker=graphicOptions.node_shape[node],
+                                color=in_edge_color, markeredgecolor=graphicOptions.node_facecolor[node],
+                                markersize=graphicOptions.node_size[node], **kwargs)
+                    for node in true_edge[1]:
+                        ax.plot(idx, list(node_mapping.values()).index(node), marker=graphicOptions.node_shape[node],
+                                color=out_edge_color, markeredgecolor=graphicOptions.node_facecolor[node],
+                                markersize=graphicOptions.node_size[node], **kwargs)
+
+                else:
+                    for y in edge:
+                        ax.plot(idx, list(node_mapping.values()).index(y), marker= graphicOptions.node_shape[y],
                         color=graphicOptions.node_color[y], markeredgecolor=graphicOptions.node_facecolor[y],
                         markersize=graphicOptions.node_size[y], **kwargs)
             idx += 0.5

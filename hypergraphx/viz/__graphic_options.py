@@ -1,6 +1,7 @@
 from typing import Optional
-from networkx import Graph
-from hypergraphx import Hypergraph, TemporalHypergraph
+from networkx import Graph, DiGraph
+from hypergraphx import Hypergraph, TemporalHypergraph, DirectedHypergraph
+
 
 class GraphicOptions:
     """
@@ -19,8 +20,12 @@ class GraphicOptions:
             edge_node_color: Optional[str | dict] = '#8a0303',
             label_size: Optional[int] = 10,
             label_col: Optional[str] = "black",
+            in_edge_color: Optional[str] = "green",
+            out_edge_color: Optional[str] = "red",
             ):
         self.node_size = node_size
+        self.in_edge_color = in_edge_color
+        self.out_edge_color = out_edge_color
         if is_PAOH:
             self.default_node_size = 10
             if self.node_size is None:
@@ -49,12 +54,16 @@ class GraphicOptions:
         self.edge_shape = edge_shape
         self.label_size = label_size
         self.label_col = label_col
-    def check_if_options_are_valid(self, anygraph: Graph|Hypergraph|TemporalHypergraph):
+    def check_if_options_are_valid(self, anygraph: Graph|Hypergraph|TemporalHypergraph|DirectedHypergraph):
         node_list = []
         edges_list = []
-        if type(anygraph) == Graph:
+        if isinstance(anygraph, Graph) or isinstance(anygraph, DiGraph):
             node_list = anygraph.nodes()
             edges_list = anygraph.edges()
+        elif isinstance(anygraph, DirectedHypergraph):
+            node_list = anygraph.get_nodes()
+            edges_list = anygraph.get_edges()
+
         else:
             node_list = anygraph.get_nodes()
             edges_list = anygraph.get_edges()
