@@ -174,7 +174,8 @@ def draw_radial_layout(
         min_x = min(min_x, value_x)
         max_y = max(max_y, value_y)
         min_y = min(min_y, value_y)
-        ax.plot(value_x, value_y, graphicOptions.node_shape[node], color=graphicOptions.node_color[node], markersize=graphicOptions.node_size[node], **kwargs)
+        ax.plot(value_x, value_y, graphicOptions.node_shape[node], color=graphicOptions.node_color[node], markersize=graphicOptions.node_size[node],
+                markeredgecolor=graphicOptions.node_facecolor[node], **kwargs)
         if draw_labels:
             ax.text(value_x *font_spacing_multiplier, value_y*font_spacing_multiplier, node,
                     fontsize=graphicOptions.label_size, color=graphicOptions.label_col, **kwargs)
@@ -215,9 +216,10 @@ def draw_radial_layout(
                 min_x = min(min_x, value_x)
                 max_y = max(max_y, value_y)
                 min_y = min(min_y, value_y)
-                ax.plot(value_x, value_y, graphicOptions.node_shape[node], color=marker_color, markersize=graphicOptions.node_size[node], **kwargs)
+                ax.plot(value_x, value_y, graphicOptions.node_shape[node], color=marker_color, markersize=graphicOptions.node_size[node],
+                        markeredgecolor=graphicOptions.node_facecolor[node], **kwargs)
 
-        sector_depth += 0.25
+        sector_depth += 0.35
     ax.set_aspect('equal')
     ax.set_xticks([])
     ax.set_yticks([])
