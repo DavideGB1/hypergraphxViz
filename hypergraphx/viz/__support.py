@@ -4,7 +4,7 @@ from math import trunc
 
 from networkx import Graph
 
-from hypergraphx import Hypergraph
+from hypergraphx import Hypergraph, DirectedHypergraph
 from matplotlib import pyplot as plt
 
 
@@ -184,4 +184,3 @@ def ignore_unused_args(func):
         return func(*args, **kwargs)
 
     return wrapper
-

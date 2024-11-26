@@ -5,14 +5,14 @@ import networkx as nx
 from fa2_modified import ForceAtlas2
 from networkx import is_planar, planar_layout, kamada_kawai_layout
 
-from hypergraphx import Hypergraph
+from hypergraphx import Hypergraph, DirectedHypergraph
 from hypergraphx.representations.projections import (
     bipartite_projection,
     clique_projection, extra_node_projection)
 
 
 from __support import filter_hypergraph, ignore_unused_args
-from hypergraphx.viz.__options import GraphicOptions
+from hypergraphx.viz.__graphic_options import GraphicOptions
 
 
 @ignore_unused_args
@@ -231,7 +231,7 @@ def draw_extra_node(
         Keyword arguments to be passed to networkx.draw_networkx.
     """
     hypergraph = filter_hypergraph(h, cardinality, x_heaviest)
-    g, binary_edges = extra_node_projection(hypergraph)
+    g, binary_edges, isDirected = extra_node_projection(hypergraph)
 
     if ax is None:
         plt.figure(figsize=figsize, dpi=dpi)
@@ -270,7 +270,7 @@ def draw_extra_node(
     graphicOptions.check_if_options_are_valid(g)
 
     __draw_in_plot(g, pos, ax = ax, show_edge_nodes=show_edge_nodes, draw_labels=draw_labels,
-                   graphicOptions = graphicOptions, **kwargs)
+                   graphicOptions = graphicOptions,isDirected=isDirected, **kwargs)
 
     ax.set_aspect('equal')
     ax.autoscale(enable=True, axis='both')
@@ -279,6 +279,7 @@ def __draw_in_plot(
     g,
     pos,
     graphicOptions: GraphicOptions,
+    isDirected: bool = False,
     ax = None,
     show_edge_nodes: bool = False,
     draw_labels: bool = True,
@@ -293,6 +294,8 @@ def __draw_in_plot(
         A dictionary with nodes as keys and positions as values.
     graphicOptions: Optional[GraphicOptions].
         Object used to store all the common graphical settings among the representation methods.
+    isDirected : bool, optional
+        Used to determine if a directed hypergraph should be drawn or a normal one.
     ax : matplotlib.axes.Axes.
         The axes to draw the graph on.
     show_edge_nodes : bool
@@ -309,7 +312,7 @@ def __draw_in_plot(
     node_list = [x for x in g.nodes() if not str(x).startswith('E')]
     for edge in g.edges():
         nx.draw_networkx_edges(g, pos, edgelist=[edge], ax=ax, edge_color=graphicOptions.edge_color[edge],
-                               width=graphicOptions.edge_width[edge], **kwargs)
+                               width=graphicOptions.edge_width[edge],arrows = isDirected, **kwargs)
     for node in node_list:
         nx.draw_networkx_nodes(
             g,

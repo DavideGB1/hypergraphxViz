@@ -7,7 +7,7 @@ import numpy as np
 from networkx import kamada_kawai_layout
 from hypergraphx import Hypergraph
 from hypergraphx.representations.projections import clique_projection
-from hypergraphx.viz.__options import GraphicOptions
+from hypergraphx.viz.__graphic_options import GraphicOptions
 from hypergraphx.viz.__support import ignore_unused_args, filter_hypergraph
 
 

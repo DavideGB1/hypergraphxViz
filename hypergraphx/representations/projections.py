@@ -1,6 +1,6 @@
 import networkx as nx
 
-from hypergraphx import Hypergraph
+from hypergraphx import Hypergraph, DirectedHypergraph
 from hypergraphx.measures.edge_similarity import intersection, jaccard_similarity
 
 
@@ -177,7 +177,7 @@ def line_graph(h: Hypergraph, distance="intersection", s=1, weighted=False):
                     vis[k] = True
     return g, id_to_edge
 
-def extra_node_projection(h: Hypergraph) -> [nx.Graph,list]:
+def extra_node_projection(h: Hypergraph|DirectedHypergraph) -> [nx.Graph,list]:
     """
     Returns a graph representation of the hypergraph using the extra-node projection method.
     Parameters
@@ -203,9 +203,22 @@ def extra_node_projection(h: Hypergraph) -> [nx.Graph,list]:
 
     idx = 0
     binary_edges = list()
+    isDirected = False
+    if isinstance(h, DirectedHypergraph):
+        g = g.to_directed()
+        isDirected = True
     #Manage Hyperedges
     for edge in h.get_edges():
-        edge = tuple(sorted(edge))
+        original_edge = edge
+        if isDirected:
+            compressed_edge = []
+            for node in edge[0]:
+                compressed_edge.append(node)
+            for node in edge[1]:
+                compressed_edge.append(node)
+            edge = compressed_edge
+        else:
+            edge = tuple(sorted(edge))
         #Manage binary relations
         if len(edge) == 2:
             weight = 1
@@ -214,15 +227,21 @@ def extra_node_projection(h: Hypergraph) -> [nx.Graph,list]:
             binary_edges.append((edge[0], edge[1], weight))
         #Any other type of relation
         else:
-            obj_to_id[edge] = 'E' + str(idx)
+            obj_to_id[tuple(edge)] = 'E' + str(idx)
             id_to_obj['E' + str(idx)] = edge
-            g.add_node(obj_to_id[edge])
+            g.add_node(obj_to_id[tuple(edge)])
             weight = 1
             if h.is_weighted():
-                weight = h.get_weight(edge)
-            for node in edge:
-                 g.add_edge(obj_to_id[edge], node, weight=weight)
+                weight = h.get_weight(original_edge)
+            if isDirected:
+                for node in original_edge[0]:
+                    g.add_edge(node,obj_to_id[tuple(edge)], weight=weight)
+                for node in original_edge[1]:
+                    g.add_edge(obj_to_id[tuple(edge)],node, weight=weight)
+            else:
+                for node in original_edge:
+                    g.add_edge(node,obj_to_id[tuple(edge)], weight=weight)
         idx += 1
 
-    return g, binary_edges
+    return g, binary_edges, isDirected
 
