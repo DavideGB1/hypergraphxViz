@@ -523,8 +523,8 @@ def __draw_metrograph(
                                edgecolors = graphicOptions.node_facecolor[node])
     if draw_labels:
         labels = dict((n, n) for n in g.nodes())
-        nx.draw_networkx_labels(g, pos=layout, labels=labels,font_size=graphicOptions.label_size,
-            font_color=graphicOptions.label_col, ax = ax)
+        nx.draw_networkx_labels(g, pos=layout, labels=labels, font_size=graphicOptions.label_size,
+                                font_color=graphicOptions.label_color, ax = ax)
 
 @ignore_unused_args
 def draw_metroset(

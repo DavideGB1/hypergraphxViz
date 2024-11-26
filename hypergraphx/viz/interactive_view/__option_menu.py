@@ -1,30 +1,35 @@
+import inspect
 import re
 
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QComboBox, QDoubleSpinBox
 
-from hypergraphx.viz.interactive_view.__options import Options
+from hypergraphx.viz.__graphic_options import GraphicOptions
 
 
 class MenuWindow(QWidget):
 
-    modified_options = pyqtSignal(Options)
-    def __init__(self, options = Options(), parent = None):
+    modified_options = pyqtSignal(GraphicOptions)
+    def __init__(self, graphic_options = GraphicOptions(), parent = None):
         super(MenuWindow, self).__init__(parent)
-        self.options = options
+        self.graphic_options = graphic_options
         self.setWindowTitle("Options")
         self.layout = QVBoxLayout()
-        for x in options.lineEdit_dict.items():
-            self.add_lineEdit(x[0], x[1])
-        for x in options.lineEditColor_dict.items():
-            self.add_lineEdit(x[0], x[1], color=True)
-        for x in options.combobox_dict.items():
-            self.add_combobox(x[0], x[1])
-        for x in options.spinbox_dict.items():
-            self.add_spinbox(x[0], x[1])
+        attributes = self.graphic_options.__dict__
+        to_remove = [attribute for attribute in attributes if "default" in attribute]
+        for attribute in to_remove:
+            attributes.pop(attribute)
+        for attribute_name in attributes:
+            if "color" in attribute_name:
+                self.add_lineEdit(attribute_name, attributes[attribute_name], True)
+            elif "shape" in attribute_name:
+                self.add_combobox(attribute_name, attributes[attribute_name])
+            elif "size" in attribute_name:
+                if attributes[attribute_name] is not None:
+                    self.add_spinbox(attribute_name, attributes[attribute_name])
         self.setLayout(self.layout)
     def send_data(self):
-        self.modified_options.emit(self.options)
+        self.modified_options.emit(self.graphic_options)
 
     def add_lineEdit(self, name, value, color = False):
         hbox_btn = QHBoxLayout()
@@ -35,9 +40,9 @@ class MenuWindow(QWidget):
             if color:
                 hex_pattern = r'^#[0-9a-fA-F]{6}$'
                 if re.match(hex_pattern, lineEdit.text()):
-                    self.options.lineEditColor_dict[name] = lineEdit.text()
+                    self.graphic_options.__setattr__(name, lineEdit.text())
             else:
-                self.options.lineEdit_dict[name] = lineEdit.text()
+                self.graphic_options.__setattr__(name, lineEdit.text())
             self.send_data()
 
         lineEdit.textChanged.connect(lineEdit_selection)
@@ -49,11 +54,32 @@ class MenuWindow(QWidget):
         label = QLabel(name)
         hbox_btn.addWidget(label)
         combobox = QComboBox()
-        combobox.addItems(['.', 'o', 'v', '^', '<', '>', '8', 's', 'p', '*', 'h', 'H', 'D', 'd', 'P', 'X'])
-        combobox.setCurrentText(value)
+        translation_dictionary = dict()
+        translation_dictionary['.'] = "Small Circle"
+        translation_dictionary['o'] = "Big Circle"
+        translation_dictionary['v'] = "Down Triangle"
+        translation_dictionary['^'] = "Up Triangle"
+        translation_dictionary['<'] = "Left Triangle"
+        translation_dictionary['>'] = "Right Triangle"
+        translation_dictionary['8'] = "Octagon"
+        translation_dictionary['s'] = "Square"
+        translation_dictionary['p'] = "Pentagon"
+        translation_dictionary['*'] = "Star"
+        translation_dictionary['h'] = "Vertical Hexagon"
+        translation_dictionary['H'] = "Horizontal Hexagon"
+        translation_dictionary['D'] = "Regular Rhombus"
+        translation_dictionary['d'] = "Rhombus"
+        translation_dictionary['P'] = "Plus"
+        translation_dictionary['X'] = "Cross"
+
+        combobox.addItems(translation_dictionary.values())
+        combobox.setCurrentText(translation_dictionary[value])
 
         def comboBox_selection():
-            self.options.combobox_dict[name] = combobox.currentText()
+            key_list = list(translation_dictionary.keys())
+            val_list = list(translation_dictionary.values())
+            position = val_list.index(combobox.currentText())
+            self.graphic_options.__setattr__(name, key_list[position])
             self.send_data()
 
         combobox.currentTextChanged.connect(comboBox_selection)
@@ -71,9 +97,17 @@ class MenuWindow(QWidget):
         spinBox.setSingleStep(1)
 
         def spinBox_selection():
-            self.options.spinbox_dict[name] = spinBox.value()
+            self.graphic_options.__setattr__(name, spinBox.value())
             self.send_data()
 
         spinBox.valueChanged.connect(spinBox_selection)
         hbox_btn.addWidget(spinBox)
         self.layout.addLayout(hbox_btn)
+
+def get_default_args(func):
+    signature = inspect.signature(func)
+    return {
+        k: v.default
+        for k, v in signature.parameters.items()
+        if v.default is not inspect.Parameter.empty
+    }

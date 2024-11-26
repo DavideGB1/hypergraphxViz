@@ -145,7 +145,7 @@ def draw_PAOH(
                 first_node = edge[0]
                 last_node = edge[len(edge) - 1]
                 ax.plot([idx, idx], [list(node_mapping.values()).index(first_node), list(node_mapping.values()).index(last_node)],
-                     color=graphicOptions.edge_color[original_edge], linewidth = graphicOptions.edge_width[original_edge], **kwargs)
+                        color=graphicOptions.edge_color[original_edge], linewidth = graphicOptions.edge_size[original_edge], **kwargs)
                 if isDirected:
                     true_edge = edge_directed_mapping[original_edge]
                     edge_metadata =  hypergraph.get_edge_metadata(original_edge)
