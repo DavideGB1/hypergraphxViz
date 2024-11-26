@@ -73,7 +73,7 @@ def draw_bipartite(
     node_list = [x for x in g.nodes() if x.startswith('N')]
     for edge in g.edges():
         nx.draw_networkx_edges(g, pos, edgelist= [edge], ax=ax, edge_color=graphicOptions.edge_color[edge],
-                               width=graphicOptions.edge_width[edge])
+                               width=graphicOptions.edge_size[edge])
     for node in node_list:
         nx.draw_networkx_nodes(g, ax=ax, pos=pos, nodelist=[node], node_shape=graphicOptions.node_shape[node],
                            node_color=graphicOptions.node_color[node], node_size=graphicOptions.node_size[node],
@@ -88,7 +88,7 @@ def draw_bipartite(
     if draw_labels:
         labels = dict((n, n) for n in g.nodes())
         nx.draw_networkx_labels(g, ax=ax, pos=pos, labels=labels, font_size=graphicOptions.label_size,
-            font_color=graphicOptions.label_col)
+                                font_color=graphicOptions.label_color)
 
 @ignore_unused_args
 def draw_clique(
@@ -165,8 +165,8 @@ def draw_clique(
 
     graphicOptions.check_if_options_are_valid(g)
     for edge in g.edges():
-        nx.draw_networkx_edges(G=g, pos=pos, edgelist=[edge],ax=ax, edge_color=graphicOptions.edge_color[edge],
-                               width=graphicOptions.edge_width[edge], **kwargs)
+        nx.draw_networkx_edges(G=g, pos=pos, edgelist=[edge], ax=ax, edge_color=graphicOptions.edge_color[edge],
+                               width=graphicOptions.edge_size[edge], **kwargs)
     for node in g.nodes():
         nx.draw_networkx_nodes(G=g, pos=pos, ax=ax, node_color=graphicOptions.node_color[node],
                                node_size=graphicOptions.node_size[node], node_shape=graphicOptions.node_shape[node],
@@ -174,7 +174,7 @@ def draw_clique(
     if draw_labels:
         labels = dict((n, n) for n in g.nodes())
         nx.draw_networkx_labels(G=g, pos=pos, ax=ax, labels=labels, font_size=graphicOptions.label_size,
-            font_color=graphicOptions.label_col, **kwargs)
+                                font_color=graphicOptions.label_color, **kwargs)
 
     ax.set_aspect('equal')
     ax.autoscale(enable=True, axis='both')
@@ -312,7 +312,7 @@ def __draw_in_plot(
     node_list = [x for x in g.nodes() if not str(x).startswith('E')]
     for edge in g.edges():
         nx.draw_networkx_edges(g, pos, edgelist=[edge], ax=ax, edge_color=graphicOptions.edge_color[edge],
-                               width=graphicOptions.edge_width[edge],arrows = isDirected, **kwargs)
+                               width=graphicOptions.edge_size[edge], arrows = isDirected, **kwargs)
     for node in node_list:
         nx.draw_networkx_nodes(
             g,
@@ -338,4 +338,4 @@ def __draw_in_plot(
             labels_edges = dict((n, n) for n in g.nodes() if str(n).startswith('E'))
             labels.update(labels_edges)
         nx.draw_networkx_labels(g, ax=ax, pos=pos, labels=labels, font_size=graphicOptions.label_size,
-            font_color=graphicOptions.label_col, **kwargs)
+                                font_color=graphicOptions.label_color, **kwargs)

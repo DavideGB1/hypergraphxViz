@@ -96,7 +96,6 @@ def draw_radial_layout(
     x_heaviest: float = 1.0,
     draw_labels:bool = True,
     radius_scale_factor: float = 1.0,
-    marker_color: str = "#FF0000",
     font_spacing_multiplier: float = 1.5,
     ax: Optional[plt.Axes] = None,
     figsize: tuple[float,float] = (10,10),
@@ -177,8 +176,8 @@ def draw_radial_layout(
         ax.plot(value_x, value_y, graphicOptions.node_shape[node], color=graphicOptions.node_color[node], markersize=graphicOptions.node_size[node],
                 markeredgecolor=graphicOptions.node_facecolor[node], **kwargs)
         if draw_labels:
-            ax.text(value_x *font_spacing_multiplier, value_y*font_spacing_multiplier, node,
-                    fontsize=graphicOptions.label_size, color=graphicOptions.label_col, **kwargs)
+            ax.text(value_x * font_spacing_multiplier, value_y * font_spacing_multiplier, node,
+                    fontsize=graphicOptions.label_size, color=graphicOptions.label_color, **kwargs)
             max_x = max(max_x, value_x*font_spacing_multiplier)
             min_x = min(min_x, value_x*font_spacing_multiplier)
             max_y = max(max_y, value_y*font_spacing_multiplier)
@@ -216,7 +215,7 @@ def draw_radial_layout(
                 min_x = min(min_x, value_x)
                 max_y = max(max_y, value_y)
                 min_y = min(min_y, value_y)
-                ax.plot(value_x, value_y, graphicOptions.node_shape[node], color=marker_color, markersize=graphicOptions.node_size[node],
+                ax.plot(value_x, value_y, graphicOptions.edge_shape[node], color=graphicOptions.edge_node_color[node], markersize=graphicOptions.node_size[node],
                         markeredgecolor=graphicOptions.node_facecolor[node], **kwargs)
 
         sector_depth += 0.35

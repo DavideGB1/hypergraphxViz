@@ -14,3 +14,4 @@ QtRangeSlider~=0.1.5
 fa2_modified~=0.3.10
 numba~=0.60.0
 tqdm~=4.66.5
+superqt~=0.6.7

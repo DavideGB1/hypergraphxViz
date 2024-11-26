@@ -210,7 +210,7 @@ def draw_sets(
             pos,
             labels  = dict((n, n) for n in G.nodes()),
             font_size=graphicOptions.label_size,
-            font_color=graphicOptions.label_col,
+            font_color=graphicOptions.label_color,
             **kwargs
         )
     #Ensure that all the hyperedges have an alpha
@@ -251,7 +251,7 @@ def draw_sets(
 
     #Draws Binary Edges
     for edge in G.edges():
-        nx.draw_networkx_edges(G, pos, edgelist=[edge],width=graphicOptions.edge_width[edge],
+        nx.draw_networkx_edges(G, pos, edgelist=[edge], width=graphicOptions.edge_size[edge],
                                edge_color=graphicOptions.edge_color[edge], ax=ax, **kwargs)
 
     ax.axis("equal")
