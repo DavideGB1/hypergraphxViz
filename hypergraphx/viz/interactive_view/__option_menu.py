@@ -2,7 +2,9 @@ import inspect
 import re
 
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QComboBox, QDoubleSpinBox
+from PyQt5.QtGui import QPixmap, QColor, QIcon
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QComboBox, QDoubleSpinBox, \
+    QColorDialog, QPushButton
 
 from hypergraphx.viz.__graphic_options import GraphicOptions
 
@@ -21,7 +23,7 @@ class MenuWindow(QWidget):
             attributes.pop(attribute)
         for attribute_name in attributes:
             if "color" in attribute_name:
-                self.add_lineEdit(attribute_name, attributes[attribute_name], True)
+                self.add_color_picker(attribute_name, attributes[attribute_name])
             elif "shape" in attribute_name:
                 self.add_combobox(attribute_name, attributes[attribute_name])
             elif "size" in attribute_name:
@@ -30,7 +32,29 @@ class MenuWindow(QWidget):
         self.setLayout(self.layout)
     def send_data(self):
         self.modified_options.emit(self.graphic_options)
+    def add_color_picker(self, name, value):
+        hbox_btn = QHBoxLayout()
+        label = QLabel(name)
+        hbox_btn.addWidget(label)
+        color_btn = QPushButton()
+        pixmap = QPixmap(int(color_btn.width()*0.95), int(color_btn.height()*0.9))
+        pixmap.fill(QColor(value))
+        color_btn.setIcon(QIcon(pixmap))
 
+        def color_picker():
+            dialog = QColorDialog(self)
+            dialog.setCurrentColor(QColor(self.graphic_options.__getattribute__(name)))
+            dialog.exec_()
+            new_color = dialog.currentColor()
+            pixmap = QPixmap(int(color_btn.width() * 0.95), int(color_btn.height() * 0.9))
+            pixmap.fill(QColor(new_color))
+            color_btn.setIcon(QIcon(pixmap))
+            self.graphic_options.__setattr__(name, new_color.name())
+            self.send_data()
+
+        color_btn.clicked.connect(color_picker)
+        hbox_btn.addWidget(color_btn)
+        self.layout.addLayout(hbox_btn)
     def add_lineEdit(self, name, value, color = False):
         hbox_btn = QHBoxLayout()
         label = QLabel(name)

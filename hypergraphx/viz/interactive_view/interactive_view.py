@@ -134,7 +134,6 @@ class Window(QWidget):
         self.plot()
     def assign_radial(self):
         self.current_function = draw_radial_layout
-        self.graphic_options = GraphicOptions(is_PAOH=True)
         remove_last_x_elements_from_layout(self.vbox, 2)
         vbox_radial_option = QVBoxLayout()
         labels_button = QCheckBox("Show Labels")
@@ -164,7 +163,6 @@ class Window(QWidget):
         self.plot()
     def assign_PAOH(self):
         self.current_function = draw_PAOH
-        self.graphic_options = GraphicOptions(is_PAOH=True)
         if self.option_menu is not None:
             self.option_menu = None
         remove_last_x_elements_from_layout(self.vbox, 2)
@@ -186,7 +184,6 @@ class Window(QWidget):
         self.plot()
     def assign_metroset(self):
         self.current_function = draw_metroset
-        self.graphic_options = GraphicOptions(is_PAOH=False)
         self.iterations = 10
         remove_last_x_elements_from_layout(self.vbox, 2)
         vbox_metroset_option = QVBoxLayout()
@@ -210,7 +207,6 @@ class Window(QWidget):
         self.plot()
     def assign_clique_projection(self):
         self.current_function = draw_clique
-        self.graphic_options = GraphicOptions(is_PAOH=False)
         self.iterations = 1000
         remove_last_x_elements_from_layout(self.vbox, 2)
         vbox_clique_expasion_option = QVBoxLayout()
@@ -242,7 +238,6 @@ class Window(QWidget):
         self.plot()
     def assign_extra_node(self):
         self.current_function = draw_extra_node
-        self.graphic_options = GraphicOptions(is_PAOH=False)
         self.iterations = 1000
         remove_last_x_elements_from_layout(self.vbox, 2)
         vbox_extra_node_option = QVBoxLayout()
@@ -305,7 +300,6 @@ class Window(QWidget):
         self.plot()
     def assign_bipartite(self):
         self.current_function = draw_bipartite
-        self.graphic_options = GraphicOptions(is_PAOH=False)
         remove_last_x_elements_from_layout(self.vbox, 2)
         vbox_bipartite_option = QVBoxLayout()
 
@@ -325,7 +319,6 @@ class Window(QWidget):
         self.plot()
     def assign_sets(self):
         self.current_function = draw_sets
-        self.graphic_options = GraphicOptions(is_PAOH=False)
         self.iterations = 100
         remove_last_x_elements_from_layout(self.vbox, 2)
         vbox_set_option = QVBoxLayout()
