@@ -96,7 +96,7 @@ def draw_radial_layout(
     x_heaviest: float = 1.0,
     draw_labels:bool = True,
     radius_scale_factor: float = 1.0,
-    font_spacing_multiplier: float = 1.5,
+    font_spacing_factor: float = 1.5,
     ax: Optional[plt.Axes] = None,
     figsize: tuple[float,float] = (10,10),
     dpi: int = 300,
@@ -120,7 +120,7 @@ def draw_radial_layout(
         Scale for the Radius value.
     marker_color : str, optional
         HEX value for the node markers along the hyperedges.
-    font_spacing_multiplier : float, optional
+    font_spacing_factor : float, optional
         Value used to place the labels in a circle different from the inner one. 0 means that the labels position is
         the inner circle position.
     ax : plt.Axes, optional
@@ -173,18 +173,19 @@ def draw_radial_layout(
         min_x = min(min_x, value_x)
         max_y = max(max_y, value_y)
         min_y = min(min_y, value_y)
-        ax.plot(value_x, value_y, graphicOptions.node_shape[node], color=graphicOptions.node_color[node], markersize=graphicOptions.node_size[node],
+        ax.plot(value_x, value_y, graphicOptions.node_shape[node], color=graphicOptions.node_color[node],
+                markersize=graphicOptions.node_size[node]/30,
                 markeredgecolor=graphicOptions.node_facecolor[node], **kwargs)
         if draw_labels:
-            ax.text(value_x * font_spacing_multiplier, value_y * font_spacing_multiplier, node,
+            ax.text(value_x * font_spacing_factor, value_y * font_spacing_factor, node,
                     fontsize=graphicOptions.label_size, color=graphicOptions.label_color, **kwargs)
-            max_x = max(max_x, value_x*font_spacing_multiplier)
-            min_x = min(min_x, value_x*font_spacing_multiplier)
-            max_y = max(max_y, value_y*font_spacing_multiplier)
-            min_y = min(min_y, value_y*font_spacing_multiplier)
+            max_x = max(max_x, value_x * font_spacing_factor)
+            min_x = min(min_x, value_x * font_spacing_factor)
+            max_y = max(max_y, value_y * font_spacing_factor)
+            min_y = min(min_y, value_y * font_spacing_factor)
         node_depth += 1
 
-    sector_depth = font_spacing_multiplier
+    sector_depth = font_spacing_factor
     if draw_labels:
         sector_depth+=1
     #Draw the various sectors' circles
@@ -215,7 +216,8 @@ def draw_radial_layout(
                 min_x = min(min_x, value_x)
                 max_y = max(max_y, value_y)
                 min_y = min(min_y, value_y)
-                ax.plot(value_x, value_y, graphicOptions.edge_shape[node], color=graphicOptions.edge_node_color[node], markersize=graphicOptions.node_size[node],
+                ax.plot(value_x, value_y, graphicOptions.edge_shape[node], color=graphicOptions.edge_node_color[node],
+                        markersize=graphicOptions.node_size[node]/30,
                         markeredgecolor=graphicOptions.node_facecolor[node], **kwargs)
 
         sector_depth += 0.35

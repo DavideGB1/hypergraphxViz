@@ -165,6 +165,9 @@ def draw_sets(
 
     #Filter the Hypergraph nodes and edges
     hypergraph = filter_hypergraph(hypergraph, cardinality, x_heaviest)
+    isolated = hypergraph.isolated_nodes()
+    for node in isolated:
+        hypergraph.remove_node(node)
     if graphicOptions is None:
         graphicOptions = GraphicOptions()
     # Extract node positions based on the hypergraph clique projection.
@@ -188,7 +191,7 @@ def draw_sets(
     for e in edges:
         G.add_edge(e[0], e[1])
 
-    #Ensure that all the nodes and bianry edges have the graphical attributes specified
+    #Ensure that all the nodes and binary edges have the graphical attributes specified
     graphicOptions.check_if_options_are_valid(G)
     #Draw the Nodes
     for node in G.nodes():

@@ -1,10 +1,13 @@
 import sys
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QPushButton, QVBoxLayout, QSlider, QWidget, QHBoxLayout, QLabel, \
-    QDoubleSpinBox, QRadioButton, QSpacerItem, QLayout, QCheckBox
+    QDoubleSpinBox, QRadioButton, QSpacerItem, QLayout, QCheckBox, QStyle
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from win32con import SP_OUTOFDISK
+
 from hypergraphx import Hypergraph, TemporalHypergraph, DirectedHypergraph
 from hypergraphx.viz.draw_PAOH import draw_PAOH
 from hypergraphx.viz.draw_sets import draw_sets
@@ -15,6 +18,7 @@ from hypergraphx.viz.interactive_view.__option_menu import MenuWindow
 from hypergraphx.viz.__graphic_options import GraphicOptions
 import copy
 from superqt import QRangeSlider
+import ctypes
 
 
 # noinspection PyUnresolvedReferences
@@ -24,6 +28,9 @@ class Window(QWidget):
     def __init__(self,hypergraph: Hypergraph|TemporalHypergraph|DirectedHypergraph, parent=None):
         super(Window, self).__init__(parent)
         self.setWindowTitle("HypergraphX Visualizer")
+        self.setWindowIcon(QIcon("logo_cropped.svg"))
+        myappid = 'mycompany.myproduct.subproduct.version'  # arbitrary string
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         #Set Default Values
         self.spin_box_label = QLabel()
         self.spin_box = QDoubleSpinBox()
@@ -38,7 +45,6 @@ class Window(QWidget):
         self.slider_value = 2
         self.hypergraph = hypergraph
         self.canvas_hbox = QHBoxLayout()
-        self.radius_scale_factor = 1.0
         self.ignore_binary_relations = True
         self.show_edge_nodes = True
         self.strong_gravity = True
@@ -46,15 +52,14 @@ class Window(QWidget):
         self.alignment = "vertical"
         self.figure = plt.figure()
         self.max_edge = 0
+        self.extra_attributes = dict()
         for edge in h.get_edges():
             if len(edge) > self.max_edge:
                 self.max_edge = len(edge)
         #Defines Canvas and Options Toolbar
         self.canvas = FigureCanvas(self.figure)
         self.toolbar = NavigationToolbar(self.canvas, self)
-        options_button = self.add_options_button()
-        self.toolbar.insertWidget(self.toolbar.actions()[-1],options_button)
-        self.canvas_hbox.addWidget(self.canvas)
+        self.canvas_hbox.addWidget(self.canvas, 80)
 
         # Sliders Management
         slider_hbox = self.add_sliders()
@@ -106,10 +111,11 @@ class Window(QWidget):
         slider_hbox.addWidget(slider_button)
         return slider_hbox
     def add_options_button(self):
-        button = QPushButton("Options")
+        button = QPushButton("Graphic Options")
         def open_options():
             if self.option_menu is None:
-                self.option_menu = MenuWindow(self.graphic_options)
+                self.extra_options()
+                self.option_menu = MenuWindow(self.graphic_options, self.extra_attributes)
                 self.option_menu.modified_options.connect(self.get_new_option)
                 self.option_menu.show()
             else:
@@ -120,44 +126,59 @@ class Window(QWidget):
     def plot(self):
         self.figure.clear()
         ax = self.figure.add_subplot(111)
+        try:
+            radius_scale_factor = self.extra_attributes["radius_scale_factor"]
+        except KeyError:
+            radius_scale_factor = 1.0
+        try:
+            font_spacing_factor = self.extra_attributes["font_spacing_factor"]
+        except KeyError:
+            font_spacing_factor = 1.5
+        try:
+            time_font_size = self.extra_attributes["time_font_size"]
+        except KeyError:
+            time_font_size = 18
+        try:
+            time_separation_line_color = self.extra_attributes["time_separation_line_color"]
+        except KeyError:
+            time_separation_line_color = "#000000"
+        try:
+            time_separation_line_width = self.extra_attributes["time_separation_line_width"]
+        except KeyError:
+            time_separation_line_width = 4
+        try:
+            self.graphic_options.in_edge_color = self.extra_attributes["in_edge_color"]
+        except KeyError:
+            pass
+        try:
+            self.graphic_options.out_edge_color = self.extra_attributes["out_edge_color"]
+        except KeyError:
+            pass
         self.current_function(self.hypergraph, cardinality= self.slider_value, x_heaviest = float(self.spin_box.value()/100), ax=ax,
-                              draw_labels=self.active_labels, space_optimization = self.space_optimization, radius_scale_factor = self.radius_scale_factor,
-                              ignore_binary_relations = self.ignore_binary_relations, show_edge_nodes = self.show_edge_nodes, strong_gravity = self.strong_gravity,
-                              iterations = int(self.iterations), align = self.alignment,
-                              graphicOptions=copy.deepcopy(self.graphic_options))
+                draw_labels=self.active_labels, space_optimization = self.space_optimization, time_font_size = time_font_size,
+                ignore_binary_relations = self.ignore_binary_relations, show_edge_nodes = self.show_edge_nodes, strong_gravity = self.strong_gravity,
+                iterations = int(self.iterations), align = self.alignment, time_separation_line_color = time_separation_line_color,
+                graphicOptions=copy.deepcopy(self.graphic_options), radius_scale_factor=radius_scale_factor, font_spacing_factor=font_spacing_factor,
+                time_separation_line_width = time_separation_line_width)
         self.canvas.draw()
-    def get_new_option(self, graphic_options):
-        self.graphic_options = graphic_options
+    def get_new_option(self, tuple):
+        self.graphic_options, self.extra_attributes = tuple
         self.plot()
     def heaviest_edges(self):
         self.spin_box_label.setText("Show {value}% Heaviest Edges".format(value=self.spin_box.value()))
         self.plot()
     def assign_radial(self):
         self.current_function = draw_radial_layout
+        if self.option_menu is not None:
+            self.option_menu = None
+        self.extra_options()
         remove_last_x_elements_from_layout(self.vbox, 2)
         vbox_radial_option = QVBoxLayout()
         labels_button = QCheckBox("Show Labels")
         labels_button.setChecked(True)
         labels_button.toggled.connect(self.activate_labels)
-        def radial_scale_factor_modifier():
-            self.radius_scale_factor = radial_scale_factor_selector.value()
-            self.plot()
-
-        radial_scale_factor_selector = QDoubleSpinBox()
-        radial_scale_factor_selector.setDecimals(2)
-        radial_scale_factor_selector.setRange(0, 10)
-        radial_scale_factor_selector.setValue(1.0)
-        radial_scale_factor_selector.setSingleStep(0.1)
-        radial_scale_factor_selector.valueChanged.connect(radial_scale_factor_modifier)
-
-        radial_scale_factor_selector_label = QLabel()
-        radial_scale_factor_selector_label.setText("Radius Scale Factor:")
-        radial_scale_factor_selector_label.setAlignment(Qt.AlignTop)
-        radial_scale_factor_selector_label.setAlignment(Qt.AlignTop)
 
         vbox_radial_option.addWidget(labels_button)
-        vbox_radial_option.addWidget(radial_scale_factor_selector_label)
-        vbox_radial_option.addWidget(radial_scale_factor_selector)
         self.vbox.addLayout(vbox_radial_option)
         self.vbox.addStretch()
         self.plot()
@@ -165,10 +186,11 @@ class Window(QWidget):
         self.current_function = draw_PAOH
         if self.option_menu is not None:
             self.option_menu = None
+        self.extra_options()
         remove_last_x_elements_from_layout(self.vbox, 2)
         vbox_PAOH_option = QVBoxLayout()
         space_optimization_option_btn = QCheckBox("Optimize Space Usage")
-        space_optimization_option_btn.setChecked(True)
+        space_optimization_option_btn.setChecked(False)
 
         def optimize_space_usage():
             if self.space_optimization:
@@ -185,6 +207,9 @@ class Window(QWidget):
     def assign_metroset(self):
         self.current_function = draw_metroset
         self.iterations = 10
+        if self.option_menu is not None:
+            self.option_menu = None
+        self.extra_options()
         remove_last_x_elements_from_layout(self.vbox, 2)
         vbox_metroset_option = QVBoxLayout()
         iterations_selector_label = QLabel()
@@ -208,6 +233,9 @@ class Window(QWidget):
     def assign_clique_projection(self):
         self.current_function = draw_clique
         self.iterations = 1000
+        if self.option_menu is not None:
+            self.option_menu = None
+        self.extra_options()
         remove_last_x_elements_from_layout(self.vbox, 2)
         vbox_clique_expasion_option = QVBoxLayout()
         strong_gravity_btn = QCheckBox("Use Strong Gravity")
@@ -239,6 +267,9 @@ class Window(QWidget):
     def assign_extra_node(self):
         self.current_function = draw_extra_node
         self.iterations = 1000
+        if self.option_menu is not None:
+            self.option_menu = None
+        self.extra_options()
         remove_last_x_elements_from_layout(self.vbox, 2)
         vbox_extra_node_option = QVBoxLayout()
         edge_nodes_btn = QCheckBox("Show Edge Nodes")
@@ -302,7 +333,9 @@ class Window(QWidget):
         self.current_function = draw_bipartite
         remove_last_x_elements_from_layout(self.vbox, 2)
         vbox_bipartite_option = QVBoxLayout()
-
+        if self.option_menu is not None:
+            self.option_menu = None
+        self.extra_options()
         def change_alignment():
             if self.alignment == "vertical":
                 self.alignment = "horizontal"
@@ -320,6 +353,9 @@ class Window(QWidget):
     def assign_sets(self):
         self.current_function = draw_sets
         self.iterations = 100
+        if self.option_menu is not None:
+            self.option_menu = None
+        self.extra_options()
         remove_last_x_elements_from_layout(self.vbox, 2)
         vbox_set_option = QVBoxLayout()
         iterations_selector_label = QLabel()
@@ -343,6 +379,7 @@ class Window(QWidget):
         self.plot()
     def option_vbox(self):
         self.vbox = QVBoxLayout()
+        self.vbox.addWidget(self.add_options_button())
         if self.hypergraph.is_weighted():
             self.spin_box = QDoubleSpinBox()
             self.spin_box.setDecimals(0)
@@ -361,7 +398,7 @@ class Window(QWidget):
         self.vbox.addStretch()
         self.vbox.addStretch()
         radio_btn_list[0].setChecked(True)
-        self.canvas_hbox.addLayout(self.vbox)
+        self.canvas_hbox.addLayout(self.vbox, 20)
     def add_radio_option(self):
         button_list = []
         if isinstance(self.hypergraph, TemporalHypergraph):
@@ -395,6 +432,24 @@ class Window(QWidget):
         else:
             self.strong_gravity = True
             self.plot()
+    def extra_options(self):
+        if self.current_function == draw_radial_layout:
+            self.extra_attributes = dict()
+            self.extra_attributes["radius_scale_factor"] = 1.0
+            self.extra_attributes["font_spacing_factor"] = 1.5
+        elif self.current_function == draw_PAOH and isinstance(self.hypergraph, TemporalHypergraph):
+            self.extra_attributes = dict()
+            self.extra_attributes["time_font_size"] = 18
+            self.extra_attributes["time_separation_line_color"] = "#000000"
+            self.extra_attributes["time_separation_line_size"] = 4
+        elif self.current_function == draw_sets:
+            self.extra_attributes = dict()
+            self.extra_attributes["hyperedge_alpha"] = 0.8
+        else:
+            self.extra_attributes = dict()
+        if isinstance(self.hypergraph, DirectedHypergraph):
+            self.extra_attributes["in_edge_color"] = "green"
+            self.extra_attributes["out_edge_color"] = "red"
 
 def clear_layout(layout: QLayout):
     while layout.count():

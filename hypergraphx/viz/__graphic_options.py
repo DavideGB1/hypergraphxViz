@@ -23,27 +23,37 @@ class GraphicOptions:
             edge_size: Optional[float | dict] = 2.0,
             label_size: Optional[int] = 10,
             node_size: Optional[int | dict] = None,
+            default_node_shape: Optional[str] = "o",
+            default_node_color: Optional[str] = "#1f78b4",
+            default_node_facecolor: Optional[str] = "black",
+            default_edge_size: Optional[float] = 2.0,
+            default_edge_color: Optional[str] = "#000000",
+            default_edge_node_color: Optional[str] = "@8a0303",
+            default_edge_shape: Optional[str] = "p",
+            default_label_size: Optional[int] = 10,
+            default_label_color: Optional[str] = "black",
+            default_node_size: Optional[int] = 10
     ):
         self.node_size = node_size
         self.in_edge_color = in_edge_color
         self.out_edge_color = out_edge_color
         if is_PAOH:
-            self.default_node_size = 10
+            self.default_node_size = default_node_size
             if self.node_size is None:
                 self.node_size = 10
         else:
-            self.default_node_size = 300
+            self.default_node_size = default_node_size
             if self.node_size is None:
                 self.node_size = 300
-        self.default_node_shape = "o"
-        self.default_node_color = "#1f78b4"
-        self.default_node_facecolor = "black"
-        self.default_edge_size = 2.0
-        self.default_edge_color = "#000000"
-        self.default_edge_node_color = "@8a0303"
-        self.default_edge_shape = "p"
-        self.default_label_size = 10
-        self.default_label_color = "black"
+        self.default_node_shape = default_node_shape
+        self.default_node_color = default_node_color
+        self.default_node_facecolor = default_node_facecolor
+        self.default_edge_size = default_edge_size
+        self.default_edge_color = default_edge_color
+        self.default_edge_node_color = default_edge_node_color
+        self.default_edge_shape = default_edge_shape
+        self.default_label_size = default_label_size
+        self.default_label_color = default_label_color
 
         self.node_shape = node_shape
         self.node_color = node_color

@@ -25,7 +25,7 @@ def __support_to_normal_hypergraph(directe_hg: DirectedHypergraph):
 
 @ignore_unused_args
 def draw_PAOH(
-    h: Hypergraph | TemporalHypergraph,
+    h: Hypergraph | TemporalHypergraph | DirectedHypergraph,
     cardinality: tuple[int,int]|int = -1,
     x_heaviest: float = 1.0,
     space_optimization: bool = False,
@@ -43,7 +43,7 @@ def draw_PAOH(
     Draws a PAOH representation of the hypergraph.
     Parameters
     ----------
-    h : Hypergraph.
+    h : Hypergraph | TemporalHypergraph | DirectedHypergraph.
         The hypergraph to be projected.
     cardinality: tuple[int,int]|int. optional
         Allows you to filter hyperedges so that only those with the default cardinality are visible.
@@ -158,17 +158,17 @@ def draw_PAOH(
                     for node in true_edge[0]:
                         ax.plot(idx, list(node_mapping.values()).index(node), marker=graphicOptions.node_shape[node],
                                 color=in_edge_color, markeredgecolor=graphicOptions.node_facecolor[node],
-                                markersize=graphicOptions.node_size[node], **kwargs)
+                                markersize=graphicOptions.node_size[node]/30, **kwargs)
                     for node in true_edge[1]:
                         ax.plot(idx, list(node_mapping.values()).index(node), marker=graphicOptions.node_shape[node],
                                 color=out_edge_color, markeredgecolor=graphicOptions.node_facecolor[node],
-                                markersize=graphicOptions.node_size[node], **kwargs)
+                                markersize=graphicOptions.node_size[node]/30, **kwargs)
 
                 else:
                     for y in edge:
                         ax.plot(idx, list(node_mapping.values()).index(y), marker= graphicOptions.node_shape[y],
                         color=graphicOptions.node_color[y], markeredgecolor=graphicOptions.node_facecolor[y],
-                        markersize=graphicOptions.node_size[y], **kwargs)
+                        markersize=graphicOptions.node_size[y]/30, **kwargs)
             idx += 0.5
         #Plot the separating line for the timestamps
         if isinstance(hypergraph, TemporalHypergraph):
