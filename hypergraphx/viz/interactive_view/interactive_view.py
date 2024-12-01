@@ -52,6 +52,7 @@ class Window(QWidget):
         self.alignment = "vertical"
         self.figure = plt.figure()
         self.max_edge = 0
+        self.rounded_polygon = True
         self.extra_attributes = dict()
         for edge in h.get_edges():
             if len(edge) > self.max_edge:
@@ -159,7 +160,7 @@ class Window(QWidget):
                 ignore_binary_relations = self.ignore_binary_relations, show_edge_nodes = self.show_edge_nodes, strong_gravity = self.strong_gravity,
                 iterations = int(self.iterations), align = self.alignment, time_separation_line_color = time_separation_line_color,
                 graphicOptions=copy.deepcopy(self.graphic_options), radius_scale_factor=radius_scale_factor, font_spacing_factor=font_spacing_factor,
-                time_separation_line_width = time_separation_line_width)
+                time_separation_line_width = time_separation_line_width, rounded_polygon = self.rounded_polygon)
         self.canvas.draw()
     def get_new_option(self, tuple):
         self.graphic_options, self.extra_attributes = tuple
@@ -374,6 +375,17 @@ class Window(QWidget):
         iterations_selector.valueChanged.connect(iterations_selector_funz)
         vbox_set_option.addWidget(iterations_selector_label)
         vbox_set_option.addWidget(iterations_selector)
+        def activate_rounded_polygons():
+            if self.rounded_polygon:
+                self.rounded_polygon = False
+            else:
+                self.rounded_polygon = True
+            self.plot()
+
+        rounded_polygons_btn = QCheckBox("Draw Rounded Polygons")
+        rounded_polygons_btn.setChecked(True)
+        rounded_polygons_btn.toggled.connect(activate_rounded_polygons)
+        vbox_set_option.addWidget(rounded_polygons_btn)
         self.vbox.addLayout(vbox_set_option)
         self.vbox.addStretch()
         self.plot()
