@@ -25,8 +25,8 @@ def _draw_hyperedge_set(
         p1 = points[i]
         p = points[(i + 1)%lenPoints]
         p2 = points[(i + 2)%lenPoints]
-        v1 = vector(p,p1)
-        v2 = vector(p,p2)
+        v1 = __vector(p,p1)
+        v2 = __vector(p,p2)
         sinA = v1.nx*v2.ny - (v1.ny*v2.nx)
         sinA90 = v1.nx*v2.nx -(v1.ny*(-v2.ny))
         angle = math.asin(max(-1, min(1, sinA)))
@@ -94,7 +94,10 @@ def _draw_hyperedge_set(
     polygon.set_edgecolor(color)
     ax.add_patch(polygon)
 
-class vector():
+class __vector:
+    """
+    Support class for the set drawing
+    """
     def __init__(self, p1, p2):
         self.p1 = p1
         self.p2 = p2
@@ -112,6 +115,7 @@ def draw_sets(
     cardinality: tuple[int, int] | int = -1,
     x_heaviest: float = 1.0,
     draw_labels: bool = True,
+    rounded_polygon: bool = True,
     hyperedge_color_by_order: Optional[dict] = None,
     hyperedge_facecolor_by_order: Optional[dict] = None,
     hyperedge_alpha: float | dict = 0.8,
@@ -236,9 +240,8 @@ def draw_sets(
 
             # Order points in a clockwise fashion.
             points = sorted(points, key=lambda x: np.arctan2(x[1] - y_c, x[0] - x_c))
-            points = [
-                (x_c + 1.8 * (x - x_c), y_c + 1.8 * (y - y_c), a, b) for x, y, a,b in points
-            ]
+
+
             #Calculate Order and use it to select a color
             order = len(hye) - 1
             if order not in hyperedge_color_by_order.keys():
@@ -249,8 +252,21 @@ def draw_sets(
                 hyperedge_facecolor_by_order[order] = std_face_color
             color = hyperedge_color_by_order[order]
             facecolor = hyperedge_facecolor_by_order[order]
-            #Draw the Hyperedge
-            _draw_hyperedge_set(points, 0.1, hyperedge_alpha[hye], color, facecolor, ax)
+            if rounded_polygon:
+                #Draw the Hyperedge
+                points = [
+                    (x_c + 1.8 * (x - x_c), y_c + 1.8 * (y - y_c), a, b) for x, y, a, b in points
+                ]
+                _draw_hyperedge_set(points, 0.1, hyperedge_alpha[hye], color, facecolor, ax)
+            else:
+                x = [x[0] for x in points]
+                y = [y[1] for y in points]
+                polygon = plt.Polygon(np.column_stack([x,y]), closed=True, fill=True,
+                                      alpha=hyperedge_alpha[hye])
+                polygon.set_facecolor(facecolor)
+                polygon.set_edgecolor(color)
+                ax.add_patch(polygon)
+
 
     #Draws Binary Edges
     for edge in G.edges():
@@ -259,6 +275,3 @@ def draw_sets(
 
     ax.axis("equal")
     plt.axis("equal")
-
-
-
