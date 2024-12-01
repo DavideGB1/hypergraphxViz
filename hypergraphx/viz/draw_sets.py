@@ -15,21 +15,42 @@ def _draw_hyperedge_set(
         points: list[tuple[float, float,float,float]],
         radius: Optional[float] = 0.1,
         hyperedge_alpha: Optional[float] = 0.8,
-        color: Optional[str] = "FFBC79",
-        facecolor: Optional[str] = "FFBC79",
-        ax: Optional[plt.Axes] = None):
+        border_color: Optional[str] = "FFBC79",
+        face_color: Optional[str] = "FFBC79",
+        ax: Optional[plt.Axes] = None ) -> None:
+    """
+    Support function used to draw each hyperedge as a polygon with rounded corners.
+    Parameters
+    ----------
+    points: list[tuple[float, float,float,float]]
+        Vertexes of the polygon saved two times.
+    radius: float, optional
+        Used to scale the rounding of the corners.
+    hyperedge_alpha: float, optional
+        Alpha value of the polygon surface.
+    border_color: str, optional
+        Color of the polygon border.
+    face_color: str, optional
+        Color of the polygon surface.
+    ax: plt.Axes, optional
+        The axes to draw the set on.
+    """
     lenPoints = len(points)
     vertexes_x = []
     vertexes_y = []
     for i in range(lenPoints):
+        #Find the pivot vertex and the adjacent ones
         p1 = points[i]
         p = points[(i + 1)%lenPoints]
         p2 = points[(i + 2)%lenPoints]
+        #Create the vectors that describe the corner
         v1 = __vector(p,p1)
         v2 = __vector(p,p2)
+        #Calculate the various angles
         sinA = v1.nx*v2.ny - (v1.ny*v2.nx)
         sinA90 = v1.nx*v2.nx -(v1.ny*(-v2.ny))
         angle = math.asin(max(-1, min(1, sinA)))
+        #Checks used to determine how to draw the rounded corner
         radDirection = 1
         drawDirection = False
         magic = False
@@ -46,7 +67,7 @@ def _draw_hyperedge_set(
                 radDirection = -1
             else:
                 drawDirection = True
-
+        #Calculate the correct distance of the points
         halfAngle = angle/2
         lenOut = abs(math.cos(halfAngle) * radius / math.sin(halfAngle))
         if lenOut > min(v1.length / 2, v2.length / 2):
@@ -54,12 +75,15 @@ def _draw_hyperedge_set(
             cRadius = abs(lenOut * math.sin(halfAngle) / math.cos(halfAngle))
         else:
             cRadius = radius
-        ox = p[0] + v2.nx * lenOut
-        oy = p[1] + v2.ny * lenOut
-        ox += -v2.ny * cRadius * radDirection
-        oy += v2.nx * cRadius * radDirection
+        #Caulculate the arc center
+        o = (
+            p[0] + v2.nx * lenOut-v2.ny * cRadius * radDirection,
+            p[1] + v2.ny * lenOut+v2.nx * cRadius * radDirection
+        )
+        #Calculate start and ending angle
         start_angle = v1.ang + (np.pi / 2 * radDirection)
         end_angle = v2.ang - (np.pi / 2 * radDirection)
+        #Modify the angles so we draw the correct arc
         if end_angle < 0 and radDirection != -1:
             end_angle += 2 * np.pi
         if not drawDirection:
@@ -68,30 +92,29 @@ def _draw_hyperedge_set(
                 start_angle = tmp
         elif end_angle < start_angle and radDirection != -1:
             end_angle += 2 * np.pi
-
+        #Calculate some angles for the arch
         theta = np.linspace(start_angle, end_angle, 100)
-
         point_angle = math.atan2(p[2],p[3])
-        in_arch= True
+        #Determine if the center is inside or outside the arc
+        in_arc= True
         if point_angle < 0:
             point_angle += 2 * np.pi
         if not start_angle <= point_angle <= end_angle:
-            in_arch = False
+            in_arc = False
         if (p[2]**2 + p[3]**2) > radius * radius:
-            in_arch = False
-        if not in_arch and not magic:
-            ox = p[2]
-            oy = p[3]
-
-        x = ox + cRadius * np.cos(theta)
-        y = oy + cRadius * np.sin(theta)
-
+            in_arc = False
+        if not in_arc and not magic:
+            o = (p[2],p[3])
+        #Calculate the actual points
+        x = o[0] + cRadius * np.cos(theta)
+        y = o[1] + cRadius * np.sin(theta)
         vertexes_x.extend(x)
         vertexes_y.extend(y)
 
+    #Create and draw the polygon
     polygon = plt.Polygon(np.column_stack([vertexes_x, vertexes_y]), closed=True, fill=True, alpha=hyperedge_alpha)
-    polygon.set_facecolor(facecolor)
-    polygon.set_edgecolor(color)
+    polygon.set_facecolor(face_color)
+    polygon.set_edgecolor(border_color)
     ax.add_patch(polygon)
 
 class __vector:
@@ -120,6 +143,8 @@ def draw_sets(
     hyperedge_facecolor_by_order: Optional[dict] = None,
     hyperedge_alpha: float | dict = 0.8,
     scale: int = 1,
+    rounding_radius_size: float = 0.1,
+    polygon_expansion_factor: float = 1.8,
     pos: Optional[dict] = None,
     ax: Optional[plt.Axes] = None,
     figsize: tuple[float, float] = (10, 10),
@@ -140,6 +165,8 @@ def draw_sets(
         Allows you to filter the hyperedges so that only the heaviest x's are shown.
     draw_labels : bool
         Decide if the labels should be drawn.
+    rounded_polygon: bool
+        Decide if the polygon should be rounded and expanded.
     hyperedge_color_by_order: dict, optional
         Used to determine the border color of each hyperedge using its order.
     hyperedge_facecolor_by_order: dict, optional
@@ -148,6 +175,10 @@ def draw_sets(
         It's used to specify the alpha gradient of each hyperedge polygon. Each hyperedge can have its own alpha.
     scale: int, optional
         Used to influence the distance between nodes
+    rounding_radius: float, optional
+        Radius for the rounded corners of the polygons.
+    polygon_expansion_factor: float, optional
+        Scale factor for the polygon expansion.
     pos : dict.
         A dictionary with nodes as keys and positions as values.
     ax : matplotlib.axes.Axes.
@@ -253,12 +284,13 @@ def draw_sets(
             color = hyperedge_color_by_order[order]
             facecolor = hyperedge_facecolor_by_order[order]
             if rounded_polygon:
-                #Draw the Hyperedge
+                #Draw the hyperedge with the polygon rounding algoritm
                 points = [
-                    (x_c + 1.8 * (x - x_c), y_c + 1.8 * (y - y_c), a, b) for x, y, a, b in points
+                    (x_c + polygon_expansion_factor * (x - x_c), y_c + polygon_expansion_factor * (y - y_c), a, b) for x, y, a, b in points
                 ]
-                _draw_hyperedge_set(points, 0.1, hyperedge_alpha[hye], color, facecolor, ax)
+                _draw_hyperedge_set(points, rounding_radius_size, hyperedge_alpha[hye], color, facecolor, ax)
             else:
+                #Draw the hyperedge as a normal polygon with the vertexes in the points
                 x = [x[0] for x in points]
                 y = [y[1] for y in points]
                 polygon = plt.Polygon(np.column_stack([x,y]), closed=True, fill=True,
@@ -266,7 +298,6 @@ def draw_sets(
                 polygon.set_facecolor(facecolor)
                 polygon.set_edgecolor(color)
                 ax.add_patch(polygon)
-
 
     #Draws Binary Edges
     for edge in G.edges():

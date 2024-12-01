@@ -16,3 +16,6 @@ class OptionsName(Enum):
     node_size = "Node Size"
     radius_scale_factor = "Radius Scale Factor"
     font_spacing_factor = "Font Spacing Factor"
+    rounding_radius_factor = "Rounding Radius Size"
+    polygon_expansion_factor = "Polygon Expansion Factor"
+    hyperedge_alpha = "Hyperedge Alpha"

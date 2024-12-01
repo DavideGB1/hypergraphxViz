@@ -6,7 +6,6 @@ from PyQt5.QtWidgets import QApplication, QPushButton, QVBoxLayout, QSlider, QWi
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-from win32con import SP_OUTOFDISK
 
 from hypergraphx import Hypergraph, TemporalHypergraph, DirectedHypergraph
 from hypergraphx.viz.draw_PAOH import draw_PAOH
@@ -115,7 +114,6 @@ class Window(QWidget):
         button = QPushButton("Graphic Options")
         def open_options():
             if self.option_menu is None:
-                self.extra_options()
                 self.option_menu = MenuWindow(self.graphic_options, self.extra_attributes)
                 self.option_menu.modified_options.connect(self.get_new_option)
                 self.option_menu.show()
@@ -155,12 +153,21 @@ class Window(QWidget):
             self.graphic_options.out_edge_color = self.extra_attributes["out_edge_color"]
         except KeyError:
             pass
+        try:
+            rounding_radius_size = self.extra_attributes["rounding_radius_factor"]
+        except KeyError:
+            rounding_radius_size = 0.1
+        try:
+            polygon_expansion_factor = self.extra_attributes["polygon_expansion_factor"]
+        except KeyError:
+            polygon_expansion_factor = 1.8
         self.current_function(self.hypergraph, cardinality= self.slider_value, x_heaviest = float(self.spin_box.value()/100), ax=ax,
                 draw_labels=self.active_labels, space_optimization = self.space_optimization, time_font_size = time_font_size,
                 ignore_binary_relations = self.ignore_binary_relations, show_edge_nodes = self.show_edge_nodes, strong_gravity = self.strong_gravity,
                 iterations = int(self.iterations), align = self.alignment, time_separation_line_color = time_separation_line_color,
                 graphicOptions=copy.deepcopy(self.graphic_options), radius_scale_factor=radius_scale_factor, font_spacing_factor=font_spacing_factor,
-                time_separation_line_width = time_separation_line_width, rounded_polygon = self.rounded_polygon)
+                time_separation_line_width = time_separation_line_width, rounded_polygon = self.rounded_polygon, polygon_expansion_factor = polygon_expansion_factor,
+                rounding_radius_size = rounding_radius_size)
         self.canvas.draw()
     def get_new_option(self, tuple):
         self.graphic_options, self.extra_attributes = tuple
@@ -457,6 +464,8 @@ class Window(QWidget):
         elif self.current_function == draw_sets:
             self.extra_attributes = dict()
             self.extra_attributes["hyperedge_alpha"] = 0.8
+            self.extra_attributes["rounding_radius_factor"] = 0.1
+            self.extra_attributes["polygon_expansion_factor"] = 1.8
         else:
             self.extra_attributes = dict()
         if isinstance(self.hypergraph, DirectedHypergraph):
