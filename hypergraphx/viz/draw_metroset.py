@@ -221,10 +221,8 @@ def __calculate_compressed_paths(
     edge_to_path = dict()
     paths = list()
     for edge in edge_list:
-        edge_graph = subgraph(g, edge)
-        method = lambda G, weight: nx.approximation.simulated_annealing_tsp(edge_graph,
-            list(edge_graph) + [next(iter(edge_graph))], weight=weight, temp=5000)
-        path = nx.approximation.traveling_salesman_problem(edge_graph, method=method, cycle=False)
+        edge_graph = subgraph(g, list(edge))
+        path = nx.approximation.traveling_salesman_problem(edge_graph, weight = "weight",cycle=False)
         paths.append(path)
         edge_to_path[edge] = path
 

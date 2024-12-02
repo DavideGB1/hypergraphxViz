@@ -146,7 +146,7 @@ def __x_heaviest_edges_hypergraph(
         edge_list = hypergraph.get_edges()
         for edge in edge_list:
             if edge not in edges_to_maintain:
-                hypergraph.remove_node(edge)
+                hypergraph.remove_edge(edge)
         return hypergraph
     else:
         return h

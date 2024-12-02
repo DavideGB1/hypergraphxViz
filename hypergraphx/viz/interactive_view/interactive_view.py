@@ -490,16 +490,13 @@ class Window(QWidget):
             options_dict = { "PAOH": self.assign_PAOH, "Extra-Node": self.assign_extra_node}
         else:
             options_dict = { "Radial": self.assign_radial, "PAOH": self.assign_PAOH, "Clique Expansion": self.assign_clique_projection,
-                         "Extra-Node": self.assign_extra_node, "Bipartite": self.assign_bipartite, "Sets": self.assign_sets}
+                         "Extra-Node": self.assign_extra_node, "Bipartite": self.assign_bipartite, "Sets": self.assign_sets,
+                            "MetroSet": self.assign_metroset}
 
         for val, fun in options_dict.items():
             button = QRadioButton(val)
             button.toggled.connect(fun)
             button_list.append(button)
-        if not self.hypergraph.is_weighted():
-            radio_button_metroset = QRadioButton("MetroSet")
-            radio_button_metroset.toggled.connect(self.assign_metroset)
-            button_list.append(radio_button_metroset)
         return button_list
     def activate_labels(self) -> None:
         """
