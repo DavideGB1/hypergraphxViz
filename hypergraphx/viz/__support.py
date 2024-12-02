@@ -1,12 +1,8 @@
 import inspect
 import math
 from math import trunc
-
-from networkx import Graph
-
-from hypergraphx import Hypergraph, DirectedHypergraph
+from hypergraphx import Hypergraph, DirectedHypergraph, TemporalHypergraph
 from matplotlib import pyplot as plt
-
 
 def __check_edge_intersection(set1, set2):
     """
@@ -28,7 +24,6 @@ def __check_edge_intersection(set1, set2):
             break
 
     return res
-
 def __draw_line(layout, palette : list, path : list, i:int, idx: int, passo: int, ax : plt.Axes) -> None:
     """
     Draw the metro line of the node.
@@ -65,7 +60,6 @@ def __draw_line(layout, palette : list, path : list, i:int, idx: int, passo: int
         ax.plot([layout[path[i]][0] + offset, layout[path[i + 1]][0] + offset],
                  [layout[path[i]][1] + offset, layout[path[i + 1]][1] + offset], linewidth=1,
                  color=palette[idx])
-
 def __calculate_incidence(node : [int | str | tuple], edges : list[list]) -> set:
     """
     Return the number of edges incident to a node.
@@ -122,65 +116,134 @@ def __find_pos(layout, node1, node2):
         return "vertical"
     else:
         return "horizontal"
-
-def x_heaviest_edges_hypergraph(h, x_heaviest):
-    edge_list = h.get_edges()
-    weight_dict = dict()
-    for edge in edge_list:
-        weight_dict[edge] = h.get_weight(edge)
-    weight_list = weight_dict.values()
-    weight_list = sorted(weight_list, reverse=True)
-    num_weights = int(math.ceil(len(weight_list) * x_heaviest))
-    weight_list = weight_list[:num_weights]
-    hypergraph = Hypergraph(weighted=True)
-    for node in h.get_nodes():
-        hypergraph.add_node(node)
-    key_list = list(weight_dict.keys())
-    for weight in weight_list:
-        hypergraph.add_edge(key_list[weight_list.index(weight)], weight)
-
-    return hypergraph
-
-def cardinality_hypergraph(h, cardinality):
+def __x_heaviest_edges_hypergraph(
+        h: Hypergraph | DirectedHypergraph | TemporalHypergraph,
+        x_heaviest: float
+    ) -> Hypergraph | DirectedHypergraph | TemporalHypergraph:
+    """
+    Returns an hypergraph with only the x% heaviest edges.
+    Parameters
+    ----------
+    h: Hypergraph
+        The hypergraph to manipulate.
+    x_heaviest: float
+        % value used to determine the top x% heaviest edges to take.
+    Returns
+    -------
+        hypergraph: Hypergraph
+    """
     if h.is_weighted():
-        hypergraph = Hypergraph(weighted=True)
+        hypergraph = h.copy()
+        edge_list = hypergraph.get_edges()
+        weight_dict = dict()
+        for edge in edge_list:
+            weight_dict[edge] = hypergraph.get_weight(edge)
+        edge_list = [(edge, weight_dict[edge]) for edge in edge_list]
+        edge_list = sorted(edge_list, key=lambda tup: tup[1], reverse=True)
+        num_weights = int(math.ceil(len(edge_list) * x_heaviest))
+        edges_to_maintain = edge_list[:num_weights]
+        edges_to_maintain = [edge[0] for edge in edges_to_maintain]
+        edge_list = hypergraph.get_edges()
+        for edge in edge_list:
+            if edge not in edges_to_maintain:
+                hypergraph.remove_node(edge)
+        return hypergraph
     else:
-        hypergraph = Hypergraph()
-    for node in h.get_nodes():
-        hypergraph.add_node(node)
+        return h
+
+def __cardinality_hypergraph(
+        h: Hypergraph | TemporalHypergraph | DirectedHypergraph,
+        cardinality: int | tuple[int,int]
+    ) -> Hypergraph | TemporalHypergraph | DirectedHypergraph:
+    """
+    Returns an hypergraph with only the edges of the desired cardinality.
+    Parameters
+    ----------
+    h: Hypergraph | TemporalHypergraph | DirectedHypergraph
+        The hypergraph to manipulate.
+    cardinality: int | tuple[int,int]
+        The cardinality to respect. It can be and int or a [a,b] set.
+    Returns
+    -------
+        hypergraph: Hypergraph | TemporalHypergraph | DirectedHypergraph
+    """
+    hypergraph = h.copy()
+    edge_list = hypergraph.get_edges()
     if isinstance(cardinality, tuple):
-        for edge in h.get_edges():
-            if cardinality[0] <= len(edge) <= cardinality[1]:
-                if h.is_weighted():
-                    hypergraph.add_edge(edge, h.get_weight(edge))
-                else:
-                    hypergraph.add_edge(edge)
+        for edge in edge_list:
+            if not (cardinality[0] <= len(edge) <= cardinality[1]):
+                hypergraph.remove_edge(edge)
     else:
-        for edge in h.get_edges():
-            if len(edge) == cardinality:
-                if h.is_weighted():
-                    hypergraph.add_edge(edge, h.get_weight(edge))
-                else:
-                    hypergraph.add_edge(edge)
+        for edge in edge_list:
+            if not (len(edge) == cardinality):
+                hypergraph.remove_edge(edge)
     return hypergraph
 
-def filter_hypergraph(h, cardinality, x_heaviest):
+def __filter_hypergraph(
+        h: Hypergraph | TemporalHypergraph | DirectedHypergraph,
+        cardinality: int | tuple[int,int],
+        x_heaviest: float
+    ) -> Hypergraph | TemporalHypergraph | DirectedHypergraph:
+    """
+    Filters and hypergraph using the parameters.
+    Parameters
+    ----------
+    h: Hypergraph | TemporalHypergraph | DirectedHypergraph
+        The hypergraph to manipulate.
+    cardinality: int | tuple[int,int]
+        The cardinality to respect. It can be and int or a [a,b] set.
+    x_heaviest: float
+        % value used to determine the top x% heaviest edges to take.
+    Returns
+    -------
+    hypergraph: Hypergraph | TemporalHypergraph | DirectedHypergraph
+    """
     if cardinality != -1:
-        hypergraph = cardinality_hypergraph(h, cardinality)
+        hypergraph = __cardinality_hypergraph(h, cardinality)
     else:
         hypergraph = h
     if x_heaviest != 1.0:
         if hypergraph.is_weighted():
-            hypergraph = x_heaviest_edges_hypergraph(hypergraph, x_heaviest)
+            hypergraph = __x_heaviest_edges_hypergraph(hypergraph, x_heaviest)
     else:
         pass
-
     return hypergraph
-
-def ignore_unused_args(func):
+def __ignore_unused_args(func):
+    """
+    Removes unused arguments from a function call.
+    """
     def wrapper(*args, **kwargs):
         sig = inspect.signature(func)
         kwargs = {k: v for k, v in kwargs.items() if k in sig.parameters}
         return func(*args, **kwargs)
 
     return wrapper
+
+def __support_to_normal_hypergraph(
+        directe_hg: DirectedHypergraph
+    ) -> tuple[Hypergraph, dict]:
+    """
+    Given a directed Hypergraph returns a normal hypergraph with a mapping to the edge directions.
+    Parameters
+    ----------
+    directe_hg: DirectedHypergraph
+    Returns
+    -------
+    new_hypergraph: Hypergraph
+    edge_directed_mapping: dict
+    """
+    orginal_edges = directe_hg.get_edges()
+    new_hypergraph = Hypergraph()
+    edge_directed_mapping = dict()
+    for edge in orginal_edges:
+        compressed_edge = []
+        for node in edge[0]:
+            compressed_edge.append(node)
+        for node in edge[1]:
+            compressed_edge.append(node)
+        edge_directed_mapping[tuple(sorted(compressed_edge))] = edge
+        if tuple(sorted(compressed_edge)) not in new_hypergraph.get_edges():
+            new_hypergraph.add_edge(compressed_edge)
+        else:
+            new_hypergraph.set_edge_metadata(compressed_edge, "I/O")
+    return new_hypergraph, edge_directed_mapping

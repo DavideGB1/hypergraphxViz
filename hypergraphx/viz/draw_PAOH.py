@@ -1,29 +1,13 @@
-from typing import Optional, Tuple
-
+from typing import Optional
 import matplotlib.pyplot as plt
 from hypergraphx import Hypergraph, DirectedHypergraph
 from hypergraphx.core.temporal_hypergraph import TemporalHypergraph
 from hypergraphx.viz.__graphic_options import GraphicOptions
-from hypergraphx.viz.__support import ignore_unused_args, filter_hypergraph, __check_edge_intersection
+from hypergraphx.viz.__support import __ignore_unused_args, __filter_hypergraph, __check_edge_intersection, \
+    __support_to_normal_hypergraph
 
-def __support_to_normal_hypergraph(directe_hg: DirectedHypergraph):
-    orginal_edges = directe_hg.get_edges()
-    new_hypergraph = Hypergraph()
-    edge_directed_mapping = dict()
-    for edge in orginal_edges:
-        compressed_edge = []
-        for node in edge[0]:
-            compressed_edge.append(node)
-        for node in edge[1]:
-            compressed_edge.append(node)
-        edge_directed_mapping[tuple(sorted(compressed_edge))] = edge
-        if tuple(sorted(compressed_edge)) not in new_hypergraph.get_edges():
-            new_hypergraph.add_edge(compressed_edge)
-        else:
-            new_hypergraph.set_edge_metadata(compressed_edge, "I/O")
-    return new_hypergraph, edge_directed_mapping
 
-@ignore_unused_args
+@__ignore_unused_args
 def draw_PAOH(
     h: Hypergraph | TemporalHypergraph | DirectedHypergraph,
     cardinality: tuple[int,int]|int = -1,
@@ -81,7 +65,7 @@ def draw_PAOH(
         plt.subplot(1, 1, 1)
         ax = plt.gca()
     #Filters the hypergraph
-    hypergraph = filter_hypergraph(h,cardinality, x_heaviest)
+    hypergraph = __filter_hypergraph(h, cardinality, x_heaviest)
     #Sets up the graphical options
     if graphicOptions is None:
         graphicOptions = GraphicOptions(is_PAOH=True)

@@ -2,11 +2,10 @@ import sys
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QPushButton, QVBoxLayout, QSlider, QWidget, QHBoxLayout, QLabel, \
-    QDoubleSpinBox, QRadioButton, QSpacerItem, QLayout, QCheckBox, QStyle
+    QDoubleSpinBox, QRadioButton, QSpacerItem, QLayout, QCheckBox
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-
 from hypergraphx import Hypergraph, TemporalHypergraph, DirectedHypergraph
 from hypergraphx.viz.draw_PAOH import draw_PAOH
 from hypergraphx.viz.draw_sets import draw_sets
@@ -122,9 +121,14 @@ class Window(QWidget):
 
         button.clicked.connect(open_options)
         return button
-    def plot(self):
+    def plot(self) -> None:
+        """
+        Plot the hypergraph on screen using the assigner draw function.
+        """
+        #Clears the plot
         self.figure.clear()
         ax = self.figure.add_subplot(111)
+        #Try to get the extra attributes
         try:
             radius_scale_factor = self.extra_attributes["radius_scale_factor"]
         except KeyError:
@@ -161,6 +165,7 @@ class Window(QWidget):
             polygon_expansion_factor = self.extra_attributes["polygon_expansion_factor"]
         except KeyError:
             polygon_expansion_factor = 1.8
+        #Plot and draw the hypergraph using it's function
         self.current_function(self.hypergraph, cardinality= self.slider_value, x_heaviest = float(self.spin_box.value()/100), ax=ax,
                 draw_labels=self.active_labels, space_optimization = self.space_optimization, time_font_size = time_font_size,
                 ignore_binary_relations = self.ignore_binary_relations, show_edge_nodes = self.show_edge_nodes, strong_gravity = self.strong_gravity,
@@ -169,18 +174,34 @@ class Window(QWidget):
                 time_separation_line_width = time_separation_line_width, rounded_polygon = self.rounded_polygon, polygon_expansion_factor = polygon_expansion_factor,
                 rounding_radius_size = rounding_radius_size)
         self.canvas.draw()
-    def get_new_option(self, tuple):
-        self.graphic_options, self.extra_attributes = tuple
+    def get_new_option(self, new_options: tuple[GraphicOptions,dict]) -> None:
+        """
+        Update the graphic options with the one sent from the option menu.
+        Parameters
+        ----------
+        new_options: tuple[GraphicOptions, dict]
+            The tuple inside the signal received from the option menu.
+        """
+        self.graphic_options, self.extra_attributes = new_options
         self.plot()
-    def heaviest_edges(self):
+    def heaviest_edges(self) -> None:
+        """
+        Updates the label showing what % of edges we are considering.
+        """
         self.spin_box_label.setText("Show {value}% Heaviest Edges".format(value=self.spin_box.value()))
         self.plot()
-    def assign_radial(self):
+    def assign_radial(self) -> None:
+        """
+        Assigns draw_radial_layout as plot function.
+        """
         self.current_function = draw_radial_layout
+        #Close the option menu if open
         if self.option_menu is not None:
             self.option_menu = None
+        #Gets new extra options
         self.extra_options()
         remove_last_x_elements_from_layout(self.vbox, 2)
+        #Create the new custom options for the radial function
         vbox_radial_option = QVBoxLayout()
         labels_button = QCheckBox("Show Labels")
         labels_button.setChecked(True)
@@ -190,12 +211,18 @@ class Window(QWidget):
         self.vbox.addLayout(vbox_radial_option)
         self.vbox.addStretch()
         self.plot()
-    def assign_PAOH(self):
+    def assign_PAOH(self) -> None:
+        """
+        Assigns draw_PAOH as plot function.
+        """
         self.current_function = draw_PAOH
+        # Close the option menu if open
         if self.option_menu is not None:
             self.option_menu = None
+        # Gets new extra options
         self.extra_options()
         remove_last_x_elements_from_layout(self.vbox, 2)
+        #Create the new custom options for the PAOH function
         vbox_PAOH_option = QVBoxLayout()
         space_optimization_option_btn = QCheckBox("Optimize Space Usage")
         space_optimization_option_btn.setChecked(False)
@@ -212,13 +239,19 @@ class Window(QWidget):
         self.vbox.addLayout(vbox_PAOH_option)
         self.vbox.addStretch()
         self.plot()
-    def assign_metroset(self):
+    def assign_metroset(self) -> None:
+        """
+        Assigns draw_metroset as plot function.
+        """
         self.current_function = draw_metroset
         self.iterations = 10
+        # Close the option menu if open
         if self.option_menu is not None:
             self.option_menu = None
+        # Gets new extra options
         self.extra_options()
         remove_last_x_elements_from_layout(self.vbox, 2)
+        # Create the new custom options for the metroset function
         vbox_metroset_option = QVBoxLayout()
         iterations_selector_label = QLabel()
         iterations_selector_label.setText("Number of Iterations:")
@@ -238,13 +271,19 @@ class Window(QWidget):
         self.vbox.addLayout(vbox_metroset_option)
         self.vbox.addStretch()
         self.plot()
-    def assign_clique_projection(self):
+    def assign_clique_projection(self) -> None:
+        """
+        Assigns draw_clique as plot function.
+        """
         self.current_function = draw_clique
         self.iterations = 1000
+        # Close the option menu if open
         if self.option_menu is not None:
             self.option_menu = None
+        # Gets new extra options
         self.extra_options()
         remove_last_x_elements_from_layout(self.vbox, 2)
+        # Create the new custom options for the clique function
         vbox_clique_expasion_option = QVBoxLayout()
         strong_gravity_btn = QCheckBox("Use Strong Gravity")
         strong_gravity_btn.setChecked(True)
@@ -272,13 +311,19 @@ class Window(QWidget):
         self.vbox.addLayout(vbox_clique_expasion_option)
         self.vbox.addStretch()
         self.plot()
-    def assign_extra_node(self):
+    def assign_extra_node(self) -> None:
+        """
+        Assigns draw_extra_node as plot function.
+        """
         self.current_function = draw_extra_node
         self.iterations = 1000
+        # Close the option menu if open
         if self.option_menu is not None:
             self.option_menu = None
+        # Gets new extra options
         self.extra_options()
         remove_last_x_elements_from_layout(self.vbox, 2)
+        # Create the new custom options for the extra-node function
         vbox_extra_node_option = QVBoxLayout()
         edge_nodes_btn = QCheckBox("Show Edge Nodes")
         edge_nodes_btn.setChecked(True)
@@ -337,13 +382,20 @@ class Window(QWidget):
         self.vbox.addLayout(vbox_extra_node_option)
         self.vbox.addStretch()
         self.plot()
-    def assign_bipartite(self):
+    def assign_bipartite(self) -> None:
+        """
+        Assigns draw_bipartite as plot function.
+        """
         self.current_function = draw_bipartite
-        remove_last_x_elements_from_layout(self.vbox, 2)
-        vbox_bipartite_option = QVBoxLayout()
+        # Close the option menu if open
         if self.option_menu is not None:
             self.option_menu = None
+        # Gets new extra options
         self.extra_options()
+        remove_last_x_elements_from_layout(self.vbox, 2)
+        # Create the new custom options for the bipartite function
+        vbox_bipartite_option = QVBoxLayout()
+
         def change_alignment():
             if self.alignment == "vertical":
                 self.alignment = "horizontal"
@@ -358,13 +410,19 @@ class Window(QWidget):
         self.vbox.addLayout(vbox_bipartite_option)
         self.vbox.addStretch()
         self.plot()
-    def assign_sets(self):
+    def assign_sets(self) -> None:
+        """
+        Assigns draw_sets as plot function.
+        """
         self.current_function = draw_sets
         self.iterations = 100
+        # Close the option menu if open
         if self.option_menu is not None:
             self.option_menu = None
+        # Gets new extra options
         self.extra_options()
         remove_last_x_elements_from_layout(self.vbox, 2)
+        # Create the new custom options for the bipartite function
         vbox_set_option = QVBoxLayout()
         iterations_selector_label = QLabel()
         iterations_selector_label.setText("Number of Iterations:")
@@ -396,7 +454,10 @@ class Window(QWidget):
         self.vbox.addLayout(vbox_set_option)
         self.vbox.addStretch()
         self.plot()
-    def option_vbox(self):
+    def option_vbox(self) -> None:
+        """
+        Creates the standard options for the visualization functions
+        """
         self.vbox = QVBoxLayout()
         self.vbox.addWidget(self.add_options_button())
         if self.hypergraph.is_weighted():
@@ -418,7 +479,10 @@ class Window(QWidget):
         self.vbox.addStretch()
         radio_btn_list[0].setChecked(True)
         self.canvas_hbox.addLayout(self.vbox, 20)
-    def add_radio_option(self):
+    def add_radio_option(self) -> None:
+        """
+        Create the selection list for the visualization function
+        """
         button_list = []
         if isinstance(self.hypergraph, TemporalHypergraph):
             options_dict = { "PAOH": self.assign_PAOH}
@@ -437,21 +501,30 @@ class Window(QWidget):
             radio_button_metroset.toggled.connect(self.assign_metroset)
             button_list.append(radio_button_metroset)
         return button_list
-    def activate_labels(self):
+    def activate_labels(self) -> None:
+        """
+        Manage the draw_labels option button.
+        """
         if self.active_labels:
             self.active_labels = False
             self.plot()
         else:
             self.active_labels = True
             self.plot()
-    def activate_strong_gravity(self):
+    def activate_strong_gravity(self) -> None:
+        """
+        Manage the strong_gravity option button.
+        """
         if self.strong_gravity:
             self.strong_gravity = False
             self.plot()
         else:
             self.strong_gravity = True
             self.plot()
-    def extra_options(self):
+    def extra_options(self) -> None:
+        """
+        Generate the extra options list for the visualization functions
+        """
         if self.current_function == draw_radial_layout:
             self.extra_attributes = dict()
             self.extra_attributes["radius_scale_factor"] = 1.0
@@ -473,13 +546,26 @@ class Window(QWidget):
             self.extra_attributes["out_edge_color"] = "red"
 
 def clear_layout(layout: QLayout):
+    """
+    Function to clear a QLayout
+    Parameters
+    ----------
+    layout: QLayout
+    """
     while layout.count():
         item = layout.takeAt(0)
         widget = item.widget()
         if widget:
             widget.deleteLater()
 
-def remove_last_x_elements_from_layout(layout, x=1):
+def remove_last_x_elements_from_layout(layout: QLayout, x: int=1) -> None:
+    """
+    Function to remove last x elements from a QLayout
+    Parameters
+    ----------
+    layout: QLayout
+    x: int
+    """
     for x in range(x):
         widget_layout = layout.takeAt(layout.count() - 1)
         layout.removeItem(widget_layout)
@@ -493,7 +579,13 @@ def remove_last_x_elements_from_layout(layout, x=1):
             except AttributeError:
                 pass
 
-def start_interactive_view(h: Hypergraph):
+def start_interactive_view(h: Hypergraph|TemporalHypergraph|DirectedHypergraph) -> None:
+    """
+    Wrapper function used to start the interactive view.
+    Parameters
+    ----------
+    h: Hypergraph or TemporalHypergraph or DirectedHypergraph
+    """
     app = QApplication(sys.argv)
     main = Window(hypergraph=h)
     main.show()

@@ -8,7 +8,7 @@ from hypergraphx import Hypergraph
 
 from hypergraphx.viz.__chivers_rodgers import chivers_rodgers
 from hypergraphx.viz.__graphic_options import GraphicOptions
-from hypergraphx.viz.__support import filter_hypergraph, __calculate_incidence, __distance, __draw_line, ignore_unused_args
+from hypergraphx.viz.__support import __filter_hypergraph, __calculate_incidence, __distance, __draw_line, __ignore_unused_args
 
 sys.path.append("..")
 import networkx as nx
@@ -526,7 +526,7 @@ def __draw_metrograph(
         nx.draw_networkx_labels(g, pos=layout, labels=labels, font_size=graphicOptions.label_size,
                                 font_color=graphicOptions.label_color, ax = ax)
 
-@ignore_unused_args
+@__ignore_unused_args
 def draw_metroset(
     h: Hypergraph,
     cardinality: tuple[int,int]|int = -1,
@@ -577,7 +577,7 @@ def draw_metroset(
         plt.subplot(1, 1, 1)
         ax = plt.gca()
 
-    hypergraph = filter_hypergraph(h, cardinality, x_heaviest)
+    hypergraph = __filter_hypergraph(h, cardinality, x_heaviest)
     compressed_graph, one_edge_to_edge, only_in_one_edge = __compress_hypergraph(hypergraph)
     compressed_edges, edge_to_new_edge = __compress_edges(hypergraph, only_in_one_edge, list(compressed_graph.nodes()))
     for edge in compressed_edges:

@@ -11,11 +11,11 @@ from hypergraphx.representations.projections import (
     clique_projection, extra_node_projection)
 
 
-from __support import filter_hypergraph, ignore_unused_args
+from __support import __filter_hypergraph, __ignore_unused_args
 from hypergraphx.viz.__graphic_options import GraphicOptions
 
 
-@ignore_unused_args
+@__ignore_unused_args
 def draw_bipartite(
     h: Hypergraph,
     cardinality: tuple[int,int]|int = -1,
@@ -57,7 +57,7 @@ def draw_bipartite(
     kwargs : dict.
         Keyword arguments to be passed to networkx.draw_networkx.
     """
-    hypergraph = filter_hypergraph(h,cardinality, x_heaviest)
+    hypergraph = __filter_hypergraph(h, cardinality, x_heaviest)
     g, id_to_obj = bipartite_projection(hypergraph)
 
     if pos is None:
@@ -90,7 +90,7 @@ def draw_bipartite(
         nx.draw_networkx_labels(g, ax=ax, pos=pos, labels=labels, font_size=graphicOptions.label_size,
                                 font_color=graphicOptions.label_color)
 
-@ignore_unused_args
+@__ignore_unused_args
 def draw_clique(
     h: Hypergraph,
     cardinality: tuple[int,int]|int = -1,
@@ -135,7 +135,7 @@ def draw_clique(
     kwargs : dict.
         Keyword arguments to be passed to networkx.draw_networkx.
     """
-    hypergraph = filter_hypergraph(h, cardinality, x_heaviest)
+    hypergraph = __filter_hypergraph(h, cardinality, x_heaviest)
     g = clique_projection(hypergraph)
 
     forceatlas2 = ForceAtlas2(
@@ -179,7 +179,7 @@ def draw_clique(
     ax.set_aspect('equal')
     ax.autoscale(enable=True, axis='both')
 
-@ignore_unused_args
+@__ignore_unused_args
 def draw_extra_node(
     h: Hypergraph,
     cardinality: tuple[int,int]|int = -1,
@@ -230,7 +230,7 @@ def draw_extra_node(
     kwargs : dict.
         Keyword arguments to be passed to networkx.draw_networkx.
     """
-    hypergraph = filter_hypergraph(h, cardinality, x_heaviest)
+    hypergraph = __filter_hypergraph(h, cardinality, x_heaviest)
     g, binary_edges, isDirected = extra_node_projection(hypergraph)
 
     if ax is None:

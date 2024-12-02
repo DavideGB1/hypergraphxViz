@@ -1,7 +1,9 @@
 from enum import Enum
 
-
 class OptionsName(Enum):
+    """
+    Enum used to translate some GUI labels into normal strings
+    """
     node_shape = "Node Shape"
     edge_shape = "Edge Shape"
     node_color = "Node Color"

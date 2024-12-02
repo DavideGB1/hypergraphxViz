@@ -8,7 +8,7 @@ from networkx import kamada_kawai_layout
 from hypergraphx import Hypergraph
 from hypergraphx.representations.projections import clique_projection
 from hypergraphx.viz.__graphic_options import GraphicOptions
-from hypergraphx.viz.__support import ignore_unused_args, filter_hypergraph
+from hypergraphx.viz.__support import __ignore_unused_args, __filter_hypergraph
 
 
 def _draw_hyperedge_set(
@@ -132,7 +132,7 @@ class __vector:
         self.ang = math.atan2(self.ny, self.nx)
 
 
-@ignore_unused_args
+@__ignore_unused_args
 def draw_sets(
     hypergraph: Hypergraph,
     cardinality: tuple[int, int] | int = -1,
@@ -153,7 +153,7 @@ def draw_sets(
     **kwargs) -> None:
     """
     Draws a set projection of the hypergraph.
-     Parameters
+    Parameters
     ----------
     h : Hypergraph.
         The hypergraph to be projected.
@@ -199,7 +199,7 @@ def draw_sets(
         ax = plt.gca()
 
     #Filter the Hypergraph nodes and edges
-    hypergraph = filter_hypergraph(hypergraph, cardinality, x_heaviest)
+    hypergraph = __filter_hypergraph(hypergraph, cardinality, x_heaviest)
     isolated = hypergraph.isolated_nodes()
     for node in isolated:
         hypergraph.remove_node(node)

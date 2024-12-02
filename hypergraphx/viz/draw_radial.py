@@ -9,8 +9,8 @@ from matplotlib.widgets import Slider
 from hypergraphx import Hypergraph
 from matplotlib import pyplot as plt
 
-from __support import __check_edge_intersection, x_heaviest_edges_hypergraph, cardinality_hypergraph, filter_hypergraph, \
-    ignore_unused_args
+from __support import __check_edge_intersection, __x_heaviest_edges_hypergraph, __cardinality_hypergraph, __filter_hypergraph, \
+    __ignore_unused_args
 from hypergraphx.viz.__graphic_options import GraphicOptions
 
 
@@ -89,7 +89,7 @@ def __calculate_node_position(h: Hypergraph, alpha: float, radius: float) -> dic
 
     return pos
 
-@ignore_unused_args
+@__ignore_unused_args
 def draw_radial_layout(
     h: Hypergraph,
     cardinality: tuple[int,int]|int = -1,
@@ -118,8 +118,6 @@ def draw_radial_layout(
         Decide if the labels should be drawn.
     radius_scale_factor : float, optional
         Scale for the Radius value.
-    marker_color : str, optional
-        HEX value for the node markers along the hyperedges.
     font_spacing_factor : float, optional
         Value used to place the labels in a circle different from the inner one. 0 means that the labels position is
         the inner circle position.
@@ -142,7 +140,7 @@ def draw_radial_layout(
         ax = plt.gca()
     if graphicOptions is None:
         graphicOptions = GraphicOptions(is_PAOH=True)
-    hypergraph = filter_hypergraph(h,cardinality, x_heaviest)
+    hypergraph = __filter_hypergraph(h, cardinality, x_heaviest)
     graphicOptions.check_if_options_are_valid(hypergraph)
     #Calculate the radius and the necessary alpha value
     radius = (hypergraph.num_nodes() * radius_scale_factor) / (2 * np.pi)
