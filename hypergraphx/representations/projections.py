@@ -37,10 +37,13 @@ def bipartite_projection(h: Hypergraph):
         obj_to_id[edge] = "E" + str(idx)
         id_to_obj["E" + str(idx)] = edge
         idx += 1
-        g.add_node(obj_to_id[edge], bipartite=1)
+        if h.is_weighted():
+            g.add_node(obj_to_id[edge], bipartite=1,weight=h.get_weight(edge))
+        else:
+            g.add_node(obj_to_id[edge], bipartite=1)
 
         for node in edge:
-            g.add_edge(obj_to_id[edge], obj_to_id[node])
+                g.add_edge(obj_to_id[edge], obj_to_id[node])
 
     return g, id_to_obj
 
@@ -87,7 +90,10 @@ def clique_projection(h: Hypergraph, keep_isolated=False):
     for edge in h.get_edges():
         for i in range(len(edge) - 1):
             for j in range(i + 1, len(edge)):
-                g.add_edge(edge[i], edge[j])
+                if h.is_weighted():
+                    g.add_edge(edge[i], edge[j],weight = h.get_weight(edge) )
+                else:
+                    g.add_edge(edge[i], edge[j])
 
     return g
 
@@ -229,10 +235,10 @@ def extra_node_projection(h: Hypergraph|DirectedHypergraph) -> [nx.Graph,list]:
         else:
             obj_to_id[tuple(edge)] = 'E' + str(idx)
             id_to_obj['E' + str(idx)] = edge
-            g.add_node(obj_to_id[tuple(edge)])
             weight = 1
             if h.is_weighted():
                 weight = h.get_weight(original_edge)
+            g.add_node(obj_to_id[tuple(edge)], weight=weight)
             if isDirected:
                 for node in original_edge[0]:
                     g.add_edge(node,obj_to_id[tuple(edge)], weight=weight)

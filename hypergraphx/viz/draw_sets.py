@@ -155,7 +155,7 @@ def draw_sets(
     Draws a set projection of the hypergraph.
     Parameters
     ----------
-    h : Hypergraph.
+    hypergraph: Hypergraph.
         The hypergraph to be projected.
     cardinality: tuple[int,int]|int. optional
         Allows you to filter hyperedges so that only those with the default cardinality are visible.
@@ -175,7 +175,7 @@ def draw_sets(
         It's used to specify the alpha gradient of each hyperedge polygon. Each hyperedge can have its own alpha.
     scale: int, optional
         Used to influence the distance between nodes
-    rounding_radius: float, optional
+    rounding_radius_size: float, optional
         Radius for the rounded corners of the polygons.
     polygon_expansion_factor: float, optional
         Scale factor for the polygon expansion.
@@ -224,7 +224,7 @@ def draw_sets(
     G = nx.Graph()
     G.add_nodes_from(hypergraph.get_nodes())
     for e in edges:
-        G.add_edge(e[0], e[1])
+        G.add_edge(e[0], e[1], weight = hypergraph.get_weight(e))
 
     #Ensure that all the nodes and binary edges have the graphical attributes specified
     graphicOptions.check_if_options_are_valid(G)
@@ -298,11 +298,21 @@ def draw_sets(
                 polygon.set_facecolor(facecolor)
                 polygon.set_edgecolor(color)
                 ax.add_patch(polygon)
+            if hypergraph.is_weighted():
+                ax.text(x_c, y_c, str(hypergraph.get_weight(hye)))
+
 
     #Draws Binary Edges
     for edge in G.edges():
         nx.draw_networkx_edges(G, pos, edgelist=[edge], width=graphicOptions.edge_size[edge],
                                edge_color=graphicOptions.edge_color[edge], ax=ax, **kwargs)
+    if hypergraph.is_weighted():
+        labels = nx.get_edge_attributes(G, 'weight')
+        pos_higher = {}
+        y_off = 0.1
+        for k, v in pos.items():
+            pos_higher[k] = (v[0], v[1] + y_off)
+        nx.draw_networkx_edge_labels(G, pos_higher, edge_labels=labels, bbox={'alpha': 0, 'pad': 1}, verticalalignment="top")
 
     ax.axis("equal")
     plt.axis("equal")

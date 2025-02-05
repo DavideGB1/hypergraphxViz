@@ -156,6 +156,8 @@ def draw_radial_layout(
         x = [pos_node_1[0], pos_node_2[0]]
         y = [pos_node_1[1], pos_node_2[1]]
         ax.plot(x, y, color=graphicOptions.edge_color[edge], **kwargs)
+        if hypergraph.is_weighted():
+            ax.text((pos_node_1[0]+pos_node_2[0])/2, (pos_node_1[1]+pos_node_2[1])/2, str(hypergraph.get_weight(edge)))
 
 
     #Draw the nodes with their own label in the inner circle
@@ -164,6 +166,7 @@ def draw_radial_layout(
     max_y = -math.inf
     min_y = math.inf
     node_depth = 1
+    prev = dict()
     for node in hypergraph.get_nodes():
         value_x = pos[node][0]
         value_y = pos[node][1]
@@ -182,7 +185,6 @@ def draw_radial_layout(
             max_y = max(max_y, value_y * font_spacing_factor)
             min_y = min(min_y, value_y * font_spacing_factor)
         node_depth += 1
-
     sector_depth = font_spacing_factor
     if draw_labels:
         sector_depth+=1
@@ -217,6 +219,22 @@ def draw_radial_layout(
                 ax.plot(value_x, value_y, graphicOptions.edge_shape[node], color=graphicOptions.edge_node_color[node],
                         markersize=graphicOptions.node_size[node]/30,
                         markeredgecolor=graphicOptions.node_facecolor[node], **kwargs)
+
+            if hypergraph.is_weighted():
+                start_node = nodes_mapping.transform([edge[-1]])[0]
+                end_node = start_node+1
+                theta = np.linspace(alpha * start_node, alpha * end_node, 50)
+
+                value_x = round(cos(theta[12]), 5) * radius * sector_depth
+                value_y = round(sin(theta[12]), 5) * radius * sector_depth
+                len_x = round(cos(theta[1]), 5) * radius * sector_depth
+                len_y = round(sin(theta[1]), 5) * radius * sector_depth
+                ax.annotate('', xy=(len_x, len_y), xytext = (value_x, value_y),arrowprops=dict(arrowstyle='->'))
+                value_x = round(cos(theta[15]), 5) * radius * sector_depth
+                value_y = round(sin(theta[15]), 5) * radius * sector_depth
+
+                ax.text(value_x,value_y,str(hypergraph.get_weight(edge)), horizontalalignment='center', verticalalignment='center')
+
 
         sector_depth += 0.35
     ax.set_aspect('equal')

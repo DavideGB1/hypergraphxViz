@@ -590,7 +590,8 @@ def start_interactive_view(h: Hypergraph|TemporalHypergraph|DirectedHypergraph) 
 
 h = Hypergraph(weighted=True)
 h.add_edge((1, 2), 5)
-h.add_edge((42, 3, 4), 1)
-h.add_edge((1, 2, 3, 4, 5), 3)
+h.add_edge((42, 5, 4), 1)
+h.add_edge((1, 2, 3,), 3)
+h.add_edge((1, 2, 3,4), 3)
 h._weighted = True
 start_interactive_view(h)

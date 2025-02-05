@@ -89,6 +89,18 @@ def draw_bipartite(
         labels = dict((n, n) for n in g.nodes())
         nx.draw_networkx_labels(g, ax=ax, pos=pos, labels=labels, font_size=graphicOptions.label_size,
                                 font_color=graphicOptions.label_color)
+    if h.is_weighted():
+        labels = nx.get_node_attributes(g, 'weight')
+        pos_offsetted = {}
+        offset = 0.1
+        for k, v in pos.items():
+            if align == 'horizontal':
+                pos_offsetted[k] = (v[0], v[1] + offset)
+            else:
+                pos_offsetted[k] = (v[0] + offset, v[1])
+        nx.draw_networkx_labels(g, ax=ax, pos=pos_offsetted, labels=labels, font_size=graphicOptions.label_size,
+                                font_color=graphicOptions.label_color)
+
 
 @__ignore_unused_args
 def draw_clique(
@@ -270,7 +282,7 @@ def draw_extra_node(
     graphicOptions.check_if_options_are_valid(g)
 
     __draw_in_plot(g, pos, ax = ax, show_edge_nodes=show_edge_nodes, draw_labels=draw_labels,
-                   graphicOptions = graphicOptions,isDirected=isDirected, **kwargs)
+                   graphicOptions = graphicOptions,isDirected=isDirected, isWeighted = hypergraph.is_weighted(), **kwargs)
 
     ax.set_aspect('equal')
     ax.autoscale(enable=True, axis='both')
@@ -280,6 +292,7 @@ def __draw_in_plot(
     pos,
     graphicOptions: GraphicOptions,
     isDirected: bool = False,
+    isWeighted: bool = False,
     ax = None,
     show_edge_nodes: bool = False,
     draw_labels: bool = True,
@@ -330,12 +343,13 @@ def __draw_in_plot(
         edge_list = [x for x in g.nodes() if str(x).startswith('E')]
         for edge in edge_list:
             nx.draw_networkx_nodes(g, nodelist=[edge], ax=ax, pos=pos, node_shape=graphicOptions.edge_shape[edge],
-                                   node_color=graphicOptions.edge_node_color[edge], **kwargs)
+                                   node_color=graphicOptions.edge_node_color[edge],edgecolors=graphicOptions.node_facecolor[node], **kwargs)
+        if isWeighted:
+            labels = nx.get_node_attributes(g, 'weight')
+            nx.draw_networkx_labels(g, ax=ax, pos=pos, labels=labels, font_size=graphicOptions.label_size,
+                                    font_color=graphicOptions.label_color, **kwargs)
     #Draw labels
     if draw_labels:
         labels = dict((n, n) for n in g.nodes() if not str(n).startswith('E'))
-        if show_edge_nodes:
-            labels_edges = dict((n, n) for n in g.nodes() if str(n).startswith('E'))
-            labels.update(labels_edges)
         nx.draw_networkx_labels(g, ax=ax, pos=pos, labels=labels, font_size=graphicOptions.label_size,
                                 font_color=graphicOptions.label_color, **kwargs)
