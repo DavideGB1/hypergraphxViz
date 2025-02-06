@@ -150,25 +150,12 @@ def draw_clique(
     hypergraph = __filter_hypergraph(h, cardinality, x_heaviest)
     g = clique_projection(hypergraph)
 
-    forceatlas2 = ForceAtlas2(
-        outboundAttractionDistribution=True,  # Dissuade hubs
-        linLogMode=False,  # NOT IMPLEMENTED
-        adjustSizes=False,  # Prevent overlap (NOT IMPLEMENTED)
-        edgeWeightInfluence=1.0,
-        jitterTolerance=1.0,  # Tolerance
-        barnesHutOptimize=True,
-        barnesHutTheta=1.2,
-        multiThreaded=False,  # NOT IMPLEMENTED
-        scalingRatio=2.0,
-        strongGravityMode=strong_gravity,
-        gravity=1.0,
-        verbose=True)
     #Calculate positions if not provided
     if pos is None:
-        pos = forceatlas2.forceatlas2_networkx_layout(G=g, iterations=iterations, weight_attr="weight")
+        pos = nx.spring_layout(G=g, iterations=iterations, weight="weight")
     #Ues provided positions as a base for the calculation
     else:
-        pos = forceatlas2.forceatlas2_networkx_layout(G=g, pos=pos,iterations=iterations, weight_attr="weight")
+        pos = nx.spring_layout(G=g, pos=pos,iterations=iterations, weight="weight")
 
     if ax is None:
         plt.figure(figsize=figsize, dpi=dpi)
@@ -250,20 +237,6 @@ def draw_extra_node(
         plt.subplot(1, 1, 1)
         ax = plt.gca()
 
-    forceatlas2 = ForceAtlas2(
-        outboundAttractionDistribution=True,  # Dissuade hubs
-        linLogMode=False,  # NOT IMPLEMENTED
-        adjustSizes=False,  # Prevent overlap (NOT IMPLEMENTED)
-        edgeWeightInfluence=1.0,
-        jitterTolerance=1.0,  # Tolerance
-        barnesHutOptimize=True,
-        barnesHutTheta=1.2,
-        multiThreaded=False,  # NOT IMPLEMENTED
-        scalingRatio=2.0,
-        strongGravityMode=strong_gravity,
-        gravity=1.0,
-        verbose=True)
-
     if ignore_binary_relations:
         isolated = list(nx.isolates(g))
         g.remove_nodes_from(isolated)
@@ -276,9 +249,9 @@ def draw_extra_node(
         if pos is None:
             #First layout to optimize
             pos = kamada_kawai_layout(g)
-        pos = forceatlas2.forceatlas2_networkx_layout(G=g, pos=pos, iterations=iterations, weight_attr="weight")
-        # Ensure that all the nodes have the graphical attributes specified
+        pos = nx.spring_layout(G=g, pos=pos, iterations=iterations, weight="weight")
 
+    # Ensure that all the nodes have the graphical attributes specified
     graphicOptions.check_if_options_are_valid(g)
 
     __draw_in_plot(g, pos, ax = ax, show_edge_nodes=show_edge_nodes, draw_labels=draw_labels,
@@ -342,8 +315,17 @@ def __draw_in_plot(
     if show_edge_nodes:
         edge_list = [x for x in g.nodes() if str(x).startswith('E')]
         for edge in edge_list:
-            nx.draw_networkx_nodes(g, nodelist=[edge], ax=ax, pos=pos, node_shape=graphicOptions.edge_shape[edge],
-                                   node_color=graphicOptions.edge_node_color[edge],edgecolors=graphicOptions.node_facecolor[node], **kwargs)
+            nx.draw_networkx_nodes(
+                g,
+                pos,
+                nodelist=[edge],
+                node_size=graphicOptions.node_size[edge],
+                node_shape=graphicOptions.edge_shape[edge],
+                node_color=graphicOptions.edge_node_color[edge],
+                edgecolors=graphicOptions.node_facecolor[edge],
+                ax=ax,
+                **kwargs
+            )
         if isWeighted:
             labels = nx.get_node_attributes(g, 'weight')
             nx.draw_networkx_labels(g, ax=ax, pos=pos, labels=labels, font_size=graphicOptions.label_size,
