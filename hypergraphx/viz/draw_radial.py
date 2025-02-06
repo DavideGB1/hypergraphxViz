@@ -1,16 +1,12 @@
 import math
 from math import cos, sin
 from typing import Optional
-
-import matplotlib
 import numpy as np
-from matplotlib.widgets import Slider
-
-from hypergraphx import Hypergraph
 from matplotlib import pyplot as plt
 
-from __support import __check_edge_intersection, __x_heaviest_edges_hypergraph, __cardinality_hypergraph, __filter_hypergraph, \
-    __ignore_unused_args
+from __support import __check_edge_intersection, __filter_hypergraph, __ignore_unused_args, \
+    __support_to_normal_hypergraph
+from hypergraphx import Hypergraph, DirectedHypergraph
 from hypergraphx.viz.__graphic_options import GraphicOptions
 
 
@@ -91,7 +87,7 @@ def __calculate_node_position(h: Hypergraph, alpha: float, radius: float) -> dic
 
 @__ignore_unused_args
 def draw_radial_layout(
-    h: Hypergraph,
+    h: Hypergraph | DirectedHypergraph,
     cardinality: tuple[int,int]|int = -1,
     x_heaviest: float = 1.0,
     draw_labels:bool = True,
@@ -106,7 +102,7 @@ def draw_radial_layout(
     Draws a Radial representation of the hypergraph.
     Parameters
     ----------
-    h : Hypergraph.
+    h : Hypergraph | DirectedHypergraph.
        The hypergraph to be projected.
     cardinality: tuple[int,int]|int. optional
         Allows you to filter hyperedges so that only those with the default cardinality are visible.
@@ -140,7 +136,11 @@ def draw_radial_layout(
         ax = plt.gca()
     if graphicOptions is None:
         graphicOptions = GraphicOptions(is_PAOH=True)
+    isDirected = False
     hypergraph = __filter_hypergraph(h, cardinality, x_heaviest)
+    if isinstance(hypergraph, DirectedHypergraph):
+        hypergraph, edge_directed_mapping = __support_to_normal_hypergraph(hypergraph)
+        isDirected = True
     graphicOptions.check_if_options_are_valid(hypergraph)
     #Calculate the radius and the necessary alpha value
     radius = (hypergraph.num_nodes() * radius_scale_factor) / (2 * np.pi)
@@ -166,7 +166,6 @@ def draw_radial_layout(
     max_y = -math.inf
     min_y = math.inf
     node_depth = 1
-    prev = dict()
     for node in hypergraph.get_nodes():
         value_x = pos[node][0]
         value_y = pos[node][1]
@@ -216,7 +215,25 @@ def draw_radial_layout(
                 min_x = min(min_x, value_x)
                 max_y = max(max_y, value_y)
                 min_y = min(min_y, value_y)
-                ax.plot(value_x, value_y, graphicOptions.edge_shape[node], color=graphicOptions.edge_node_color[node],
+                if isDirected:
+                    true_edge = edge_directed_mapping[original_edge]
+                    edge_metadata = hypergraph.get_edge_metadata(original_edge)
+                    if edge_metadata != "I/O":
+                        in_edge_color = graphicOptions.in_edge_color
+                        out_edge_color = graphicOptions.out_edge_color
+                    else:
+                        in_edge_color = graphicOptions.default_node_color
+                        out_edge_color = graphicOptions.default_node_color
+                    if node in true_edge[0]:
+                        ax.plot(value_x, value_y, marker=graphicOptions.node_shape[node],
+                                color=in_edge_color, markeredgecolor=graphicOptions.node_facecolor[node],
+                                markersize=graphicOptions.node_size[node] / 30, **kwargs)
+                    else:
+                        ax.plot(value_x, value_y, marker=graphicOptions.node_shape[node],
+                                color=out_edge_color, markeredgecolor=graphicOptions.node_facecolor[node],
+                                markersize=graphicOptions.node_size[node] / 30, **kwargs)
+                else:
+                    ax.plot(value_x, value_y, graphicOptions.edge_shape[node], color=graphicOptions.edge_node_color[node],
                         markersize=graphicOptions.node_size[node]/30,
                         markeredgecolor=graphicOptions.node_facecolor[node], **kwargs)
 
@@ -244,3 +261,4 @@ def draw_radial_layout(
     max_y = max(max_y, abs(min_y))
     ax.set_xlim([-max_x-1,max_x+1])
     ax.set_ylim([-max_y-1,max_y+1])
+

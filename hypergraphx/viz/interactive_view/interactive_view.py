@@ -487,7 +487,7 @@ class Window(QWidget):
         if isinstance(self.hypergraph, TemporalHypergraph):
             options_dict = { "PAOH": self.assign_PAOH}
         elif isinstance(self.hypergraph, DirectedHypergraph):
-            options_dict = { "PAOH": self.assign_PAOH, "Extra-Node": self.assign_extra_node}
+            options_dict = { "Radial": self.assign_radial,"PAOH": self.assign_PAOH, "Extra-Node": self.assign_extra_node}
         else:
             options_dict = { "Radial": self.assign_radial, "PAOH": self.assign_PAOH, "Clique Expansion": self.assign_clique_projection,
                          "Extra-Node": self.assign_extra_node, "Bipartite": self.assign_bipartite, "Sets": self.assign_sets,
@@ -588,10 +588,13 @@ def start_interactive_view(h: Hypergraph|TemporalHypergraph|DirectedHypergraph) 
     main.show()
     sys.exit(app.exec_())
 
+
 h = Hypergraph(weighted=True)
 h.add_edge((1, 2), 5)
 h.add_edge((42, 5, 4), 1)
-h.add_edge((1, 2, 3,), 3)
+h.add_edge((1, 2, 3), 3)
 h.add_edge((1, 2, 3,4), 3)
 h._weighted = True
+#h = DirectedHypergraph()
+#h.add_edge(((1,2),(3,4)))
 start_interactive_view(h)

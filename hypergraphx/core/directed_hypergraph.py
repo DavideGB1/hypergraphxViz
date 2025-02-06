@@ -1,4 +1,5 @@
 from typing import Tuple, List
+import copy
 
 from sklearn.preprocessing import LabelEncoder
 
@@ -624,6 +625,17 @@ class DirectedHypergraph:
         if edge not in self._edge_metadata:
             raise ValueError("Edge {} not in hypergraph.".format(edge))
         del self._edge_metadata[self._edge_list[edge]][field]
+
+    def copy(self):
+        """
+        Returns a copy of the hypergraph.
+
+        Returns
+        -------
+        Hypergraph
+            A copy of the hypergraph.
+        """
+        return copy.deepcopy(self)
 
     def expose_data_structures(self):
         """
