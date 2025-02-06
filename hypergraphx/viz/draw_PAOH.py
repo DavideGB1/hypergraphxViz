@@ -73,7 +73,7 @@ def draw_PAOH(
     #Creates a custom node mapping
     node_mapping = dict()
     idx = 0
-    for node in hypergraph.get_nodes():
+    for node in sorted(hypergraph.get_nodes()):
         node_mapping[idx] = node
         idx += 1
     max_node = idx - 0.5
@@ -127,7 +127,7 @@ def draw_PAOH(
                 original_edge = edge
                 edge = tuple(sorted(edge))
                 first_node = edge[0]
-                last_node = edge[len(edge) - 1]
+                last_node = edge[-1]
                 ax.plot([idx, idx], [list(node_mapping.values()).index(first_node), list(node_mapping.values()).index(last_node)],
                         color=graphicOptions.edge_color[original_edge], linewidth = graphicOptions.edge_size[original_edge], **kwargs)
                 if hypergraph.is_weighted():
@@ -173,7 +173,7 @@ def draw_PAOH(
     ax.set_xlim([-0.5, idx])
     ax.set_ylim([-0.5,len(hypergraph.get_nodes())])
     ax.set_yticks(range(len(hypergraph.get_nodes())))
-    ax.set_yticklabels(hypergraph.get_nodes())
+    ax.set_yticklabels(sorted(hypergraph.get_nodes()))
     ax.grid(which="minor", ls="--", lw=1)
 
 
