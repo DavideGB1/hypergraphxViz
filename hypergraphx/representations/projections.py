@@ -205,7 +205,7 @@ def extra_node_projection(h: Hypergraph|DirectedHypergraph) -> [nx.Graph,list]:
         id_to_obj[idx] = node
         obj_to_id[node] = idx
         idx += 1
-        g.add_node(node)
+        g.add_node(node,is_edge = "node")
 
     idx = 0
     binary_edges = list()
@@ -230,7 +230,7 @@ def extra_node_projection(h: Hypergraph|DirectedHypergraph) -> [nx.Graph,list]:
             weight = 1
             if h.is_weighted():
                 weight = h.get_weight(edge)
-            binary_edges.append((edge[0], edge[1], weight))
+            g.add_edge(edge[0], edge[1], weight=weight)
         #Any other type of relation
         else:
             obj_to_id[tuple(edge)] = 'E' + str(idx)
@@ -238,7 +238,7 @@ def extra_node_projection(h: Hypergraph|DirectedHypergraph) -> [nx.Graph,list]:
             weight = 1
             if h.is_weighted():
                 weight = h.get_weight(original_edge)
-            g.add_node(obj_to_id[tuple(edge)], weight=weight)
+            g.add_node(obj_to_id[tuple(edge)], weight=weight, is_edge = "edge")
             if isDirected:
                 for node in original_edge[0]:
                     g.add_edge(node,obj_to_id[tuple(edge)], weight=weight)
@@ -249,5 +249,5 @@ def extra_node_projection(h: Hypergraph|DirectedHypergraph) -> [nx.Graph,list]:
                     g.add_edge(node,obj_to_id[tuple(edge)], weight=weight)
         idx += 1
 
-    return g, binary_edges, isDirected
+    return g, obj_to_id
 

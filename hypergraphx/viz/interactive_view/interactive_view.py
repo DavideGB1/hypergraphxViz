@@ -2,7 +2,7 @@ import sys
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QPushButton, QVBoxLayout, QSlider, QWidget, QHBoxLayout, QLabel, \
-    QDoubleSpinBox, QRadioButton, QSpacerItem, QLayout, QCheckBox
+    QDoubleSpinBox, QRadioButton, QSpacerItem, QLayout, QCheckBox, QStackedLayout
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
@@ -43,9 +43,8 @@ class Window(QWidget):
         self.slider_value = 2
         self.hypergraph = hypergraph
         self.canvas_hbox = QHBoxLayout()
-        self.ignore_binary_relations = True
-        self.show_edge_nodes = True
-        self.strong_gravity = True
+        self.ignore_binary_relations = False
+        self.show_edge_nodes = False
         self.iterations = 1000
         self.alignment = "vertical"
         self.figure = plt.figure()
@@ -168,7 +167,7 @@ class Window(QWidget):
         #Plot and draw the hypergraph using it's function
         self.current_function(self.hypergraph, cardinality= self.slider_value, x_heaviest = float(self.spin_box.value()/100), ax=ax,
                 draw_labels=self.active_labels, space_optimization = self.space_optimization, time_font_size = time_font_size,
-                ignore_binary_relations = self.ignore_binary_relations, show_edge_nodes = self.show_edge_nodes, strong_gravity = self.strong_gravity,
+                ignore_binary_relations = self.ignore_binary_relations, show_edge_nodes = self.show_edge_nodes,
                 iterations = int(self.iterations), align = self.alignment, time_separation_line_color = time_separation_line_color,
                 graphicOptions=copy.deepcopy(self.graphic_options), radius_scale_factor=radius_scale_factor, font_spacing_factor=font_spacing_factor,
                 time_separation_line_width = time_separation_line_width, rounded_polygon = self.rounded_polygon, polygon_expansion_factor = polygon_expansion_factor,
@@ -285,9 +284,6 @@ class Window(QWidget):
         remove_last_x_elements_from_layout(self.vbox, 2)
         # Create the new custom options for the clique function
         vbox_clique_expasion_option = QVBoxLayout()
-        strong_gravity_btn = QCheckBox("Use Strong Gravity")
-        strong_gravity_btn.setChecked(True)
-        strong_gravity_btn.toggled.connect(self.activate_strong_gravity)
         labels_btn = QCheckBox("Show Labels")
         labels_btn.setChecked(True)
         labels_btn.toggled.connect(self.activate_labels)
@@ -304,7 +300,6 @@ class Window(QWidget):
         iterations_selector.setValue(1000)
         iterations_selector.setSingleStep(1)
         iterations_selector.valueChanged.connect(iterations_selector_funz)
-        vbox_clique_expasion_option.addWidget(strong_gravity_btn)
         vbox_clique_expasion_option.addWidget(labels_btn)
         vbox_clique_expasion_option.addWidget(iterations_selector_label)
         vbox_clique_expasion_option.addWidget(iterations_selector)
@@ -326,7 +321,6 @@ class Window(QWidget):
         # Create the new custom options for the extra-node function
         vbox_extra_node_option = QVBoxLayout()
         edge_nodes_btn = QCheckBox("Show Edge Nodes")
-        edge_nodes_btn.setChecked(True)
 
         def activate_edge_nodes():
             if self.show_edge_nodes:
@@ -337,7 +331,6 @@ class Window(QWidget):
 
         edge_nodes_btn.toggled.connect(activate_edge_nodes)
         ignore_binary_relations_btn = QCheckBox("Ignore Binary Relations")
-        ignore_binary_relations_btn.setChecked(True)
 
         def ignore_binary_relations_funz():
             if self.ignore_binary_relations:
@@ -348,9 +341,7 @@ class Window(QWidget):
             self.plot()
 
         ignore_binary_relations_btn.toggled.connect(ignore_binary_relations_funz)
-        strong_gravity_btn = QCheckBox("Use Strong Gravity")
-        strong_gravity_btn.setChecked(True)
-        strong_gravity_btn.toggled.connect(self.activate_strong_gravity)
+
         labels_btn = QCheckBox("Show Labels")
         labels_btn.setChecked(True)
         labels_btn.toggled.connect(self.activate_labels)
@@ -375,7 +366,6 @@ class Window(QWidget):
 
         vbox_extra_node_option.addWidget(edge_nodes_btn)
         vbox_extra_node_option.addWidget(ignore_binary_relations_btn)
-        vbox_extra_node_option.addWidget(strong_gravity_btn)
         vbox_extra_node_option.addWidget(labels_btn)
         vbox_extra_node_option.addWidget(iterations_selector_label)
         vbox_extra_node_option.addWidget(iterations_selector)
@@ -508,16 +498,6 @@ class Window(QWidget):
         else:
             self.active_labels = True
             self.plot()
-    def activate_strong_gravity(self) -> None:
-        """
-        Manage the strong_gravity option button.
-        """
-        if self.strong_gravity:
-            self.strong_gravity = False
-            self.plot()
-        else:
-            self.strong_gravity = True
-            self.plot()
     def extra_options(self) -> None:
         """
         Generate the extra options list for the visualization functions
@@ -589,12 +569,7 @@ def start_interactive_view(h: Hypergraph|TemporalHypergraph|DirectedHypergraph) 
     sys.exit(app.exec_())
 
 
-h = Hypergraph(weighted=True)
-h.add_edge((1, 2), 5)
-h.add_edge((42, 5, 4), 1)
-h.add_edge((1, 2, 3), 3)
-h.add_edge((1, 2, 3,4), 3)
-h._weighted = True
+h = Hypergraph([(1,2,3),(4,5,6),(6,7,8,9),(10,11,12,1,4),(4,1),(3,6)])
 #h = DirectedHypergraph()
 #h.add_edge(((1,2),(3,4)))
 start_interactive_view(h)

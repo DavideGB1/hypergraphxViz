@@ -1,17 +1,12 @@
 from typing import Optional
-
 import matplotlib.pyplot as plt
 import networkx as nx
-from fa2_modified import ForceAtlas2
-from networkx import is_planar, planar_layout, kamada_kawai_layout
-
+from networkx import is_planar, planar_layout
+from __support import __filter_hypergraph, __ignore_unused_args
 from hypergraphx import Hypergraph, DirectedHypergraph
 from hypergraphx.representations.projections import (
     bipartite_projection,
     clique_projection, extra_node_projection)
-
-
-from __support import __filter_hypergraph, __ignore_unused_args
 from hypergraphx.viz.__graphic_options import GraphicOptions
 
 
@@ -109,8 +104,7 @@ def draw_clique(
     x_heaviest: float = 1.0,
     draw_labels=True,
     iterations: int = 1000,
-    strong_gravity: bool = True,
-    pos=None,
+        pos=None,
     ax: Optional[plt.Axes] = None,
     figsize: tuple[float, float] = (10, 10),
     dpi: int = 300,
@@ -132,8 +126,6 @@ def draw_clique(
         Decide if the labels should be drawn.
     iterations : int
         The number of iterations to run the position algorithm.
-    strong_gravity : bool
-        Decide if the ForceAtlas2 Algorithm must use strong gravity or no.
     pos : dict.
         A dictionary with nodes as keys and positions as values.
     ax : matplotlib.axes.Axes.
@@ -186,9 +178,8 @@ def draw_extra_node(
     draw_labels: bool = True,
     ignore_binary_relations: bool = True,
     show_edge_nodes=True,
+    draw_edge_graph = False,
     iterations: int = 1000,
-    strong_gravity: bool = True,
-    pos=None,
     ax=None,
     figsize: tuple[float, float] = (10, 10),
     dpi: int = 300,
@@ -212,12 +203,10 @@ def draw_extra_node(
         Decide if the function should show nodes that are only in binary relations.
     show_edge_nodes : bool
         Decide if the function should draw nodes in the conjunction point of the hyperedges.
+    draw_edge_graph: bool
+        Let you draw the edge graph used in the first part of the node position algorithm
     iterations : int
         The number of iterations to run the position algorithm.
-    strong_gravity : bool
-        Decide if the ForceAtlas2 Algorithm must use strong gravity or no.
-    pos : dict.
-        A dictionary with nodes as keys and positions as values.
     ax : matplotlib.axes.Axes.
         The axes to draw the graph on.
     figsize : tuple, optional
@@ -230,35 +219,103 @@ def draw_extra_node(
         Keyword arguments to be passed to networkx.draw_networkx.
     """
     hypergraph = __filter_hypergraph(h, cardinality, x_heaviest)
-    g, binary_edges, isDirected = extra_node_projection(hypergraph)
-
+    g, obj_to_id = extra_node_projection(hypergraph)
     if ax is None:
         plt.figure(figsize=figsize, dpi=dpi)
         plt.subplot(1, 1, 1)
         ax = plt.gca()
 
+    #Removed the binary edges in order to reduce useless occlusion
     if ignore_binary_relations:
+        binary_edges = [x for x in g.edges() if not(str(x[0]).startswith('E') or str(x[1]).startswith('E')) ]
+        for binary_edge in binary_edges:
+            g.remove_edge(*binary_edge)
         isolated = list(nx.isolates(g))
         g.remove_nodes_from(isolated)
-    else:
-        for edge in binary_edges:
-            g.add_edge(edge[0], edge[1])
+
     if is_planar(g):
         pos = planar_layout(g)
     else:
-        if pos is None:
-            #First layout to optimize
-            pos = kamada_kawai_layout(g)
-        pos = nx.spring_layout(G=g, pos=pos, iterations=iterations, weight="weight")
+        #Calculate the position of each edge node and then fixes it in the final drawing
+        edgeList = [x for x in g.nodes() if str(x).startswith('E')]
+        hyperedges_relations = __hyperedges_relations_detection(h, obj_to_id)
+        posEdges = __edges_graph_creation(hyperedges_relations, edgeList, drawing=draw_edge_graph)
+        pos = nx.spring_layout(G=g, pos=posEdges, iterations=iterations, weight="weight", fixed=edgeList)
 
     # Ensure that all the nodes have the graphical attributes specified
     graphicOptions.check_if_options_are_valid(g)
 
     __draw_in_plot(g, pos, ax = ax, show_edge_nodes=show_edge_nodes, draw_labels=draw_labels,
-                   graphicOptions = graphicOptions,isDirected=isDirected, isWeighted = hypergraph.is_weighted(), **kwargs)
+                   graphicOptions = graphicOptions,isDirected=isinstance(h, DirectedHypergraph), isWeighted = hypergraph.is_weighted(), **kwargs)
 
     ax.set_aspect('equal')
     ax.autoscale(enable=True, axis='both')
+
+def __edges_graph_creation(hyperedges_relations: dict, edgeList: list, drawing: bool = False) -> dict:
+    """
+    Create a graph using the relations between hyperedges..
+    Parameters
+    ----------
+    hyperedges_relations: dict
+        Dictionary with the relations between the hyperedges
+    edgeList: list
+        List with the edges
+    drawing: bool
+        Used to decide if the EdgeGraph should be drawn
+    Returns
+    -------
+    dict
+        A dictionary with the EdgeGraph nodes position.
+    """
+    edges_graph = nx.Graph()
+    for x in edgeList:
+        edges_graph.add_node(x)
+
+    for edge in hyperedges_relations:
+        edges_graph.add_edge(edge[0], edge[1], weight=hyperedges_relations[edge])
+
+    if is_planar(edges_graph):
+        posEdges = nx.planar_layout(edges_graph)
+    else:
+        toImprovePos = nx.kamada_kawai_layout(edges_graph)
+        posEdges = nx.spring_layout(edges_graph, k=0.5, pos=toImprovePos, weight="weight")
+
+    if drawing:
+        plt.figure(3, figsize=(50, 50))
+        nx.draw_networkx(edges_graph, pos=posEdges, with_labels=True)
+        plt.show()
+
+    return posEdges
+
+
+def __hyperedges_relations_detection(h: Hypergraph, obj_to_id: dict) -> dict:
+    """
+    Calculate the relations between hyperedges, that are simply the number of common nodes between two of them.
+    Parameters
+    ----------
+    h : Hypergraph.
+    obj_to_id : dict.
+        Mapping from actual object to is id
+    Returns
+    -------
+    dict
+        A dictionary with the relations.
+    """
+    hyperedges_relations = dict()
+
+    for i, edge1 in enumerate(h.get_edges()):
+        for j, edge2 in enumerate(h.get_edges()):
+            if i >= j:
+                continue
+            if len(edge1) != 2 and len(edge2) != 2:
+                if obj_to_id[edge1] != obj_to_id[edge2]:
+                    z = set(edge1).intersection(set(edge2))
+                    if len(z) != 0:
+                        if (obj_to_id[edge1], obj_to_id[edge2]) not in hyperedges_relations:
+                            hyperedges_relations[(obj_to_id[edge1], obj_to_id[edge2])] = 0
+                        hyperedges_relations[(obj_to_id[edge1], obj_to_id[edge2])] += 1
+
+    return hyperedges_relations
 
 def __draw_in_plot(
     g,
