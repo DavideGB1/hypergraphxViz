@@ -1,6 +1,9 @@
 import inspect
 import math
 from math import trunc
+
+from wheel.macosx_libfile import swap32
+
 from hypergraphx import Hypergraph, DirectedHypergraph, TemporalHypergraph
 from matplotlib import pyplot as plt
 
@@ -17,13 +20,13 @@ def __check_edge_intersection(set1, set2):
     """
     set1 = sorted(set1)
     set2 = sorted(set2)
-    res = False
-    for x in set2:
-        if set1[0] <= x <= set1[-1]:
-            res = True
-            break
+    if set1[0]<set2[0] and set1[1]>set2[1]:
+        set1, set2 = set2, set1
+    for x in set1:
+        if set2[0] <= x <= set2[-1]:
+            return True
 
-    return res
+    return False
 def __draw_line(layout, palette : list, path : list, i:int, idx: int, passo: int, ax : plt.Axes) -> None:
     """
     Draw the metro line of the node.
