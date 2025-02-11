@@ -250,7 +250,8 @@ def draw_radial_layout(
                 value_x = round(cos(theta[15]), 5) * radius * sector_depth
                 value_y = round(sin(theta[15]), 5) * radius * sector_depth
 
-                ax.text(value_x,value_y,str(hypergraph.get_weight(edge)), horizontalalignment='center', verticalalignment='center')
+                ax.text(value_x,value_y,str(hypergraph.get_weight(edge)), horizontalalignment='center', verticalalignment='center',
+                        fontsize = graphicOptions.weight_size)
 
 
         sector_depth += 0.35
@@ -261,4 +262,5 @@ def draw_radial_layout(
     max_y = max(max_y, abs(min_y))
     ax.set_xlim([-max_x-1,max_x+1])
     ax.set_ylim([-max_y-1,max_y+1])
-
+    ax.axis("off")
+    plt.axis("off")

@@ -174,7 +174,12 @@ class MenuWindow(QWidget):
         label = QLabel(OptionsName[name].value)
         hbox_btn.addWidget(label)
         spinBox = QDoubleSpinBox()
-        if isinstance(value, float):
+        if name == "hyperedge_alpha":
+            spinBox.setDecimals(2)
+            spinBox.setRange(0, 1)
+            spinBox.setValue(value)
+            spinBox.setSingleStep(0.1)
+        elif isinstance(value, float):
             spinBox.setDecimals(2)
             spinBox.setRange(0.01, 1000)
             spinBox.setValue(value)

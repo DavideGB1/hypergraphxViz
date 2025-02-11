@@ -93,8 +93,9 @@ def draw_bipartite(
                 pos_offsetted[k] = (v[0], v[1] + offset)
             else:
                 pos_offsetted[k] = (v[0] + offset, v[1])
-        nx.draw_networkx_labels(g, ax=ax, pos=pos_offsetted, labels=labels, font_size=graphicOptions.label_size,
+        nx.draw_networkx_labels(g, ax=ax, pos=pos_offsetted, labels=labels, font_size = graphicOptions.weight_size,
                                 font_color=graphicOptions.label_color)
+    ax.axis("off")
 
 
 @__ignore_unused_args
@@ -168,6 +169,7 @@ def draw_clique(
                                 font_color=graphicOptions.label_color, **kwargs)
 
     ax.set_aspect('equal')
+    ax.axis("off")
     ax.autoscale(enable=True, axis='both')
 
 @__ignore_unused_args
@@ -250,6 +252,7 @@ def draw_extra_node(
 
     ax.set_aspect('equal')
     ax.autoscale(enable=True, axis='both')
+    ax.axis("off")
 
 def __edges_graph_creation(hyperedges_relations: dict, edgeList: list, drawing: bool = False) -> dict:
     """
@@ -390,5 +393,5 @@ def __draw_in_plot(
     #Draw labels
     if draw_labels:
         labels = dict((n, n) for n in g.nodes() if not str(n).startswith('E'))
-        nx.draw_networkx_labels(g, ax=ax, pos=pos, labels=labels, font_size=graphicOptions.label_size,
+        nx.draw_networkx_labels(g, ax=ax, pos=pos, labels=labels, font_size = graphicOptions.weight_size,
                                 font_color=graphicOptions.label_color, **kwargs)

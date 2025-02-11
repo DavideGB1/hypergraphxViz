@@ -63,8 +63,9 @@ class GraphicOptions:
             edge_node_color: Optional[str | dict] = '#8a0303',
             edge_color: Optional[str | dict] = "#000000",
             edge_size: Optional[float | dict] = 2.0,
-            label_size: Optional[int] = 10,
+            label_size: Optional[int] = 15,
             node_size: Optional[int | dict] = None,
+            weight_size: Optional[int] = 20,
             default_node_shape: Optional[str] = "o",
             default_node_color: Optional[str] = "#1f78b4",
             default_node_facecolor: Optional[str] = "#000000",
@@ -72,9 +73,10 @@ class GraphicOptions:
             default_edge_color: Optional[str] = "#000000",
             default_edge_node_color: Optional[str] = '#8a0303',
             default_edge_shape: Optional[str] = "p",
-            default_label_size: Optional[int] = 10,
+            default_label_size: Optional[int] = 15,
             default_label_color: Optional[str] = "#000000",
-            default_node_size: Optional[int] = 10
+            default_node_size: Optional[int] = 10,
+            default_weight_size: Optional[int] = 20,
     ):
         self.node_size = node_size
         self.in_edge_color = in_edge_color
@@ -96,6 +98,7 @@ class GraphicOptions:
         self.default_edge_shape = default_edge_shape
         self.default_label_size = default_label_size
         self.default_label_color = default_label_color
+        self.default_weight_size = default_weight_size
 
         self.node_shape = node_shape
         self.node_color = node_color
@@ -106,6 +109,7 @@ class GraphicOptions:
         self.edge_shape = edge_shape
         self.label_size = label_size
         self.label_color = label_color
+        self.weight_size = weight_size
         #Checks if all the colors have a valid HEX value
         hex_color_regex = r"^#[0-9a-fA-F]{6}$"
         for attr, value in vars(self).items():

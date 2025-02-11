@@ -299,7 +299,7 @@ def draw_sets(
                 polygon.set_edgecolor(color)
                 ax.add_patch(polygon)
             if hypergraph.is_weighted():
-                ax.text(x_c, y_c, str(hypergraph.get_weight(hye)))
+                ax.text(x_c, y_c, str(hypergraph.get_weight(hye)), fontsize = graphicOptions.weight_size)
 
 
     #Draws Binary Edges
@@ -315,4 +315,6 @@ def draw_sets(
         nx.draw_networkx_edge_labels(G, pos_higher, edge_labels=labels, bbox={'alpha': 0, 'pad': 1}, verticalalignment="top")
 
     ax.axis("equal")
+    ax.axis("off")
     plt.axis("equal")
+    plt.axis("off")

@@ -21,3 +21,4 @@ class OptionsName(Enum):
     rounding_radius_factor = "Rounding Radius Size"
     polygon_expansion_factor = "Polygon Expansion Factor"
     hyperedge_alpha = "Hyperedge Alpha"
+    weight_size = "Weights Size"

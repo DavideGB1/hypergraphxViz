@@ -1,8 +1,10 @@
 import sys
+from tkinter.ttk import Combobox
+
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QPushButton, QVBoxLayout, QSlider, QWidget, QHBoxLayout, QLabel, \
-    QDoubleSpinBox, QRadioButton, QSpacerItem, QLayout, QCheckBox, QStackedLayout
+    QDoubleSpinBox, QRadioButton, QSpacerItem, QLayout, QCheckBox, QStackedLayout, QComboBox
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
@@ -30,6 +32,7 @@ class Window(QWidget):
         myappid = 'mycompany.myproduct.subproduct.version'  # arbitrary string
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         #Set Default Values
+        self.options_dict = dict()
         self.spin_box_label = QLabel()
         self.spin_box = QDoubleSpinBox()
         self.vbox = QVBoxLayout()
@@ -51,6 +54,7 @@ class Window(QWidget):
         self.max_edge = 0
         self.rounded_polygon = True
         self.extra_attributes = dict()
+        self.last_pos = dict()
         for edge in h.get_edges():
             if len(edge) > self.max_edge:
                 self.max_edge = len(edge)
@@ -164,6 +168,10 @@ class Window(QWidget):
             polygon_expansion_factor = self.extra_attributes["polygon_expansion_factor"]
         except KeyError:
             polygon_expansion_factor = 1.8
+        try:
+             hyperedge_alpha = self.extra_attributes["hyperedge_alpha"]
+        except KeyError:
+            hyperedge_alpha = 0.8
         #Plot and draw the hypergraph using it's function
         self.current_function(self.hypergraph, cardinality= self.slider_value, x_heaviest = float(self.spin_box.value()/100), ax=ax,
                 draw_labels=self.active_labels, space_optimization = self.space_optimization, time_font_size = time_font_size,
@@ -171,7 +179,7 @@ class Window(QWidget):
                 iterations = int(self.iterations), align = self.alignment, time_separation_line_color = time_separation_line_color,
                 graphicOptions=copy.deepcopy(self.graphic_options), radius_scale_factor=radius_scale_factor, font_spacing_factor=font_spacing_factor,
                 time_separation_line_width = time_separation_line_width, rounded_polygon = self.rounded_polygon, polygon_expansion_factor = polygon_expansion_factor,
-                rounding_radius_size = rounding_radius_size)
+                rounding_radius_size = rounding_radius_size, hyperedge_alpha = hyperedge_alpha,)
         self.canvas.draw()
     def get_new_option(self, new_options: tuple[GraphicOptions,dict]) -> None:
         """
@@ -462,32 +470,40 @@ class Window(QWidget):
             self.vbox.addWidget(self.spin_box_label)
             self.vbox.addWidget(self.spin_box)
             self.spin_box.valueChanged.connect(self.heaviest_edges)
-        radio_btn_list = self.add_radio_option()
-        for btn in radio_btn_list:
-            self.vbox.addWidget(btn)
+
+        combobox = self.add_radio_option()
+        self.vbox.addWidget(combobox)
+        combobox_community = self.add_community_detection_options()
+        self.vbox.addWidget(combobox)
         self.vbox.addStretch()
         self.vbox.addStretch()
-        radio_btn_list[0].setChecked(True)
         self.canvas_hbox.addLayout(self.vbox, 20)
-    def add_radio_option(self) -> None:
+    def add_radio_option(self) -> Combobox:
         """
         Create the selection list for the visualization function
         """
-        button_list = []
+        combobox = QComboBox()
         if isinstance(self.hypergraph, TemporalHypergraph):
-            options_dict = { "PAOH": self.assign_PAOH}
+            self.options_dict = { "PAOH": self.assign_PAOH}
         elif isinstance(self.hypergraph, DirectedHypergraph):
-            options_dict = { "Radial": self.assign_radial,"PAOH": self.assign_PAOH, "Extra-Node": self.assign_extra_node}
+            self.options_dict = { "PAOH": self.assign_PAOH,"Radial": self.assign_radial, "Extra-Node": self.assign_extra_node}
         else:
-            options_dict = { "Radial": self.assign_radial, "PAOH": self.assign_PAOH, "Clique Expansion": self.assign_clique_projection,
+            self.options_dict = {"PAOH": self.assign_PAOH,"Radial": self.assign_radial,
                          "Extra-Node": self.assign_extra_node, "Bipartite": self.assign_bipartite, "Sets": self.assign_sets,
                             "MetroSet": self.assign_metroset}
+            if not self.hypergraph.is_weighted():
+                self.options_dict["Clique"] = self.assign_clique_projection
 
-        for val, fun in options_dict.items():
-            button = QRadioButton(val)
-            button.toggled.connect(fun)
-            button_list.append(button)
-        return button_list
+        combobox.addItems(list(self.options_dict.keys()))
+        def activate_function():
+            self.options_dict[combobox.currentText()]()
+        combobox.currentTextChanged.connect(activate_function)
+        return combobox
+    def add_community_detection_options(self) -> Combobox:
+        """
+        Create the selection list for the community detection function
+        """
+
     def activate_labels(self) -> None:
         """
         Manage the draw_labels option button.
@@ -569,7 +585,14 @@ def start_interactive_view(h: Hypergraph|TemporalHypergraph|DirectedHypergraph) 
     sys.exit(app.exec_())
 
 
-h = Hypergraph([(1,2,3),(4,5,6),(6,7,8,9),(10,11,12,1,4),(4,1),(3,6)])
+#h = Hypergraph([(1,2,3),(4,5,6),(6,7,8,9),(10,11,12,1,4),(4,1),(3,6)])
 #h = DirectedHypergraph()
 #h.add_edge(((1,2),(3,4)))
+h = Hypergraph(weighted=True)
+h.add_edge((1,2,3),12)
+h.add_edge((4,5,6),3)
+h.add_edge((6,7,8,9),1)
+h.add_edge((10,11,12,1,4),5)
+h.add_edge((4,1),1)
+h.add_edge((3,6),7)
 start_interactive_view(h)
