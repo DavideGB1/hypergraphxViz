@@ -150,7 +150,7 @@ def draw_sets(
     figsize: tuple[float, float] = (10, 10),
     dpi: int = 300,
     graphicOptions: Optional[GraphicOptions] = None,
-    **kwargs) -> None:
+    **kwargs) -> dict:
     """
     Draws a set projection of the hypergraph.
     Parameters
@@ -318,3 +318,4 @@ def draw_sets(
     ax.axis("off")
     plt.axis("equal")
     plt.axis("off")
+    return pos

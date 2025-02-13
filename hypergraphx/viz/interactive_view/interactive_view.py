@@ -9,6 +9,7 @@ from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from hypergraphx import Hypergraph, TemporalHypergraph, DirectedHypergraph
+from hypergraphx.measures.eigen_centralities import CEC_centrality
 from hypergraphx.viz.draw_PAOH import draw_PAOH
 from hypergraphx.viz.draw_sets import draw_sets
 from hypergraphx.viz.draw_metroset import draw_metroset
@@ -32,6 +33,7 @@ class Window(QWidget):
         myappid = 'mycompany.myproduct.subproduct.version'  # arbitrary string
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         #Set Default Values
+        self.use_last = False
         self.options_dict = dict()
         self.spin_box_label = QLabel()
         self.spin_box = QDoubleSpinBox()
@@ -55,6 +57,7 @@ class Window(QWidget):
         self.rounded_polygon = True
         self.extra_attributes = dict()
         self.last_pos = dict()
+        self.centrality_on = False
         for edge in h.get_edges():
             if len(edge) > self.max_edge:
                 self.max_edge = len(edge)
@@ -172,14 +175,19 @@ class Window(QWidget):
              hyperedge_alpha = self.extra_attributes["hyperedge_alpha"]
         except KeyError:
             hyperedge_alpha = 0.8
+        if self.use_last:
+            last_pos = self.last_pos
+        else:
+            last_pos = None
         #Plot and draw the hypergraph using it's function
-        self.current_function(self.hypergraph, cardinality= self.slider_value, x_heaviest = float(self.spin_box.value()/100), ax=ax,
+        self.last_pos = self.current_function(self.hypergraph, cardinality= self.slider_value, x_heaviest = float(self.spin_box.value()/100), ax=ax,
                 draw_labels=self.active_labels, space_optimization = self.space_optimization, time_font_size = time_font_size,
                 ignore_binary_relations = self.ignore_binary_relations, show_edge_nodes = self.show_edge_nodes,
                 iterations = int(self.iterations), align = self.alignment, time_separation_line_color = time_separation_line_color,
                 graphicOptions=copy.deepcopy(self.graphic_options), radius_scale_factor=radius_scale_factor, font_spacing_factor=font_spacing_factor,
                 time_separation_line_width = time_separation_line_width, rounded_polygon = self.rounded_polygon, polygon_expansion_factor = polygon_expansion_factor,
-                rounding_radius_size = rounding_radius_size, hyperedge_alpha = hyperedge_alpha,)
+                rounding_radius_size = rounding_radius_size, hyperedge_alpha = hyperedge_alpha,pos = last_pos)
+        self.use_last = False
         self.canvas.draw()
     def get_new_option(self, new_options: tuple[GraphicOptions,dict]) -> None:
         """
@@ -190,6 +198,7 @@ class Window(QWidget):
             The tuple inside the signal received from the option menu.
         """
         self.graphic_options, self.extra_attributes = new_options
+        self.use_last = True
         self.plot()
     def heaviest_edges(self) -> None:
         """
@@ -472,8 +481,12 @@ class Window(QWidget):
             self.spin_box.valueChanged.connect(self.heaviest_edges)
 
         combobox = self.add_radio_option()
+        redraw = QPushButton("Redraw")
+        redraw.clicked.connect(self.redraw)
         self.vbox.addWidget(combobox)
         combobox_community = self.add_community_detection_options()
+        centrality_button = self.add_centrality_button()
+        self.vbox.addWidget(redraw)
         self.vbox.addWidget(combobox)
         self.vbox.addStretch()
         self.vbox.addStretch()
@@ -499,21 +512,34 @@ class Window(QWidget):
             self.options_dict[combobox.currentText()]()
         combobox.currentTextChanged.connect(activate_function)
         return combobox
+    def redraw(self):
+        self.use_last = False
+        self.plot()
+    def add_centrality_button(self):
+        labels_button = QCheckBox("Show Centrality")
+        labels_button.setChecked(True)
+        labels_button.toggled.connect(self.show_centrality)
     def add_community_detection_options(self) -> Combobox:
         """
         Create the selection list for the community detection function
         """
-
+    def show_centrality(self):
+        if self.centrality_on:
+            self.active_labels = False
+            self.plot()
+        else:
+            self.centrality_on = True
+            self.plot()
     def activate_labels(self) -> None:
         """
         Manage the draw_labels option button.
         """
         if self.active_labels:
             self.active_labels = False
-            self.plot()
         else:
             self.active_labels = True
-            self.plot()
+        self.use_last = True
+        self.plot()
     def extra_options(self) -> None:
         """
         Generate the extra options list for the visualization functions
@@ -584,15 +610,14 @@ def start_interactive_view(h: Hypergraph|TemporalHypergraph|DirectedHypergraph) 
     main.show()
     sys.exit(app.exec_())
 
-
-#h = Hypergraph([(1,2,3),(4,5,6),(6,7,8,9),(10,11,12,1,4),(4,1),(3,6)])
+h = Hypergraph([(1,2,3),(4,5,6),(6,7,8,9),(10,11,12,1,4),(4,1),(3,6)])
 #h = DirectedHypergraph()
 #h.add_edge(((1,2),(3,4)))
-h = Hypergraph(weighted=True)
-h.add_edge((1,2,3),12)
-h.add_edge((4,5,6),3)
-h.add_edge((6,7,8,9),1)
-h.add_edge((10,11,12,1,4),5)
-h.add_edge((4,1),1)
-h.add_edge((3,6),7)
+#h = Hypergraph(weighted=True)
+#h.add_edge((1,2,3),12)
+#h.add_edge((4,5,6),3)
+#h.add_edge((6,7,8,9),1)
+#h.add_edge((10,11,12,1,4),5)
+#h.add_edge((4,1),1)
+#h.add_edge((3,6),7)
 start_interactive_view(h)

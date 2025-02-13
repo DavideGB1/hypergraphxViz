@@ -105,12 +105,12 @@ def draw_clique(
     x_heaviest: float = 1.0,
     draw_labels=True,
     iterations: int = 1000,
-        pos=None,
+    pos=None,
     ax: Optional[plt.Axes] = None,
     figsize: tuple[float, float] = (10, 10),
     dpi: int = 300,
     graphicOptions: Optional[GraphicOptions] = GraphicOptions(),
-    **kwargs) -> None:
+    **kwargs) -> dict:
     """
     Draws a clique projection of the hypergraph.
     Parameters
@@ -146,9 +146,6 @@ def draw_clique(
     #Calculate positions if not provided
     if pos is None:
         pos = nx.spring_layout(G=g, iterations=iterations, weight="weight")
-    #Ues provided positions as a base for the calculation
-    else:
-        pos = nx.spring_layout(G=g, pos=pos,iterations=iterations, weight="weight")
 
     if ax is None:
         plt.figure(figsize=figsize, dpi=dpi)
@@ -171,6 +168,7 @@ def draw_clique(
     ax.set_aspect('equal')
     ax.axis("off")
     ax.autoscale(enable=True, axis='both')
+    return pos
 
 @__ignore_unused_args
 def draw_extra_node(
@@ -181,16 +179,18 @@ def draw_extra_node(
     ignore_binary_relations: bool = True,
     show_edge_nodes=True,
     draw_edge_graph = False,
+    pos: dict = None,
     iterations: int = 1000,
     ax=None,
     figsize: tuple[float, float] = (10, 10),
     dpi: int = 300,
     graphicOptions: Optional[GraphicOptions] = GraphicOptions(),
-    **kwargs) -> None:
+    **kwargs) -> dict:
     """
     Draws an extra-node projection of the hypergraph.
     Parameters
     ----------
+    pos
     h : Hypergraph.
         The hypergraph to be projected.
     cardinality: tuple[int,int]|int. optional
@@ -234,15 +234,15 @@ def draw_extra_node(
             g.remove_edge(*binary_edge)
         isolated = list(nx.isolates(g))
         g.remove_nodes_from(isolated)
-
-    if is_planar(g):
-        pos = planar_layout(g)
-    else:
-        #Calculate the position of each edge node and then fixes it in the final drawing
-        edgeList = [x for x in g.nodes() if str(x).startswith('E')]
-        hyperedges_relations = __hyperedges_relations_detection(h, obj_to_id)
-        posEdges = __edges_graph_creation(hyperedges_relations, edgeList, drawing=draw_edge_graph)
-        pos = nx.spring_layout(G=g, pos=posEdges, iterations=iterations, weight="weight", fixed=edgeList)
+    if pos is None:
+        if is_planar(g):
+            pos = planar_layout(g)
+        else:
+            #Calculate the position of each edge node and then fixes it in the final drawing
+            edgeList = [x for x in g.nodes() if str(x).startswith('E')]
+            hyperedges_relations = __hyperedges_relations_detection(h, obj_to_id)
+            posEdges = __edges_graph_creation(hyperedges_relations, edgeList, drawing=draw_edge_graph)
+            pos = nx.spring_layout(G=g, pos=posEdges, iterations=iterations, weight="weight", fixed=edgeList)
 
     # Ensure that all the nodes have the graphical attributes specified
     graphicOptions.check_if_options_are_valid(g)
@@ -253,6 +253,7 @@ def draw_extra_node(
     ax.set_aspect('equal')
     ax.autoscale(enable=True, axis='both')
     ax.axis("off")
+    return pos
 
 def __edges_graph_creation(hyperedges_relations: dict, edgeList: list, drawing: bool = False) -> dict:
     """
