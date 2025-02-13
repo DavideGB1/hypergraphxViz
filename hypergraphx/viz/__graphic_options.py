@@ -118,6 +118,7 @@ class GraphicOptions:
                     raise ValueError(
                         "Attribute " + str(attr) + " has invalid color " + str(value)
                     )
+        self.centrality = None
 
     def check_if_options_are_valid(self, anygraph: Graph|Hypergraph|TemporalHypergraph|DirectedHypergraph) -> None:
         """
@@ -201,6 +202,15 @@ class GraphicOptions:
                     self.node_size[node] = self.default_node_size
         else:
             self.node_size = {n: int(self.node_size) for n in node_list}
+        if self.centrality is not None:
+            if type(self.node_size) == dict:
+                for k, v in self.node_size.items():
+                    val = 1
+                    try:
+                        val = self.centrality[k]
+                    except KeyError:
+                        pass
+                    self.node_size[k] = v * val
 
     def create_edgewidth_dict(self, edges_list: list) -> None:
         """
@@ -263,3 +273,6 @@ class GraphicOptions:
             for edge in edge_list:
                 if edge not in self.edge_node_color:
                     self.edge_node_color[edge] = self.default_edge_node_color
+
+    def add_centrality_factor_dict(self, centrality: dict):
+        self.centrality = centrality

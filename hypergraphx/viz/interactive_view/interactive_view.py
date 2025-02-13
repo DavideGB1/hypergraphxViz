@@ -4,12 +4,13 @@ from tkinter.ttk import Combobox
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QPushButton, QVBoxLayout, QSlider, QWidget, QHBoxLayout, QLabel, \
-    QDoubleSpinBox, QRadioButton, QSpacerItem, QLayout, QCheckBox, QStackedLayout, QComboBox
+    QDoubleSpinBox, QFileDialog, QSpacerItem, QLayout, QCheckBox, QComboBox, QMessageBox
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+
+import hypergraphx.readwrite
 from hypergraphx import Hypergraph, TemporalHypergraph, DirectedHypergraph
-from hypergraphx.measures.eigen_centralities import CEC_centrality
 from hypergraphx.viz.draw_PAOH import draw_PAOH
 from hypergraphx.viz.draw_sets import draw_sets
 from hypergraphx.viz.draw_metroset import draw_metroset
@@ -20,7 +21,7 @@ from hypergraphx.viz.__graphic_options import GraphicOptions
 import copy
 from superqt import QRangeSlider
 import ctypes
-
+from hypergraphx.measures.degree import degree_sequence
 
 # noinspection PyUnresolvedReferences
 class Window(QWidget):
@@ -34,6 +35,7 @@ class Window(QWidget):
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         #Set Default Values
         self.use_last = False
+        self.centrality = None
         self.options_dict = dict()
         self.spin_box_label = QLabel()
         self.spin_box = QDoubleSpinBox()
@@ -179,6 +181,10 @@ class Window(QWidget):
             last_pos = self.last_pos
         else:
             last_pos = None
+        if self.centrality is not None:
+            self.graphic_options.add_centrality_factor_dict(self.centrality)
+        else:
+            self.graphic_options.add_centrality_factor_dict(None)
         #Plot and draw the hypergraph using it's function
         self.last_pos = self.current_function(self.hypergraph, cardinality= self.slider_value, x_heaviest = float(self.spin_box.value()/100), ax=ax,
                 draw_labels=self.active_labels, space_optimization = self.space_optimization, time_font_size = time_font_size,
@@ -466,28 +472,82 @@ class Window(QWidget):
         Creates the standard options for the visualization functions
         """
         self.vbox = QVBoxLayout()
-        self.vbox.addWidget(self.add_options_button())
-        if self.hypergraph.is_weighted():
-            self.spin_box = QDoubleSpinBox()
-            self.spin_box.setDecimals(0)
-            self.spin_box.setRange(0, 100)
-            self.spin_box.setValue(100)
-            self.spin_box_label = QLabel()
-            self.spin_box_label.setText("Show {value}% Heaviest Edges".format(value=self.spin_box.value()))
-            self.spin_box_label.setAlignment(Qt.AlignTop)
-            self.spin_box.setAlignment(Qt.AlignTop)
-            self.vbox.addWidget(self.spin_box_label)
-            self.vbox.addWidget(self.spin_box)
-            self.spin_box.valueChanged.connect(self.heaviest_edges)
+        self.spin_box = QDoubleSpinBox()
+        self.spin_box.setDecimals(0)
+        self.spin_box.setRange(0, 100)
+        self.spin_box.setValue(100)
+        self.spin_box_label = QLabel()
+        self.spin_box_label.setText("Show {value}% Heaviest Edges".format(value=self.spin_box.value()))
+        self.spin_box_label.setAlignment(Qt.AlignTop)
+        self.spin_box.setAlignment(Qt.AlignTop)
+        self.spin_box.valueChanged.connect(self.heaviest_edges)
+        if not self.hypergraph.is_weighted():
+            self.spin_box.setVisible(False)
+            self.spin_box_label.setVisible(False)
 
         combobox = self.add_radio_option()
         redraw = QPushButton("Redraw")
         redraw.clicked.connect(self.redraw)
+        open_file_button = QPushButton("Open from File")
+        def open_file():
+            file_dialog = QFileDialog(self)
+            file_dialog.setWindowTitle("Open File")
+            file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
+            file_dialog.setViewMode(QFileDialog.ViewMode.Detail)
+            file_dialog.setNameFilters(["JSON (*.json)", "HGR (*.hgr)","HGX (*.hgx)"])
+
+            if file_dialog.exec():
+                selected_file = file_dialog.selectedFiles()
+                try:
+                    hypergraph = hypergraphx.readwrite.load_hypergraph(selected_file[0])
+                    self.hypergraph = hypergraph
+                    for edge in self.hypergraph.get_edges():
+                        if len(edge) > self.max_edge:
+                            self.max_edge = len(edge)
+                    if self.hypergraph.is_weighted():
+                        self.spin_box.setVisible(True)
+                        self.spin_box_label.setVisible(True)
+                    else:
+                        self.spin_box.setVisible(False)
+                        self.spin_box_label.setVisible(False)
+                    self.plot()
+                except ValueError:
+                    msg = QMessageBox()
+                    msg.setIcon(QMessageBox.Critical)
+                    msg.setText("Error: Invalid Input File")
+                    msg.setInformativeText('Input File is not .hgr | .json | .hgx')
+                    msg.setWindowTitle("Error")
+                    msg.exec_()
+
+        open_file_button.clicked.connect(open_file)
+        centrality_combobox = QComboBox()
+        centrality_combobox.addItems(["Off","Degree Centrality"])
+
+        def centrality_calculate():
+            if centrality_combobox.currentText() == "Off":
+                self.centrality = None
+            if centrality_combobox.currentText() == "Degree Centrality":
+                self.centrality = degree_sequence(self.hypergraph)
+                mean = sum(self.centrality.values())/len(self.centrality)
+                for k,v in self.centrality.items():
+                    self.centrality[k] = v/mean
+            self.use_last = True
+            self.plot()
+
+        centrality_combobox.currentTextChanged.connect(centrality_calculate)
+
+        def activate_function():
+            self.options_dict[combobox.currentText()]()
+
+        combobox.currentTextChanged.connect(activate_function)
+        self.vbox.addWidget(open_file_button)
         self.vbox.addWidget(combobox)
-        combobox_community = self.add_community_detection_options()
-        centrality_button = self.add_centrality_button()
+        self.vbox.addWidget(centrality_combobox)
+        self.vbox.addWidget(self.spin_box_label)
+        self.vbox.addWidget(self.spin_box)
+        self.vbox.addWidget(self.add_options_button())
         self.vbox.addWidget(redraw)
-        self.vbox.addWidget(combobox)
+        self.vbox.addWidget(QLabel("Algorithm Options:"))
         self.vbox.addStretch()
         self.vbox.addStretch()
         self.canvas_hbox.addLayout(self.vbox, 20)
