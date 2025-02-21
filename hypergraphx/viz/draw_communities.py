@@ -6,6 +6,7 @@ import numpy as np
 
 from hypergraphx import Hypergraph
 from hypergraphx.representations.projections import clique_projection
+from hypergraphx.viz.__support import extract_pie_properties
 
 
 def draw_communities(
@@ -117,27 +118,3 @@ def draw_communities(
             ax.axis("equal")
             plt.axis("off")
     plt.tight_layout()
-
-
-def extract_pie_properties(
-    i: int, u: np.array, colors: dict, threshold: float = 0.1
-) -> Tuple[np.array, np.array]:
-    """Given a node, it extracts the wedge sizes and the respective colors for the pie chart
-    that represents its membership.
-
-    Parameters
-    ----------
-    i: node id.
-    u: membership matrix.
-    colors: dictionary of colors, where key represent the group id and values are colors.
-    threshold: threshold for node membership.
-
-    Returns
-    -------
-    wedge_sizes: wedge sizes.
-    wedge_colors: sequence of colors through which the pie chart will cycle.
-    """
-    valid_groups = np.where(u[i] > threshold)[0]
-    wedge_sizes = u[i][valid_groups]
-    wedge_colors = [colors[k] for k in valid_groups]
-    return wedge_sizes, wedge_colors

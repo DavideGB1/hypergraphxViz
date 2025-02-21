@@ -5,8 +5,10 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from __support import __check_edge_intersection, __filter_hypergraph, __ignore_unused_args, \
-    __support_to_normal_hypergraph
+    __support_to_normal_hypergraph, _get_node_community, _draw_node_community, _get_community_info
 from hypergraphx import Hypergraph, DirectedHypergraph
+from hypergraphx.communities.hy_sc.model import HySC
+from hypergraphx.readwrite import load_hypergraph
 from hypergraphx.viz.__graphic_options import GraphicOptions
 
 
@@ -88,6 +90,7 @@ def __calculate_node_position(h: Hypergraph, alpha: float, radius: float) -> dic
 @__ignore_unused_args
 def draw_radial_layout(
     h: Hypergraph | DirectedHypergraph,
+    u = None,
     cardinality: tuple[int,int]|int = -1,
     x_heaviest: float = 1.0,
     draw_labels:bool = True,
@@ -142,13 +145,17 @@ def draw_radial_layout(
         hypergraph, edge_directed_mapping = __support_to_normal_hypergraph(hypergraph)
         isDirected = True
     graphicOptions.check_if_options_are_valid(hypergraph)
+
+    #Remove isolated Nodes
+    isolated_nodes = [node for node in  hypergraph.get_nodes() if hypergraph.degree(node) == 0]
+    hypergraph.remove_nodes(isolated_nodes)
     #Calculate the radius and the necessary alpha value
     radius = (hypergraph.num_nodes() * radius_scale_factor) / (2 * np.pi)
     alpha = (2*np.pi)/hypergraph.num_nodes()
 
     nodes_mapping = hypergraph.get_mapping()
     sector_list , binary_edges = __radial_edge_placemente_calculation(hypergraph)
-    pos = __calculate_node_position(h,alpha,radius)
+    pos = __calculate_node_position(hypergraph,alpha,radius)
     #Draw the binary edges in the inner circle
     for edge in binary_edges:
         pos_node_1 = pos[edge[0]]
@@ -166,6 +173,9 @@ def draw_radial_layout(
     max_y = -math.inf
     min_y = math.inf
     node_depth = 1
+    if u is not None:
+        mapping, col = _get_community_info(hypergraph)
+
     for node in hypergraph.get_nodes():
         value_x = pos[node][0]
         value_y = pos[node][1]
@@ -174,8 +184,8 @@ def draw_radial_layout(
         max_y = max(max_y, value_y)
         min_y = min(min_y, value_y)
         ax.plot(value_x, value_y, graphicOptions.node_shape[node], color=graphicOptions.node_color[node],
-                markersize=graphicOptions.node_size[node]/30,
-                markeredgecolor=graphicOptions.node_facecolor[node], **kwargs)
+                markersize=graphicOptions.node_size[node],
+                markeredgecolor=graphicOptions.node_facecolor[node],zorder = -1, **kwargs)
         if draw_labels:
             ax.text(value_x * font_spacing_factor, value_y * font_spacing_factor, node,
                     fontsize=graphicOptions.label_size, color=graphicOptions.label_color, **kwargs)
@@ -205,7 +215,7 @@ def draw_radial_layout(
                 value_y = round(sin(angle), 5)*radius*sector_depth
                 x.append(value_x)
                 y.append(value_y)
-            ax.plot(x, y, color=graphicOptions.edge_color[original_edge], **kwargs)
+            ax.plot(x, y, color=graphicOptions.edge_color[original_edge],zorder = -1, **kwargs)
 
             #Place the nodes along the arch
             for node in edge:
@@ -227,15 +237,19 @@ def draw_radial_layout(
                     if node in true_edge[0]:
                         ax.plot(value_x, value_y, marker=graphicOptions.node_shape[node],
                                 color=in_edge_color, markeredgecolor=graphicOptions.node_facecolor[node],
-                                markersize=graphicOptions.node_size[node] / 30, **kwargs)
+                                markersize=graphicOptions.node_size[node] , **kwargs)
                     else:
                         ax.plot(value_x, value_y, marker=graphicOptions.node_shape[node],
                                 color=out_edge_color, markeredgecolor=graphicOptions.node_facecolor[node],
-                                markersize=graphicOptions.node_size[node] / 30, **kwargs)
+                                markersize=graphicOptions.node_size[node] , **kwargs)
                 else:
-                    ax.plot(value_x, value_y, graphicOptions.edge_shape[node], color=graphicOptions.edge_node_color[node],
-                        markersize=graphicOptions.node_size[node]/30,
-                        markeredgecolor=graphicOptions.node_facecolor[node], **kwargs)
+                    if u is None:
+                        ax.plot(value_x, value_y, graphicOptions.edge_shape[node], color=graphicOptions.edge_node_color[node],
+                            markersize=graphicOptions.node_size[node],markeredgecolor=graphicOptions.node_facecolor[node], **kwargs)
+                    else:
+                        wedge_sizes, wedge_colors = _get_node_community(mapping, node, u, col, 0.1)
+                        _draw_node_community(ax, node, center=(value_x, value_y), radius=0.1, wedge_sizes=wedge_sizes,
+                                             wedge_colors=wedge_colors, graphicOptions=graphicOptions)
 
             if hypergraph.is_weighted():
                 start_node = nodes_mapping.transform([edge[-1]])[0]

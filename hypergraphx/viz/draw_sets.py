@@ -6,9 +6,12 @@ import networkx as nx
 import numpy as np
 from networkx import kamada_kawai_layout
 from hypergraphx import Hypergraph
+from hypergraphx.communities.hy_sc.model import HySC
+from hypergraphx.readwrite import load_hypergraph
 from hypergraphx.representations.projections import clique_projection
 from hypergraphx.viz.__graphic_options import GraphicOptions
-from hypergraphx.viz.__support import __ignore_unused_args, __filter_hypergraph
+from hypergraphx.viz.__support import __ignore_unused_args, __filter_hypergraph, _get_node_community, \
+    _draw_node_community, _get_community_info
 
 
 def _draw_hyperedge_set(
@@ -131,10 +134,10 @@ class __vector:
         self.ny = self.y / self.length
         self.ang = math.atan2(self.ny, self.nx)
 
-
 @__ignore_unused_args
 def draw_sets(
     hypergraph: Hypergraph,
+    u = None,
     cardinality: tuple[int, int] | int = -1,
     x_heaviest: float = 1.0,
     draw_labels: bool = True,
@@ -228,19 +231,7 @@ def draw_sets(
 
     #Ensure that all the nodes and binary edges have the graphical attributes specified
     graphicOptions.check_if_options_are_valid(G)
-    #Draw the Nodes
-    for node in G.nodes():
-        nx.draw_networkx_nodes(
-            G,
-            pos,
-            nodelist = [node],
-            node_size=graphicOptions.node_size[node],
-            node_shape=graphicOptions.node_shape[node],
-            node_color=graphicOptions.node_color[node],
-            edgecolors=graphicOptions.node_facecolor[node],
-            ax=ax,
-            **kwargs
-        )
+
     #Add the labels to the nodes if necessary
     if draw_labels:
         nx.draw_networkx_labels(
@@ -313,6 +304,26 @@ def draw_sets(
         for k, v in pos.items():
             pos_higher[k] = (v[0], v[1] + y_off)
         nx.draw_networkx_edge_labels(G, pos_higher, edge_labels=labels, bbox={'alpha': 0, 'pad': 1}, verticalalignment="top")
+    # Draw the Nodes
+    if u is not None:
+        mapping, col = _get_community_info(hypergraph)
+
+    for node in G.nodes():
+        if u is None:
+            nx.draw_networkx_nodes(
+                G,
+                pos,
+                nodelist=[node],
+                node_size=graphicOptions.node_size[node],
+                node_shape=graphicOptions.node_shape[node],
+                node_color=graphicOptions.node_color[node],
+                edgecolors=graphicOptions.node_facecolor[node],
+                ax=ax,
+                **kwargs
+            )
+        else:
+            wedge_sizes, wedge_colors = _get_node_community(mapping,node, u, col,0.1)
+            _draw_node_community(ax, node, center=pos[node], radius = 0.03,wedge_sizes= wedge_sizes, wedge_colors = wedge_colors, graphicOptions = graphicOptions )
 
     ax.axis("equal")
     ax.axis("off")

@@ -2,8 +2,11 @@ from typing import Optional
 import matplotlib.pyplot as plt
 import networkx as nx
 from networkx import is_planar, planar_layout
-from __support import __filter_hypergraph, __ignore_unused_args
+from __support import __filter_hypergraph, __ignore_unused_args, _get_community_info, _get_node_community, \
+    _draw_node_community
 from hypergraphx import Hypergraph, DirectedHypergraph
+from hypergraphx.communities.hy_sc.model import HySC
+from hypergraphx.readwrite import load_hypergraph
 from hypergraphx.representations.projections import (
     bipartite_projection,
     clique_projection, extra_node_projection)
@@ -13,6 +16,7 @@ from hypergraphx.viz.__graphic_options import GraphicOptions
 @__ignore_unused_args
 def draw_bipartite(
     h: Hypergraph,
+    u = None,
     cardinality: tuple[int,int]|int = -1,
     x_heaviest: float = 1.0,
     draw_labels=True,
@@ -69,10 +73,17 @@ def draw_bipartite(
     for edge in g.edges():
         nx.draw_networkx_edges(g, pos, edgelist= [edge], ax=ax, edge_color=graphicOptions.edge_color[edge],
                                width=graphicOptions.edge_size[edge])
+    if u is not None:
+        mapping, col = _get_community_info(hypergraph)
     for node in node_list:
-        nx.draw_networkx_nodes(g, ax=ax, pos=pos, nodelist=[node], node_shape=graphicOptions.node_shape[node],
+        if u is None:
+            nx.draw_networkx_nodes(g, ax=ax, pos=pos, nodelist=[node], node_shape=graphicOptions.node_shape[node],
                            node_color=graphicOptions.node_color[node], node_size=graphicOptions.node_size[node],
                             edgecolors = graphicOptions.node_facecolor[node], **kwargs)
+        else:
+            wedge_sizes, wedge_colors = _get_node_community(mapping,id_to_obj[node], u, col,0.01)
+            _draw_node_community(ax, node, center=pos[node], radius = 0.03,wedge_sizes= wedge_sizes, wedge_colors = wedge_colors, graphicOptions = graphicOptions )
+
     # Draw nodes that represents edges
     edge_list = [x for x in g.nodes() if x.startswith('E')]
     for edge in edge_list:
@@ -101,6 +112,7 @@ def draw_bipartite(
 @__ignore_unused_args
 def draw_clique(
     h: Hypergraph,
+    u=None,
     cardinality: tuple[int,int]|int = -1,
     x_heaviest: float = 1.0,
     draw_labels=True,
@@ -156,10 +168,17 @@ def draw_clique(
     for edge in g.edges():
         nx.draw_networkx_edges(G=g, pos=pos, edgelist=[edge], ax=ax, edge_color=graphicOptions.edge_color[edge],
                                width=graphicOptions.edge_size[edge], **kwargs)
+    if u is not None:
+        mapping, col = _get_community_info(hypergraph)
     for node in g.nodes():
-        nx.draw_networkx_nodes(G=g, pos=pos, ax=ax, node_color=graphicOptions.node_color[node],
+        if u is None:
+            nx.draw_networkx_nodes(G=g, pos=pos, ax=ax, node_color=graphicOptions.node_color[node],
                                node_size=graphicOptions.node_size[node], node_shape=graphicOptions.node_shape[node],
                                edgecolors = graphicOptions.node_facecolor[node], **kwargs)
+        else:
+            wedge_sizes, wedge_colors = _get_node_community(mapping,node, u, col,0.1)
+            _draw_node_community(ax, node, center=pos[node], radius = 0.03,wedge_sizes= wedge_sizes, wedge_colors = wedge_colors, graphicOptions = graphicOptions )
+
     if draw_labels:
         labels = dict((n, n) for n in g.nodes())
         nx.draw_networkx_labels(G=g, pos=pos, ax=ax, labels=labels, font_size=graphicOptions.label_size,
@@ -173,6 +192,7 @@ def draw_clique(
 @__ignore_unused_args
 def draw_extra_node(
     h: Hypergraph,
+    u = None,
     cardinality: tuple[int,int]|int = -1,
     x_heaviest: float = 1.0,
     draw_labels: bool = True,
@@ -226,6 +246,8 @@ def draw_extra_node(
         plt.figure(figsize=figsize, dpi=dpi)
         plt.subplot(1, 1, 1)
         ax = plt.gca()
+    if u is not None:
+        mapping, col = _get_community_info(hypergraph)
 
     #Removed the binary edges in order to reduce useless occlusion
     if ignore_binary_relations:
@@ -247,7 +269,7 @@ def draw_extra_node(
     # Ensure that all the nodes have the graphical attributes specified
     graphicOptions.check_if_options_are_valid(g)
 
-    __draw_in_plot(g, pos, ax = ax, show_edge_nodes=show_edge_nodes, draw_labels=draw_labels,
+    __draw_in_plot(g, pos, u = u,mapping = mapping, col = col, ax = ax, show_edge_nodes=show_edge_nodes, draw_labels=draw_labels,
                    graphicOptions = graphicOptions,isDirected=isinstance(h, DirectedHypergraph), isWeighted = hypergraph.is_weighted(), **kwargs)
 
     ax.set_aspect('equal')
@@ -330,6 +352,9 @@ def __draw_in_plot(
     ax = None,
     show_edge_nodes: bool = False,
     draw_labels: bool = True,
+    mapping=None,
+    col=None,
+    u = None,
     **kwargs) -> None:
     """
     Draws an extra-node projection of the hypergraph.
@@ -354,24 +379,28 @@ def __draw_in_plot(
     """
     if ax is None:
         ax = plt.gca()
-
     #Draw edges and nodes
     node_list = [x for x in g.nodes() if not str(x).startswith('E')]
     for edge in g.edges():
         nx.draw_networkx_edges(g, pos, edgelist=[edge], ax=ax, edge_color=graphicOptions.edge_color[edge],
                                width=graphicOptions.edge_size[edge], arrows = isDirected, **kwargs)
     for node in node_list:
-        nx.draw_networkx_nodes(
-            g,
-            pos,
-            nodelist = [node],
-            node_size=graphicOptions.node_size[node],
-            node_shape=graphicOptions.node_shape[node],
-            node_color=graphicOptions.node_color[node],
-            edgecolors=graphicOptions.node_facecolor[node],
-            ax=ax,
-            **kwargs
-        )
+        if mapping is None:
+            nx.draw_networkx_nodes(
+                g,
+                pos,
+                nodelist = [node],
+                node_size=graphicOptions.node_size[node],
+                node_shape=graphicOptions.node_shape[node],
+                node_color=graphicOptions.node_color[node],
+                edgecolors=graphicOptions.node_facecolor[node],
+                ax=ax,
+                **kwargs
+            )
+        else:
+            wedge_sizes, wedge_colors = _get_node_community(mapping,node, u, col,0.1)
+            _draw_node_community(ax, node, center=pos[node], radius = 0.03,wedge_sizes= wedge_sizes, wedge_colors = wedge_colors, graphicOptions = graphicOptions )
+
     #Draw nodes that represents edges
     if show_edge_nodes:
         edge_list = [x for x in g.nodes() if str(x).startswith('E')]

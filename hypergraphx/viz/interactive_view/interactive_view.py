@@ -485,7 +485,7 @@ class Window(QWidget):
             self.spin_box.setVisible(False)
             self.spin_box_label.setVisible(False)
 
-        combobox = self.add_radio_option()
+        combobox = self.create_algorithm_options()
         redraw = QPushButton("Redraw")
         redraw.clicked.connect(self.redraw)
         open_file_button = QPushButton("Open from File")
@@ -539,9 +539,11 @@ class Window(QWidget):
         def activate_function():
             self.options_dict[combobox.currentText()]()
 
+        combobox_communities = self.create_community_detection_options()
         combobox.currentTextChanged.connect(activate_function)
         self.vbox.addWidget(open_file_button)
         self.vbox.addWidget(combobox)
+        self.vbox.addWidget(combobox_communities)
         self.vbox.addWidget(centrality_combobox)
         self.vbox.addWidget(self.spin_box_label)
         self.vbox.addWidget(self.spin_box)
@@ -551,7 +553,7 @@ class Window(QWidget):
         self.vbox.addStretch()
         self.vbox.addStretch()
         self.canvas_hbox.addLayout(self.vbox, 20)
-    def add_radio_option(self) -> Combobox:
+    def create_algorithm_options(self) -> Combobox:
         """
         Create the selection list for the visualization function
         """
@@ -572,9 +574,35 @@ class Window(QWidget):
             self.options_dict[combobox.currentText()]()
         combobox.currentTextChanged.connect(activate_function)
         return combobox
+    def create_community_detection_options(self) -> Combobox:
+        """
+        Create the selection list for the visualization function
+        """
+        combobox = QComboBox()
+        self.options_dict = {"None": "", "Hypergraph Spectral Clustering": self.use_spectral_clustering, "Hypergraph-MT": self.assign_radial,
+                             "Hy-MMSBM": self.assign_extra_node}
+
+        combobox.addItems(list(self.options_dict.keys()))
+        def activate_function():
+            self.options_dict[combobox.currentText()]()
+        combobox.currentTextChanged.connect(activate_function)
+        return combobox
     def redraw(self):
         self.use_last = False
         self.plot()
+    def use_spectral_clustering(self):
+        K = 5  # number of communities
+        seed = 20  # random seed
+        n_realizations = 10  # number of realizations with different random initialization
+        model = HySC(
+            seed=seed,
+            n_realizations=n_realizations
+        )
+        u_HySC = model.fit(
+            H,
+            K=K,
+            weighted_L=False
+        )
     def add_centrality_button(self):
         labels_button = QCheckBox("Show Centrality")
         labels_button.setChecked(True)
@@ -671,8 +699,8 @@ def start_interactive_view(h: Hypergraph|TemporalHypergraph|DirectedHypergraph) 
     sys.exit(app.exec_())
 
 h = Hypergraph([(1,2,3),(4,5,6),(6,7,8,9),(10,11,12,1,4),(4,1),(3,6)])
-#h = DirectedHypergraph()
-#h.add_edge(((1,2),(3,4)))
+h = DirectedHypergraph()
+h.add_edge(((1,2),(3,4)))
 #h = Hypergraph(weighted=True)
 #h.add_edge((1,2,3),12)
 #h.add_edge((4,5,6),3)

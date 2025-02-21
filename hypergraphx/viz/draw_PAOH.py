@@ -1,15 +1,21 @@
+import collections
 from typing import Optional
 import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib import patches, transforms, axes
+
 from hypergraphx import Hypergraph, DirectedHypergraph
+from hypergraphx.communities.hy_sc.model import HySC
 from hypergraphx.core.temporal_hypergraph import TemporalHypergraph
+from hypergraphx.readwrite import load_hypergraph
 from hypergraphx.viz.__graphic_options import GraphicOptions
 from hypergraphx.viz.__support import __ignore_unused_args, __filter_hypergraph, __check_edge_intersection, \
-    __support_to_normal_hypergraph
-
+    __support_to_normal_hypergraph, _get_community_info, _get_node_community, _draw_node_community
 
 @__ignore_unused_args
 def draw_PAOH(
     h: Hypergraph | TemporalHypergraph | DirectedHypergraph,
+    u = None,
     cardinality: tuple[int,int]|int = -1,
     x_heaviest: float = 1.0,
     space_optimization: bool = False,
@@ -113,6 +119,8 @@ def draw_PAOH(
     idx = 0
     idx_timestamp = 0
     graphicOptions.check_if_options_are_valid(hypergraph)
+    if u is not None:
+        mapping, col = _get_community_info(hypergraph)
     #Draw each column
     for timestamp in timestamps:
         #Stamp the timestamp name
@@ -129,7 +137,7 @@ def draw_PAOH(
                 first_node = edge[0]
                 last_node = edge[-1]
                 ax.plot([idx, idx], [list(node_mapping.values()).index(first_node), list(node_mapping.values()).index(last_node)],
-                        color=graphicOptions.edge_color[original_edge], linewidth = graphicOptions.edge_size[original_edge], **kwargs)
+                        color=graphicOptions.edge_color[original_edge], linewidth = graphicOptions.edge_size[original_edge], zorder = -1,**kwargs)
                 if hypergraph.is_weighted():
                     ax.text(idx, list(node_mapping.values()).index(last_node)+0.25, str(hypergraph.get_weight(original_edge)),
                             horizontalalignment='center', fontsize = graphicOptions.weight_size)
@@ -145,17 +153,26 @@ def draw_PAOH(
                     for node in true_edge[0]:
                         ax.plot(idx, list(node_mapping.values()).index(node), marker=graphicOptions.node_shape[node],
                                 color=in_edge_color, markeredgecolor=graphicOptions.node_facecolor[node],
-                                markersize=graphicOptions.node_size[node]/30, **kwargs)
+                                markersize=graphicOptions.node_size[node], **kwargs)
                     for node in true_edge[1]:
                         ax.plot(idx, list(node_mapping.values()).index(node), marker=graphicOptions.node_shape[node],
                                 color=out_edge_color, markeredgecolor=graphicOptions.node_facecolor[node],
-                                markersize=graphicOptions.node_size[node]/30, **kwargs)
+                                markersize=graphicOptions.node_size[node], **kwargs)
 
                 else:
-                    for y in edge:
-                        ax.plot(idx, list(node_mapping.values()).index(y), marker= graphicOptions.node_shape[y],
-                        color=graphicOptions.node_color[y], markeredgecolor=graphicOptions.node_facecolor[y],
-                        markersize=graphicOptions.node_size[y]/30, **kwargs)
+                    for node in edge:
+                        if u is None:
+                            ax.plot(idx, list(node_mapping.values()).index(node), marker= graphicOptions.node_shape[node],
+                            color=graphicOptions.node_color[node], markeredgecolor=graphicOptions.node_facecolor[node],
+                            markersize=graphicOptions.node_size[node], **kwargs)
+                        else:
+                            wedge_sizes, wedge_colors = _get_node_community(mapping, node, u, col, 0.1)
+                            ax.plot(idx, list(node_mapping.values()).index(node),
+                                    marker=graphicOptions.node_shape[node],
+                                    color=wedge_colors[0],
+                                    markeredgecolor=graphicOptions.node_facecolor[node],
+                                    markersize=graphicOptions.node_size[node] , **kwargs)
+
             idx += 0.5
         #Plot the separating line for the timestamps
         if isinstance(hypergraph, TemporalHypergraph):
@@ -172,7 +189,7 @@ def draw_PAOH(
     ax.set_xlabel(x_label)
     ax.set_xticks([])
     ax.set_xlim([-0.5, idx])
-    ax.set_ylim([-0.5,len(hypergraph.get_nodes())])
+    ax.set_ylim([-0.5,len(hypergraph.get_edges())])
     ax.set_yticks(range(len(hypergraph.get_nodes())))
     ax.set_yticklabels(sorted(hypergraph.get_nodes()))
     ax.grid(which="minor", ls="--", lw=1)
