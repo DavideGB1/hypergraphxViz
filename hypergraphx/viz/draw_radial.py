@@ -139,7 +139,7 @@ def draw_radial_layout(
         plt.subplot(1, 1, 1)
         ax = plt.gca()
     if graphicOptions is None:
-        graphicOptions = GraphicOptions(is_PAOH=True)
+        graphicOptions = GraphicOptions()
     isDirected = False
     hypergraph = __filter_hypergraph(h, cardinality, x_heaviest)
     if isinstance(hypergraph, DirectedHypergraph):

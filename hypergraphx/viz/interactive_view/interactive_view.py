@@ -176,14 +176,6 @@ class Window(QWidget):
         except KeyError:
             time_separation_line_width = 4
         try:
-            self.graphic_options.in_edge_color = self.extra_attributes["in_edge_color"]
-        except KeyError:
-            pass
-        try:
-            self.graphic_options.out_edge_color = self.extra_attributes["out_edge_color"]
-        except KeyError:
-            pass
-        try:
             rounding_radius_size = self.extra_attributes["rounding_radius_factor"]
         except KeyError:
             rounding_radius_size = 0.1
@@ -256,7 +248,7 @@ class Window(QWidget):
         self.current_function = draw_PAOH
         # Gets new extra options
         self.extra_options()
-        self.graphic_options_widget = GraphicOptionsWidget(self.graphic_options, self.extra_attributes, get_PAOH_options(self.hypergraph.is_weighted()))
+        self.graphic_options_widget = GraphicOptionsWidget(self.graphic_options, self.extra_attributes, get_PAOH_options(self.hypergraph.is_weighted(), isinstance(self.hypergraph, DirectedHypergraph)))
         self.add_algorithm_options_button(self.graphic_options_widget, self.graphic_options_list,
                                           self.get_new_option)
         self.drawing_options = PAOHOptionsWidget()
@@ -270,7 +262,8 @@ class Window(QWidget):
 
         #Gets new extra options
         self.extra_options()
-        self.graphic_options_widget = GraphicOptionsWidget(self.graphic_options, self.extra_attributes, get_Radial_options(self.hypergraph.is_weighted()))
+        self.graphic_options_widget = GraphicOptionsWidget(self.graphic_options, self.extra_attributes,
+                                                           get_Radial_options(self.hypergraph.is_weighted(), isinstance(self.hypergraph, DirectedHypergraph)))
         self.add_algorithm_options_button(self.graphic_options_widget, self.graphic_options_list,
                                           self.get_new_option)
         #Create the new custom options for the radial function
@@ -327,7 +320,8 @@ class Window(QWidget):
         self.current_function = draw_extra_node
         # Gets new extra options
         self.extra_options()
-        self.graphic_options_widget = GraphicOptionsWidget(self.graphic_options, self.extra_attributes, get_ExtraNode_options(self.hypergraph.is_weighted()))
+        self.graphic_options_widget = GraphicOptionsWidget(self.graphic_options, self.extra_attributes,
+                        get_ExtraNode_options(self.hypergraph.is_weighted(), isinstance(self.hypergraph, DirectedHypergraph)))
         self.add_algorithm_options_button(self.graphic_options_widget, self.graphic_options_list,
                                           self.get_new_option)
         self.drawing_options = ExtraNodeOptionsWidget()
@@ -340,7 +334,8 @@ class Window(QWidget):
         self.current_function = draw_bipartite
         # Gets new extra options
         self.extra_options()
-        self.graphic_options_widget = GraphicOptionsWidget(self.graphic_options, self.extra_attributes, get_Bipartite_options(self.hypergraph.is_weighted()))
+        self.graphic_options_widget = GraphicOptionsWidget(self.graphic_options, self.extra_attributes,
+                            get_Bipartite_options(self.hypergraph.is_weighted(), isinstance(self.hypergraph, DirectedHypergraph)))
         self.add_algorithm_options_button(self.graphic_options_widget, self.graphic_options_list,
                                           self.get_new_option)
         self.drawing_options = BipartiteOptionsWidget()
@@ -353,7 +348,8 @@ class Window(QWidget):
         self.current_function = draw_sets
         # Gets new extra options
         self.extra_options()
-        self.graphic_options_widget = GraphicOptionsWidget(self.graphic_options, self.extra_attributes, get_Sets_options(self.hypergraph.is_weighted()))
+        self.graphic_options_widget = GraphicOptionsWidget(self.graphic_options, self.extra_attributes,
+                    get_Sets_options(self.hypergraph.is_weighted(), isinstance(self.hypergraph, DirectedHypergraph)))
         self.add_algorithm_options_button(self.graphic_options_widget, self.graphic_options_list,
                                           self.get_new_option)
 
@@ -583,11 +579,11 @@ class Window(QWidget):
         if isinstance(self.hypergraph, TemporalHypergraph):
             self.options_dict = { "PAOH": self.assign_PAOH}
         elif isinstance(self.hypergraph, DirectedHypergraph):
-            self.options_dict = { "PAOH": self.assign_PAOH,"Radial": self.assign_radial, "Extra-Node": self.assign_extra_node}
+            self.options_dict = { "PAOH": self.assign_PAOH,"Radial": self.assign_radial, "Extra-Node": self.assign_extra_node,
+                                  "Bipartite": self.assign_bipartite }
         else:
             self.options_dict = {"PAOH": self.assign_PAOH,"Radial": self.assign_radial,
-                         "Extra-Node": self.assign_extra_node, "Bipartite": self.assign_bipartite, "Sets": self.assign_sets,
-                            }
+                         "Extra-Node": self.assign_extra_node, "Bipartite": self.assign_bipartite, "Sets": self.assign_sets}
             if not self.hypergraph.is_weighted():
                 self.options_dict["Clique"] = self.assign_clique_projection
 
@@ -646,8 +642,8 @@ def start_interactive_view(h: Hypergraph|TemporalHypergraph|DirectedHypergraph) 
     sys.exit(app.exec_())
 
 h = Hypergraph([(1,2,3),(4,5,6),(6,7,8,9),(10,11,12,1,4),(4,1),(3,6)])
-#h = DirectedHypergraph()
-#h.add_edge(((1,2),(3,4)))
+h = DirectedHypergraph()
+h.add_edge(((1,2),(3,4)))
 #h = Hypergraph(weighted=True)
 #h.add_edge((1,2,3),12)
 #h.add_edge((4,5,6),3)

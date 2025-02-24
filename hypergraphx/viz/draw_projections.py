@@ -2,22 +2,17 @@ from typing import Optional
 import matplotlib.pyplot as plt
 import networkx as nx
 from networkx import is_planar, planar_layout
-from shapely.geometry import mapping
-
 from __support import __filter_hypergraph, __ignore_unused_args, _get_community_info, _get_node_community, \
     _draw_node_community
 from hypergraphx import Hypergraph, DirectedHypergraph
-from hypergraphx.communities.hy_sc.model import HySC
-from hypergraphx.readwrite import load_hypergraph
 from hypergraphx.representations.projections import (
     bipartite_projection,
     clique_projection, extra_node_projection)
 from hypergraphx.viz.__graphic_options import GraphicOptions
 
-
 @__ignore_unused_args
 def draw_bipartite(
-    h: Hypergraph,
+    h: Hypergraph|DirectedHypergraph,
     u = None,
     cardinality: tuple[int,int]|int = -1,
     x_heaviest: float = 1.0,
@@ -33,7 +28,7 @@ def draw_bipartite(
     Draws a bipartite graph representation of the hypergraph.
     Parameters
     ----------
-    h : Hypergraph.
+    h : Hypergraph | DirectedHypergraph.
         The hypergraph to be projected.
     cardinality: tuple[int,int]|int. optional
         Allows you to filter hyperedges so that only those with the default cardinality are visible.
@@ -73,8 +68,9 @@ def draw_bipartite(
     # Draw edges and nodes
     node_list = [x for x in g.nodes() if x.startswith('N')]
     for edge in g.edges():
-        nx.draw_networkx_edges(g, pos, edgelist= [edge], ax=ax, edge_color=graphicOptions.edge_color[edge],
-                               width=graphicOptions.edge_size[edge])
+        nx.draw_networkx_edges(g, pos, edgelist=[edge], ax=ax, edge_color=graphicOptions.edge_color[edge],
+                               width=graphicOptions.edge_size[edge], arrows=isinstance(h, DirectedHypergraph), **kwargs)
+
     if u is not None:
         mapping, col = _get_community_info(hypergraph)
     for node in node_list:

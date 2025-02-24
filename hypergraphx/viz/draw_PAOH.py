@@ -1,16 +1,22 @@
-import collections
 from typing import Optional
+
 import matplotlib.pyplot as plt
-import numpy as np
-from matplotlib import patches, transforms, axes
 
 from hypergraphx import Hypergraph, DirectedHypergraph
-from hypergraphx.communities.hy_sc.model import HySC
 from hypergraphx.core.temporal_hypergraph import TemporalHypergraph
-from hypergraphx.readwrite import load_hypergraph
 from hypergraphx.viz.__graphic_options import GraphicOptions
 from hypergraphx.viz.__support import __ignore_unused_args, __filter_hypergraph, __check_edge_intersection, \
-    __support_to_normal_hypergraph, _get_community_info, _get_node_community, _draw_node_community
+    __support_to_normal_hypergraph, _get_community_info, _get_node_community
+from typing import Optional
+
+import matplotlib.pyplot as plt
+
+from hypergraphx import Hypergraph, DirectedHypergraph
+from hypergraphx.core.temporal_hypergraph import TemporalHypergraph
+from hypergraphx.viz.__graphic_options import GraphicOptions
+from hypergraphx.viz.__support import __ignore_unused_args, __filter_hypergraph, __check_edge_intersection, \
+    __support_to_normal_hypergraph, _get_community_info, _get_node_community
+
 
 @__ignore_unused_args
 def draw_PAOH(
@@ -74,7 +80,7 @@ def draw_PAOH(
     hypergraph = __filter_hypergraph(h, cardinality, x_heaviest)
     #Sets up the graphical options
     if graphicOptions is None:
-        graphicOptions = GraphicOptions(is_PAOH=True)
+        graphicOptions = GraphicOptions()
 
     #Creates a custom node mapping
     node_mapping = dict()

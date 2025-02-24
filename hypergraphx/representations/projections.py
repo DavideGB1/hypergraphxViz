@@ -31,19 +31,35 @@ def bipartite_projection(h: Hypergraph):
         g.add_node(obj_to_id[node], bipartite=0)
 
     idx = 0
-
+    isDirected = False
+    if isinstance(h, DirectedHypergraph):
+        isDirected = True
+        g = g.to_directed()
     for edge in h.get_edges():
-        edge = tuple(sorted(edge))
-        obj_to_id[edge] = "E" + str(idx)
-        id_to_obj["E" + str(idx)] = edge
-        idx += 1
-        if h.is_weighted():
-            g.add_node(obj_to_id[edge], bipartite=1,weight=h.get_weight(edge))
+        original_edge = edge
+        if isDirected:
+            compressed_edge = []
+            for node in edge[0]:
+                compressed_edge.append(node)
+            for node in edge[1]:
+                compressed_edge.append(node)
+            edge = compressed_edge
         else:
-            g.add_node(obj_to_id[edge], bipartite=1)
-
-        for node in edge:
-                g.add_edge(obj_to_id[edge], obj_to_id[node])
+            edge = tuple(sorted(edge))
+        obj_to_id[tuple(edge)] = 'E' + str(idx)
+        id_to_obj['E' + str(idx)] = edge
+        weight = 1
+        if h.is_weighted():
+            weight = h.get_weight(original_edge)
+        g.add_node(obj_to_id[tuple(edge)], bipartite=1,weight=weight)
+        if isDirected:
+            for node in original_edge[0]:
+                g.add_edge(obj_to_id[node], obj_to_id[tuple(edge)], weight=weight)
+            for node in original_edge[1]:
+                g.add_edge(obj_to_id[tuple(edge)], obj_to_id[node], weight=weight)
+        else:
+            for node in original_edge:
+                g.add_edge(obj_to_id[node], obj_to_id[tuple(edge)], weight=weight)
 
     return g, id_to_obj
 

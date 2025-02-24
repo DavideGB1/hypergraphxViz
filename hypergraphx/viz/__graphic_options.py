@@ -9,8 +9,6 @@ class GraphicOptions:
     ...
     Attributes
     ----------
-    is_PAOH : bool, optional
-        Default value used to change the base node size if we are working with PAOHvis.
     node_shape : str | dict, optional
         Defines the shape of each node. It's possible to specify a shape for each node using a dictionary.
         Specification is as matplotlib.scatter marker.
@@ -52,7 +50,6 @@ class GraphicOptions:
     """
     def __init__(
             self,
-            is_PAOH: bool = False,
             node_shape: Optional[str | dict] = "o",
             edge_shape: Optional[str | dict] = 'p',
             node_color: Optional[str | dict] = "#1f78b4",
@@ -64,7 +61,7 @@ class GraphicOptions:
             edge_color: Optional[str | dict] = "#000000",
             edge_size: Optional[float | dict] = 2.0,
             label_size: Optional[int] = 15,
-            node_size: Optional[int | dict] = None,
+            node_size: Optional[int | dict] = 300,
             weight_size: Optional[int] = 20,
             default_node_shape: Optional[str] = "o",
             default_node_color: Optional[str] = "#1f78b4",
@@ -75,20 +72,14 @@ class GraphicOptions:
             default_edge_shape: Optional[str] = "p",
             default_label_size: Optional[int] = 15,
             default_label_color: Optional[str] = "#000000",
-            default_node_size: Optional[int] = 10,
+            default_node_size: Optional[int] = 300,
             default_weight_size: Optional[int] = 20,
     ):
         self.node_size = node_size
         self.in_edge_color = in_edge_color
         self.out_edge_color = out_edge_color
-        if is_PAOH:
-            self.default_node_size = default_node_size
-            if self.node_size is None:
-                self.node_size = 10
-        else:
-            self.default_node_size = default_node_size
-            if self.node_size is None:
-                self.node_size = 300
+        self.default_node_size = default_node_size
+        self.node_size = default_node_size
         self.default_node_shape = default_node_shape
         self.default_node_color = default_node_color
         self.default_node_facecolor = default_node_facecolor

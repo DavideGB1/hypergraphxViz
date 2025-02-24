@@ -30,7 +30,7 @@ class GraphicOptionsName(Enum):
     hyperedge_alpha = "Hyperedge Alpha"
     weight_size = "Weights Size"
 
-def get_PAOH_options(weighted = False):
+def get_PAOH_options(weighted = False, is_directed = False):
     options = list()
     options.append("node_size")
     options.append("node_shape")
@@ -40,9 +40,12 @@ def get_PAOH_options(weighted = False):
     options.append("edge_color")
     if weighted:
         options.append("weight_size")
+    if is_directed:
+        options.append("in_edge_color")
+        options.append("out_edge_color")
     return options
 
-def get_Radial_options(weighted = False):
+def get_Radial_options(weighted = False, is_directed = False):
     options = list()
     options.append("node_size")
     options.append("node_shape")
@@ -58,9 +61,12 @@ def get_Radial_options(weighted = False):
     options.append("font_spacing_factor")
     if weighted:
         options.append("weight_size")
+    if is_directed:
+        options.append("in_edge_color")
+        options.append("out_edge_color")
     return options
 
-def get_ExtraNode_options(weighted = False):
+def get_ExtraNode_options(weighted = False, is_directed = False):
     options = list()
     options.append("node_size")
     options.append("node_shape")
@@ -74,9 +80,12 @@ def get_ExtraNode_options(weighted = False):
     options.append("label_color")
     if weighted:
         options.append("weight_size")
+    if is_directed:
+        options.append("in_edge_color")
+        options.append("out_edge_color")
     return options
 
-def get_Bipartite_options(weighted = False):
+def get_Bipartite_options(weighted = False, is_directed = False):
     options = list()
     options.append("node_size")
     options.append("node_shape")
@@ -90,9 +99,12 @@ def get_Bipartite_options(weighted = False):
     options.append("label_color")
     if weighted:
         options.append("weight_size")
+    if is_directed:
+        options.append("in_edge_color")
+        options.append("out_edge_color")
     return options
 
-def get_Sets_options(weighted = False):
+def get_Sets_options(weighted = False, is_directed = False):
     options = list()
     options.append("node_size")
     options.append("node_shape")
@@ -107,9 +119,12 @@ def get_Sets_options(weighted = False):
     options.append("polygon_expansion_factor")
     if weighted:
         options.append("weight_size")
+    if is_directed:
+        options.append("in_edge_color")
+        options.append("out_edge_color")
     return options
 
-def get_Clique_options(weighted = False):
+def get_Clique_options():
     options = list()
     options.append("node_size")
     options.append("node_shape")
@@ -147,7 +162,7 @@ class GraphicOptionsWidget(QWidget):
     modified_options = pyqtSignal(tuple)
     def __init__(self,graphic_options = GraphicOptions(),extra_attributes = None, relevant = get_PAOH_options(), parent = None):
         super(GraphicOptionsWidget, self).__init__(parent)
-        self.graphic_options = graphic_options
+        self.graphic_options = deepcopy(graphic_options)
         self.extra_attributes = dict()
         self.extra_attributes = extra_attributes
         self.widget_list = list()
