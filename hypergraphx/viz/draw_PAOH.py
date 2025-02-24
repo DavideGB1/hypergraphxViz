@@ -171,7 +171,7 @@ def draw_PAOH(
                                     marker=graphicOptions.node_shape[node],
                                     color=wedge_colors[0],
                                     markeredgecolor=graphicOptions.node_facecolor[node],
-                                    markersize=graphicOptions.node_size[node] , **kwargs)
+                                    markersize=graphicOptions.node_size[node]/30 , **kwargs)
 
             idx += 0.5
         #Plot the separating line for the timestamps

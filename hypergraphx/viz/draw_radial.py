@@ -185,7 +185,7 @@ def draw_radial_layout(
         max_y = max(max_y, value_y)
         min_y = min(min_y, value_y)
         ax.plot(value_x, value_y, graphicOptions.node_shape[node], color=graphicOptions.node_color[node],
-                markersize=graphicOptions.node_size[node],
+                markersize=graphicOptions.node_size[node]/30,
                 markeredgecolor=graphicOptions.node_facecolor[node],zorder = -1, **kwargs)
         if draw_labels:
             ax.text(value_x * font_spacing_factor, value_y * font_spacing_factor, node,
@@ -238,18 +238,18 @@ def draw_radial_layout(
                     if node in true_edge[0]:
                         ax.plot(value_x, value_y, marker=graphicOptions.node_shape[node],
                                 color=in_edge_color, markeredgecolor=graphicOptions.node_facecolor[node],
-                                markersize=graphicOptions.node_size[node] , **kwargs)
+                                markersize=graphicOptions.node_size[node]/30 , **kwargs)
                     else:
                         ax.plot(value_x, value_y, marker=graphicOptions.node_shape[node],
                                 color=out_edge_color, markeredgecolor=graphicOptions.node_facecolor[node],
-                                markersize=graphicOptions.node_size[node] , **kwargs)
+                                markersize=graphicOptions.node_size[node]/30 , **kwargs)
                 else:
                     if u is None:
                         ax.plot(value_x, value_y, graphicOptions.edge_shape[node], color=graphicOptions.edge_node_color[node],
-                            markersize=graphicOptions.node_size[node],markeredgecolor=graphicOptions.node_facecolor[node], **kwargs)
+                            markersize=graphicOptions.node_size[node]/30,markeredgecolor=graphicOptions.node_facecolor[node], **kwargs)
                     else:
                         wedge_sizes, wedge_colors = _get_node_community(mapping, node, u, col, 0.1)
-                        _draw_node_community(ax, node, center=(value_x, value_y), radius=graphicOptions.node_size[node]/75, wedge_sizes=wedge_sizes,
+                        _draw_node_community(ax, node, center=(value_x, value_y), radius=graphicOptions.node_size[node]/2100, wedge_sizes=wedge_sizes,
                                              wedge_colors=wedge_colors, graphicOptions=graphicOptions)
 
             if hypergraph.is_weighted():
