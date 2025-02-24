@@ -1,29 +1,36 @@
+import copy
+import ctypes
 import sys
 from tkinter.ttk import Combobox
-
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QPushButton, QVBoxLayout, QSlider, QWidget, QHBoxLayout, QLabel, \
-    QDoubleSpinBox, QFileDialog, QSpacerItem, QLayout, QCheckBox, QComboBox, QMessageBox
+    QDoubleSpinBox, QFileDialog, QSpacerItem, QLayout, QCheckBox, QComboBox, QMessageBox, QListWidget, \
+    QListWidgetItem
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-
+from superqt import QRangeSlider
 import hypergraphx.readwrite
 from hypergraphx import Hypergraph, TemporalHypergraph, DirectedHypergraph
+from hypergraphx.communities.hy_mmsbm.model import HyMMSBM
+from hypergraphx.communities.hy_sc.model import HySC
+from hypergraphx.communities.hypergraph_mt.model import HypergraphMT
+from hypergraphx.measures.degree import degree_sequence
+from hypergraphx.utils import normalize_array
+from hypergraphx.viz.__graphic_options import GraphicOptions
 from hypergraphx.viz.draw_PAOH import draw_PAOH
-from hypergraphx.viz.draw_sets import draw_sets
 from hypergraphx.viz.draw_metroset import draw_metroset
 from hypergraphx.viz.draw_projections import draw_extra_node, draw_bipartite, draw_clique
 from hypergraphx.viz.draw_radial import draw_radial_layout
-from hypergraphx.viz.interactive_view.__option_menu import MenuWindow
-from hypergraphx.viz.__graphic_options import GraphicOptions
-import copy
-from superqt import QRangeSlider
-import ctypes
-from hypergraphx.measures.degree import degree_sequence
+from hypergraphx.viz.draw_sets import draw_sets
+from hypergraphx.viz.interactive_view.__drawing_options import PAOHOptionsWidget, RadialOptionsWidget, \
+    CliqueOptionsWidget, ExtraNodeOptionsWidget, BipartiteOptionsWidget, SetOptionsWidget
+from hypergraphx.viz.interactive_view.community_options.__community_option_menu import CommunityOptionsWindow
+from hypergraphx.viz.interactive_view.community_options.__community_options import CommunityOptions
+from hypergraphx.viz.interactive_view.graphic_options.__graphic_option_menu import GraphicOptionsWindow
 
-# noinspection PyUnresolvedReferences
+
 class Window(QWidget):
 
     # constructor
@@ -34,6 +41,8 @@ class Window(QWidget):
         myappid = 'mycompany.myproduct.subproduct.version'  # arbitrary string
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         #Set Default Values
+        self.algorithm_options_dict = dict()
+        self.list = None
         self.use_last = False
         self.centrality = None
         self.options_dict = dict()
@@ -41,8 +50,10 @@ class Window(QWidget):
         self.spin_box = QDoubleSpinBox()
         self.vbox = QVBoxLayout()
         self.current_function = draw_PAOH
+        self.community_options = CommunityOptions()
         self.slider = None
         self.ranged = True
+        self.community_option_menu = None
         self.option_menu = None
         self.graphic_options = GraphicOptions()
         self.active_labels = True
@@ -67,7 +78,7 @@ class Window(QWidget):
         self.canvas = FigureCanvas(self.figure)
         self.toolbar = NavigationToolbar(self.canvas, self)
         self.canvas_hbox.addWidget(self.canvas, 80)
-
+        self.community_model = None
         # Sliders Management
         slider_hbox = self.add_sliders()
         # Create layout and add everything
@@ -121,7 +132,7 @@ class Window(QWidget):
         button = QPushButton("Graphic Options")
         def open_options():
             if self.option_menu is None:
-                self.option_menu = MenuWindow(self.graphic_options, self.extra_attributes)
+                self.option_menu = GraphicOptionsWindow(self.graphic_options, self.extra_attributes)
                 self.option_menu.modified_options.connect(self.get_new_option)
                 self.option_menu.show()
             else:
@@ -129,6 +140,24 @@ class Window(QWidget):
 
         button.clicked.connect(open_options)
         return button
+    def get_new_community_option(self, new_options: CommunityOptions) -> None:
+        self.community_options = new_options
+        self.use_community_detection_algorithm()
+        self.use_last = True
+        self.plot()
+    def add_community_options_button(self):
+        button = QPushButton("Options")
+        def open_options():
+            if self.community_option_menu is None:
+                self.community_option_menu = CommunityOptionsWindow(self.community_options)
+                self.community_option_menu.modified_options.connect(self.get_new_community_option)
+                self.community_option_menu.show()
+            else:
+                self.community_option_menu = None
+
+        button.clicked.connect(open_options)
+        return button
+    #Drawing
     def plot(self) -> None:
         """
         Plot the hypergraph on screen using the assigner draw function.
@@ -187,14 +216,16 @@ class Window(QWidget):
             self.graphic_options.add_centrality_factor_dict(None)
         #Plot and draw the hypergraph using it's function
         self.last_pos = self.current_function(self.hypergraph, cardinality= self.slider_value, x_heaviest = float(self.spin_box.value()/100), ax=ax,
-                draw_labels=self.active_labels, space_optimization = self.space_optimization, time_font_size = time_font_size,
-                ignore_binary_relations = self.ignore_binary_relations, show_edge_nodes = self.show_edge_nodes,
-                iterations = int(self.iterations), align = self.alignment, time_separation_line_color = time_separation_line_color,
+                time_font_size = time_font_size, time_separation_line_color = time_separation_line_color,
                 graphicOptions=copy.deepcopy(self.graphic_options), radius_scale_factor=radius_scale_factor, font_spacing_factor=font_spacing_factor,
-                time_separation_line_width = time_separation_line_width, rounded_polygon = self.rounded_polygon, polygon_expansion_factor = polygon_expansion_factor,
-                rounding_radius_size = rounding_radius_size, hyperedge_alpha = hyperedge_alpha,pos = last_pos)
+                time_separation_line_width = time_separation_line_width, polygon_expansion_factor = polygon_expansion_factor,
+                rounding_radius_size = rounding_radius_size, hyperedge_alpha = hyperedge_alpha,pos = last_pos, u = self.community_model, **self.algorithm_options_dict)
         self.use_last = False
         self.canvas.draw()
+    def redraw(self):
+        self.use_last = False
+        self.plot()
+
     def get_new_option(self, new_options: tuple[GraphicOptions,dict]) -> None:
         """
         Update the graphic options with the one sent from the option menu.
@@ -212,27 +243,23 @@ class Window(QWidget):
         """
         self.spin_box_label.setText("Show {value}% Heaviest Edges".format(value=self.spin_box.value()))
         self.plot()
-    def assign_radial(self) -> None:
-        """
-        Assigns draw_radial_layout as plot function.
-        """
-        self.current_function = draw_radial_layout
-        #Close the option menu if open
-        if self.option_menu is not None:
-            self.option_menu = None
-        #Gets new extra options
-        self.extra_options()
-        remove_last_x_elements_from_layout(self.vbox, 2)
-        #Create the new custom options for the radial function
-        vbox_radial_option = QVBoxLayout()
-        labels_button = QCheckBox("Show Labels")
-        labels_button.setChecked(True)
-        labels_button.toggled.connect(self.activate_labels)
-
-        vbox_radial_option.addWidget(labels_button)
-        self.vbox.addLayout(vbox_radial_option)
-        self.vbox.addStretch()
+    #Get Drawing Algorithm Options
+    def get_drawing_algorithm_options(self, dict):
+        self.algorithm_options_dict = dict
+        try:
+            self.use_last = dict["use_last"]
+        except KeyError:
+            self.use_last = True
         self.plot()
+    def add_drawing_algorithm_options_button(self, widget):
+        self.list.clear()
+        for x in widget.widget_list:
+            myQListWidgetItem = QListWidgetItem(self.list)
+            myQListWidgetItem.setSizeHint(x.sizeHint())
+            self.list.addItem(myQListWidgetItem)
+            self.list.setItemWidget(myQListWidgetItem, x)
+        widget.modified_options.connect(self.get_drawing_algorithm_options)
+    #Assign Drawing Function
     def assign_PAOH(self) -> None:
         """
         Assigns draw_PAOH as plot function.
@@ -243,23 +270,22 @@ class Window(QWidget):
             self.option_menu = None
         # Gets new extra options
         self.extra_options()
-        remove_last_x_elements_from_layout(self.vbox, 2)
-        #Create the new custom options for the PAOH function
-        vbox_PAOH_option = QVBoxLayout()
-        space_optimization_option_btn = QCheckBox("Optimize Space Usage")
-        space_optimization_option_btn.setChecked(False)
-
-        def optimize_space_usage():
-            if self.space_optimization:
-                self.space_optimization = False
-            else:
-                self.space_optimization = True
-            self.plot()
-
-        space_optimization_option_btn.toggled.connect(optimize_space_usage)
-        vbox_PAOH_option.addWidget(space_optimization_option_btn)
-        self.vbox.addLayout(vbox_PAOH_option)
-        self.vbox.addStretch()
+        self.drawing_options = PAOHOptionsWidget()
+        self.add_drawing_algorithm_options_button(self.drawing_options)
+        self.plot()
+    def assign_radial(self) -> None:
+        """
+        Assigns draw_radial_layout as plot function.
+        """
+        self.current_function = draw_radial_layout
+        #Close the option menu if open
+        if self.option_menu is not None:
+            self.option_menu = None
+        #Gets new extra options
+        self.extra_options()
+        #Create the new custom options for the radial function
+        self.drawing_options = RadialOptionsWidget()
+        self.add_drawing_algorithm_options_button(self.drawing_options)
         self.plot()
     def assign_metroset(self) -> None:
         """
@@ -272,7 +298,6 @@ class Window(QWidget):
             self.option_menu = None
         # Gets new extra options
         self.extra_options()
-        remove_last_x_elements_from_layout(self.vbox, 2)
         # Create the new custom options for the metroset function
         vbox_metroset_option = QVBoxLayout()
         iterations_selector_label = QLabel()
@@ -304,30 +329,8 @@ class Window(QWidget):
             self.option_menu = None
         # Gets new extra options
         self.extra_options()
-        remove_last_x_elements_from_layout(self.vbox, 2)
-        # Create the new custom options for the clique function
-        vbox_clique_expasion_option = QVBoxLayout()
-        labels_btn = QCheckBox("Show Labels")
-        labels_btn.setChecked(True)
-        labels_btn.toggled.connect(self.activate_labels)
-        iterations_selector_label = QLabel()
-        iterations_selector_label.setText("Number of Iterations:")
-        iterations_selector = QDoubleSpinBox()
-
-        def iterations_selector_funz():
-            self.iterations = iterations_selector.value()
-            self.plot()
-
-        iterations_selector.setDecimals(0)
-        iterations_selector.setRange(0, 100000000)
-        iterations_selector.setValue(1000)
-        iterations_selector.setSingleStep(1)
-        iterations_selector.valueChanged.connect(iterations_selector_funz)
-        vbox_clique_expasion_option.addWidget(labels_btn)
-        vbox_clique_expasion_option.addWidget(iterations_selector_label)
-        vbox_clique_expasion_option.addWidget(iterations_selector)
-        self.vbox.addLayout(vbox_clique_expasion_option)
-        self.vbox.addStretch()
+        self.drawing_options = CliqueOptionsWidget()
+        self.add_drawing_algorithm_options_button(self.drawing_options)
         self.plot()
     def assign_extra_node(self) -> None:
         """
@@ -340,60 +343,8 @@ class Window(QWidget):
             self.option_menu = None
         # Gets new extra options
         self.extra_options()
-        remove_last_x_elements_from_layout(self.vbox, 2)
-        # Create the new custom options for the extra-node function
-        vbox_extra_node_option = QVBoxLayout()
-        edge_nodes_btn = QCheckBox("Show Edge Nodes")
-
-        def activate_edge_nodes():
-            if self.show_edge_nodes:
-                self.show_edge_nodes = False
-            else:
-                self.show_edge_nodes = True
-            self.plot()
-
-        edge_nodes_btn.toggled.connect(activate_edge_nodes)
-        ignore_binary_relations_btn = QCheckBox("Ignore Binary Relations")
-
-        def ignore_binary_relations_funz():
-            if self.ignore_binary_relations:
-                self.ignore_binary_relations = False
-            else:
-                self.ignore_binary_relations = True
-
-            self.plot()
-
-        ignore_binary_relations_btn.toggled.connect(ignore_binary_relations_funz)
-
-        labels_btn = QCheckBox("Show Labels")
-        labels_btn.setChecked(True)
-        labels_btn.toggled.connect(self.activate_labels)
-        iterations_selector_label = QLabel()
-        iterations_selector_label.setText("Number of Iterations:")
-
-
-
-        iterations_selector = QDoubleSpinBox()
-
-        def iterations_selector_funz():
-            self.iterations = iterations_selector.value()
-            self.plot()
-
-        iterations_selector.setDecimals(0)
-        iterations_selector.setRange(0, 100000000)
-        iterations_selector.setValue(1000)
-        iterations_selector.setSingleStep(1)
-        iterations_selector.valueChanged.connect(iterations_selector_funz)
-
-
-
-        vbox_extra_node_option.addWidget(edge_nodes_btn)
-        vbox_extra_node_option.addWidget(ignore_binary_relations_btn)
-        vbox_extra_node_option.addWidget(labels_btn)
-        vbox_extra_node_option.addWidget(iterations_selector_label)
-        vbox_extra_node_option.addWidget(iterations_selector)
-        self.vbox.addLayout(vbox_extra_node_option)
-        self.vbox.addStretch()
+        self.drawing_options = ExtraNodeOptionsWidget()
+        self.add_drawing_algorithm_options_button(self.drawing_options)
         self.plot()
     def assign_bipartite(self) -> None:
         """
@@ -405,23 +356,8 @@ class Window(QWidget):
             self.option_menu = None
         # Gets new extra options
         self.extra_options()
-        remove_last_x_elements_from_layout(self.vbox, 2)
-        # Create the new custom options for the bipartite function
-        vbox_bipartite_option = QVBoxLayout()
-
-        def change_alignment():
-            if self.alignment == "vertical":
-                self.alignment = "horizontal"
-            else:
-                self.alignment = "vertical"
-            self.plot()
-
-        change_alignment_btn = QPushButton("Change Alignment")
-        change_alignment_btn.setChecked(True)
-        change_alignment_btn.clicked.connect(change_alignment)
-        vbox_bipartite_option.addWidget(change_alignment_btn)
-        self.vbox.addLayout(vbox_bipartite_option)
-        self.vbox.addStretch()
+        self.drawing_options = BipartiteOptionsWidget()
+        self.add_drawing_algorithm_options_button(self.drawing_options)
         self.plot()
     def assign_sets(self) -> None:
         """
@@ -434,39 +370,87 @@ class Window(QWidget):
             self.option_menu = None
         # Gets new extra options
         self.extra_options()
-        remove_last_x_elements_from_layout(self.vbox, 2)
-        # Create the new custom options for the bipartite function
-        vbox_set_option = QVBoxLayout()
-        iterations_selector_label = QLabel()
-        iterations_selector_label.setText("Number of Iterations:")
-
-        iterations_selector = QDoubleSpinBox()
-
-        def iterations_selector_funz():
-            self.iterations = iterations_selector.value()
-            self.plot()
-
-        iterations_selector.setDecimals(0)
-        iterations_selector.setRange(0, 100000000)
-        iterations_selector.setValue(1000)
-        iterations_selector.setSingleStep(1)
-        iterations_selector.valueChanged.connect(iterations_selector_funz)
-        vbox_set_option.addWidget(iterations_selector_label)
-        vbox_set_option.addWidget(iterations_selector)
-        def activate_rounded_polygons():
-            if self.rounded_polygon:
-                self.rounded_polygon = False
-            else:
-                self.rounded_polygon = True
-            self.plot()
-
-        rounded_polygons_btn = QCheckBox("Draw Rounded Polygons")
-        rounded_polygons_btn.setChecked(True)
-        rounded_polygons_btn.toggled.connect(activate_rounded_polygons)
-        vbox_set_option.addWidget(rounded_polygons_btn)
-        self.vbox.addLayout(vbox_set_option)
-        self.vbox.addStretch()
+        self.drawing_options = SetOptionsWidget()
+        self.add_drawing_algorithm_options_button(self.drawing_options)
         self.plot()
+    #Community
+    def use_community_detection_algorithm(self):
+        self.community_options.algorithm = self.community_combobox.currentText()
+        self.community_options.update_options()
+        self.options_community[self.community_combobox.currentText()]()
+    def create_community_detection_options(self) -> Combobox:
+        """
+        Create the selection list for the visualization function
+        """
+        self.community_combobox = QComboBox()
+        self.options_community = {"None": self.no_community,
+                                  "Hypergraph Spectral Clustering": self.use_spectral_clustering,
+                                  "Hypergraph-MT": self.use_MT,
+                                  "Hy-MMSBM": self.use_MMSBM}
+
+        self.community_combobox.addItems(list(self.options_community.keys()))
+        self.community_combobox.currentTextChanged.connect(self.use_community_detection_algorithm)
+        return self.community_combobox
+    def use_spectral_clustering(self):
+        model = HySC(
+            seed=self.community_options.seed,
+            n_realizations=self.community_options.spinbox_n_realizations
+        )
+        self.community_model = model.fit(
+            self.hypergraph,
+            K=int(self.community_options.spinbox_K),
+            weighted_L=False
+        )
+        self.redraw()
+    def use_MT(self):
+        model = HypergraphMT(
+            n_realizations=self.community_options.spinbox_n_realizations,
+            max_iter=self.community_options.spinbox_max_iter,
+            check_convergence_every=self.community_options.spinbox_check_convergence_every,
+            verbose=False
+        )
+        u_HypergraphMT, w_HypergraphMT, _ = model.fit(
+            self.hypergraph,
+            K=self.community_options.spinbox_K,
+            seed=self.community_options.seed,
+            normalizeU=self.community_options.checkbox_normalizeU,
+            baseline_r0=self.community_options.checkbox_baseline_r0,
+        )
+        u_HypergraphMT = normalize_array(u_HypergraphMT, axis=1)
+        self.community_model = u_HypergraphMT
+        self.redraw()
+    def use_MMSBM(self):
+        best_model = None
+        best_loglik = float("-inf")
+        for j in range(self.community_options.spinbox_n_realizations):
+            model = HyMMSBM(
+                K=self.community_options.spinbox_K,
+                assortative=self.community_options.checkbox_assortative
+            )
+            model.fit(
+                self.hypergraph,
+                n_iter=self.community_options.spinbox_max_iter,
+            )
+
+            log_lik = model.log_likelihood(self.hypergraph)
+            if log_lik > best_loglik:
+                best_model = model
+                best_loglik = log_lik
+
+        u_HyMMSBM = best_model.u
+        u_HyMMSBM = normalize_array(u_HyMMSBM, axis=1)
+
+        self.community_model = u_HyMMSBM
+        self.redraw()
+    def no_community(self):
+        self.community_model = None
+        self.redraw()
+    def add_community_detection_options(self) -> Combobox:
+        """
+        Create the selection list for the community detection function
+        """
+
+
     def option_vbox(self) -> None:
         """
         Creates the standard options for the visualization functions
@@ -521,7 +505,7 @@ class Window(QWidget):
 
         open_file_button.clicked.connect(open_file)
         centrality_combobox = QComboBox()
-        centrality_combobox.addItems(["Off","Degree Centrality"])
+        centrality_combobox.addItems(["No Centrality","Degree Centrality"])
 
         def centrality_calculate():
             if centrality_combobox.currentText() == "Off":
@@ -543,15 +527,22 @@ class Window(QWidget):
         combobox.currentTextChanged.connect(activate_function)
         self.vbox.addWidget(open_file_button)
         self.vbox.addWidget(combobox)
-        self.vbox.addWidget(combobox_communities)
+        community_label = QLabel("Community Detection Algorithm:")
+        self.vbox.addWidget(community_label)
+        hbox = QHBoxLayout()
+        hbox.addWidget(combobox_communities,75)
+        option_community = self.add_community_options_button()
+        hbox.addWidget(option_community,25)
+        self.vbox.addLayout(hbox)
+        centrality_label = QLabel("Centrality Calculation Method:")
+        self.vbox.addWidget(centrality_label)
         self.vbox.addWidget(centrality_combobox)
         self.vbox.addWidget(self.spin_box_label)
         self.vbox.addWidget(self.spin_box)
         self.vbox.addWidget(self.add_options_button())
         self.vbox.addWidget(redraw)
-        self.vbox.addWidget(QLabel("Algorithm Options:"))
-        self.vbox.addStretch()
-        self.vbox.addStretch()
+        self.list = QListWidget()
+        self.vbox.addWidget(self.list)
         self.canvas_hbox.addLayout(self.vbox, 20)
     def create_algorithm_options(self) -> Combobox:
         """
@@ -565,7 +556,7 @@ class Window(QWidget):
         else:
             self.options_dict = {"PAOH": self.assign_PAOH,"Radial": self.assign_radial,
                          "Extra-Node": self.assign_extra_node, "Bipartite": self.assign_bipartite, "Sets": self.assign_sets,
-                            "MetroSet": self.assign_metroset}
+                            }
             if not self.hypergraph.is_weighted():
                 self.options_dict["Clique"] = self.assign_clique_projection
 
@@ -574,43 +565,10 @@ class Window(QWidget):
             self.options_dict[combobox.currentText()]()
         combobox.currentTextChanged.connect(activate_function)
         return combobox
-    def create_community_detection_options(self) -> Combobox:
-        """
-        Create the selection list for the visualization function
-        """
-        combobox = QComboBox()
-        self.options_dict = {"None": "", "Hypergraph Spectral Clustering": self.use_spectral_clustering, "Hypergraph-MT": self.assign_radial,
-                             "Hy-MMSBM": self.assign_extra_node}
-
-        combobox.addItems(list(self.options_dict.keys()))
-        def activate_function():
-            self.options_dict[combobox.currentText()]()
-        combobox.currentTextChanged.connect(activate_function)
-        return combobox
-    def redraw(self):
-        self.use_last = False
-        self.plot()
-    def use_spectral_clustering(self):
-        K = 5  # number of communities
-        seed = 20  # random seed
-        n_realizations = 10  # number of realizations with different random initialization
-        model = HySC(
-            seed=seed,
-            n_realizations=n_realizations
-        )
-        u_HySC = model.fit(
-            H,
-            K=K,
-            weighted_L=False
-        )
     def add_centrality_button(self):
         labels_button = QCheckBox("Show Centrality")
         labels_button.setChecked(True)
         labels_button.toggled.connect(self.show_centrality)
-    def add_community_detection_options(self) -> Combobox:
-        """
-        Create the selection list for the community detection function
-        """
     def show_centrality(self):
         if self.centrality_on:
             self.active_labels = False
@@ -618,16 +576,6 @@ class Window(QWidget):
         else:
             self.centrality_on = True
             self.plot()
-    def activate_labels(self) -> None:
-        """
-        Manage the draw_labels option button.
-        """
-        if self.active_labels:
-            self.active_labels = False
-        else:
-            self.active_labels = True
-        self.use_last = True
-        self.plot()
     def extra_options(self) -> None:
         """
         Generate the extra options list for the visualization functions
@@ -652,39 +600,6 @@ class Window(QWidget):
             self.extra_attributes["in_edge_color"] = "green"
             self.extra_attributes["out_edge_color"] = "red"
 
-def clear_layout(layout: QLayout):
-    """
-    Function to clear a QLayout
-    Parameters
-    ----------
-    layout: QLayout
-    """
-    while layout.count():
-        item = layout.takeAt(0)
-        widget = item.widget()
-        if widget:
-            widget.deleteLater()
-
-def remove_last_x_elements_from_layout(layout: QLayout, x: int=1) -> None:
-    """
-    Function to remove last x elements from a QLayout
-    Parameters
-    ----------
-    layout: QLayout
-    x: int
-    """
-    for x in range(x):
-        widget_layout = layout.takeAt(layout.count() - 1)
-        layout.removeItem(widget_layout)
-        if isinstance(widget_layout, QSpacerItem):
-            pass
-        elif isinstance(widget_layout, QLayout):
-            clear_layout(widget_layout)
-        else:
-            try:
-                widget_layout.deleteLater()
-            except AttributeError:
-                pass
 
 def start_interactive_view(h: Hypergraph|TemporalHypergraph|DirectedHypergraph) -> None:
     """
@@ -699,8 +614,8 @@ def start_interactive_view(h: Hypergraph|TemporalHypergraph|DirectedHypergraph) 
     sys.exit(app.exec_())
 
 h = Hypergraph([(1,2,3),(4,5,6),(6,7,8,9),(10,11,12,1,4),(4,1),(3,6)])
-h = DirectedHypergraph()
-h.add_edge(((1,2),(3,4)))
+#h = DirectedHypergraph()
+#h.add_edge(((1,2),(3,4)))
 #h = Hypergraph(weighted=True)
 #h.add_edge((1,2,3),12)
 #h.add_edge((4,5,6),3)

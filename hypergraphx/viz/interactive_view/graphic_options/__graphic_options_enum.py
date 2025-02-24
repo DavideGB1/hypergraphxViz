@@ -1,6 +1,6 @@
 from enum import Enum
 
-class OptionsName(Enum):
+class GraphicOptionsName(Enum):
     """
     Enum used to translate some GUI labels into normal strings
     """

@@ -249,11 +249,11 @@ class HypergraphMT:
         )  # TODO: check whether we want to refactor the name of this variable
 
         # Isolated nodes.
-        self.isolates = np.where(self.incidence.getnnz(1) == 0)[
+        self.isolates = np.where(self.incidence._getnnz(1) == 0)[
             0
         ]  # TODO: implement it as a core method
         # Non-isolated nodes.
-        self.non_isolates = np.where(self.incidence.getnnz(1) != 0)[
+        self.non_isolates = np.where(self.incidence._getnnz(1) != 0)[
             0
         ]  # TODO: implement it as a core method
 

@@ -2,6 +2,8 @@ from typing import Optional
 import matplotlib.pyplot as plt
 import networkx as nx
 from networkx import is_planar, planar_layout
+from shapely.geometry import mapping
+
 from __support import __filter_hypergraph, __ignore_unused_args, _get_community_info, _get_node_community, \
     _draw_node_community
 from hypergraphx import Hypergraph, DirectedHypergraph
@@ -248,7 +250,9 @@ def draw_extra_node(
         ax = plt.gca()
     if u is not None:
         mapping, col = _get_community_info(hypergraph)
-
+    else:
+        mapping = None
+        col = None
     #Removed the binary edges in order to reduce useless occlusion
     if ignore_binary_relations:
         binary_edges = [x for x in g.edges() if not(str(x[0]).startswith('E') or str(x[1]).startswith('E')) ]

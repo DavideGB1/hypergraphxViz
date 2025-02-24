@@ -108,11 +108,11 @@ class HySC:
         self.hye_size_weighted = self.incidence.sum(axis=1)
 
         # Isolated nodes.
-        self.isolates = np.where(self.incidence.getnnz(1) == 0)[
+        self.isolates = np.where(self.incidence._getnnz(1) == 0)[
             0
         ]  # TODO: implement it as a core method
         # Non-isolated nodes.
-        self.non_isolates = np.where(self.incidence.getnnz(1) != 0)[
+        self.non_isolates = np.where(self.incidence._getnnz(1) != 0)[
             0
         ]  # TODO: implement it as a core method
 

@@ -153,18 +153,18 @@ def draw_PAOH(
                     for node in true_edge[0]:
                         ax.plot(idx, list(node_mapping.values()).index(node), marker=graphicOptions.node_shape[node],
                                 color=in_edge_color, markeredgecolor=graphicOptions.node_facecolor[node],
-                                markersize=graphicOptions.node_size[node], **kwargs)
+                                markersize=graphicOptions.node_size[node]/30, **kwargs)
                     for node in true_edge[1]:
                         ax.plot(idx, list(node_mapping.values()).index(node), marker=graphicOptions.node_shape[node],
                                 color=out_edge_color, markeredgecolor=graphicOptions.node_facecolor[node],
-                                markersize=graphicOptions.node_size[node], **kwargs)
+                                markersize=graphicOptions.node_size[node]/30, **kwargs)
 
                 else:
                     for node in edge:
                         if u is None:
                             ax.plot(idx, list(node_mapping.values()).index(node), marker= graphicOptions.node_shape[node],
                             color=graphicOptions.node_color[node], markeredgecolor=graphicOptions.node_facecolor[node],
-                            markersize=graphicOptions.node_size[node], **kwargs)
+                            markersize=graphicOptions.node_size[node]/30, **kwargs)
                         else:
                             wedge_sizes, wedge_colors = _get_node_community(mapping, node, u, col, 0.1)
                             ax.plot(idx, list(node_mapping.values()).index(node),
@@ -189,7 +189,7 @@ def draw_PAOH(
     ax.set_xlabel(x_label)
     ax.set_xticks([])
     ax.set_xlim([-0.5, idx])
-    ax.set_ylim([-0.5,len(hypergraph.get_edges())])
+    ax.set_ylim([-0.5,len(hypergraph.get_nodes())])
     ax.set_yticks(range(len(hypergraph.get_nodes())))
     ax.set_yticklabels(sorted(hypergraph.get_nodes()))
     ax.grid(which="minor", ls="--", lw=1)

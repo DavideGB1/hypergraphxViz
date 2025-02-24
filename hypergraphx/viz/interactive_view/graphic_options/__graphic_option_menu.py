@@ -1,16 +1,13 @@
-import inspect
-import re
 from copy import deepcopy
-from typing import Dict
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtGui import QPixmap, QColor, QIcon
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QDoubleSpinBox, QColorDialog, QPushButton
 from hypergraphx.viz.__graphic_options import GraphicOptions
-from hypergraphx.viz.interactive_view.__options_enum import OptionsName
+from hypergraphx.viz.interactive_view.graphic_options.__graphic_options_enum import GraphicOptionsName
 
 
 # noinspection PyUnresolvedReferences
-class MenuWindow(QWidget):
+class GraphicOptionsWindow(QWidget):
     """
     Class used to represent the Graphic Options Menu.
     ...
@@ -35,7 +32,7 @@ class MenuWindow(QWidget):
     """
     modified_options = pyqtSignal(tuple)
     def __init__(self, graphic_options = GraphicOptions(),extra_attributes = None, parent = None):
-        super(MenuWindow, self).__init__(parent)
+        super(GraphicOptionsWindow, self).__init__(parent)
         self.graphic_options = deepcopy(graphic_options)
         self.extra_attributes = dict()
         self.extra_attributes = extra_attributes
@@ -86,7 +83,7 @@ class MenuWindow(QWidget):
             Determines if the new color picker value is related to the extra-attributes.
         """
         hbox_btn = QHBoxLayout()
-        label = QLabel(OptionsName[name].value)
+        label = QLabel(GraphicOptionsName[name].value)
         hbox_btn.addWidget(label)
         color_btn = QPushButton()
         pixmap = QPixmap(int(color_btn.width()*0.95), int(color_btn.height()*0.9))
@@ -124,7 +121,7 @@ class MenuWindow(QWidget):
             Starting value of the new combobox entry.
         """
         hbox_btn = QHBoxLayout()
-        label = QLabel(OptionsName[name].value)
+        label = QLabel(GraphicOptionsName[name].value)
         hbox_btn.addWidget(label)
         combobox = QComboBox()
         translation_dictionary = dict()
@@ -171,7 +168,7 @@ class MenuWindow(QWidget):
             Determines if the new spinbox value is related to the extra-attributes.
         """
         hbox_btn = QHBoxLayout()
-        label = QLabel(OptionsName[name].value)
+        label = QLabel(GraphicOptionsName[name].value)
         hbox_btn.addWidget(label)
         spinBox = QDoubleSpinBox()
         if name == "hyperedge_alpha":
