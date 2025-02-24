@@ -3,6 +3,7 @@ from math import cos, sin
 from typing import Optional
 import numpy as np
 from matplotlib import pyplot as plt
+from sympy.printing.pretty.pretty_symbology import line_width
 
 from __support import __check_edge_intersection, __filter_hypergraph, __ignore_unused_args, \
     __support_to_normal_hypergraph, _get_node_community, _draw_node_community, _get_community_info
@@ -162,7 +163,7 @@ def draw_radial_layout(
         pos_node_2 = pos[edge[1]]
         x = [pos_node_1[0], pos_node_2[0]]
         y = [pos_node_1[1], pos_node_2[1]]
-        ax.plot(x, y, color=graphicOptions.edge_color[edge], **kwargs)
+        ax.plot(x, y, color=graphicOptions.edge_color[edge],linewidth =graphicOptions.edge_size[edge],zorder = -1, **kwargs)
         if hypergraph.is_weighted():
             ax.text((pos_node_1[0]+pos_node_2[0])/2, (pos_node_1[1]+pos_node_2[1])/2, str(hypergraph.get_weight(edge)))
 
@@ -215,7 +216,7 @@ def draw_radial_layout(
                 value_y = round(sin(angle), 5)*radius*sector_depth
                 x.append(value_x)
                 y.append(value_y)
-            ax.plot(x, y, color=graphicOptions.edge_color[original_edge],zorder = -1, **kwargs)
+            ax.plot(x, y, color=graphicOptions.edge_color[original_edge],linewidth = graphicOptions.edge_size[original_edge],zorder = -1, **kwargs)
 
             #Place the nodes along the arch
             for node in edge:
@@ -248,7 +249,7 @@ def draw_radial_layout(
                             markersize=graphicOptions.node_size[node],markeredgecolor=graphicOptions.node_facecolor[node], **kwargs)
                     else:
                         wedge_sizes, wedge_colors = _get_node_community(mapping, node, u, col, 0.1)
-                        _draw_node_community(ax, node, center=(value_x, value_y), radius=0.1, wedge_sizes=wedge_sizes,
+                        _draw_node_community(ax, node, center=(value_x, value_y), radius=graphicOptions.node_size[node]/75, wedge_sizes=wedge_sizes,
                                              wedge_colors=wedge_colors, graphicOptions=graphicOptions)
 
             if hypergraph.is_weighted():

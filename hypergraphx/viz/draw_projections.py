@@ -195,6 +195,7 @@ def draw_clique(
 def draw_extra_node(
     h: Hypergraph,
     u = None,
+    respect_planarity = False,
     cardinality: tuple[int,int]|int = -1,
     x_heaviest: float = 1.0,
     draw_labels: bool = True,
@@ -261,7 +262,7 @@ def draw_extra_node(
         isolated = list(nx.isolates(g))
         g.remove_nodes_from(isolated)
     if pos is None:
-        if is_planar(g):
+        if is_planar(g) and respect_planarity:
             pos = planar_layout(g)
         else:
             #Calculate the position of each edge node and then fixes it in the final drawing

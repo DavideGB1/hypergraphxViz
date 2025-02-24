@@ -1,11 +1,5 @@
-import sys
-from copy import deepcopy
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtGui import QPixmap, QColor, QIcon
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QDoubleSpinBox, QColorDialog, \
-    QPushButton, QCheckBox, QApplication, QMainWindow
-from hypergraphx.viz.__graphic_options import GraphicOptions
-from hypergraphx.viz.interactive_view.graphic_options.__graphic_options_enum import GraphicOptionsName
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QDoubleSpinBox, QPushButton, QCheckBox
 
 
 class PAOHOptionsWidget(QWidget):
@@ -48,7 +42,6 @@ class RadialOptionsWidget(QWidget):
         """
         Sends the modified options to the main menu.
         """
-        print("roce")
         dict = {"draw_labels": self.labels_button.button.isChecked()}
         self.modified_options.emit(dict)
 
@@ -66,8 +59,7 @@ class CliqueOptionsWidget(QWidget):
         self.labels_button.update_status.connect(self.send_data)
 
         self.widget_list.append(self.labels_button.button)
-        self.widget_list.append(self.iterations_selector.iterations_selector_label)
-        self.widget_list.append(self.iterations_selector.spinbox)
+        self.widget_list.append(self.iterations_selector)
 
     def send_data(self, dict = None):
         """
@@ -88,6 +80,7 @@ class ExtraNodeOptionsWidget(QWidget):
         super(ExtraNodeOptionsWidget, self).__init__(parent)
         self.use_last = True
         self.ignore_binary_relations = False
+        self.ignore_planarity = True
         self.show_edge_nodes = False
         self.widget_list = list()
         self.iterations_selector = IterationsSelector()
@@ -107,6 +100,18 @@ class ExtraNodeOptionsWidget(QWidget):
         ignore_binary_relations_btn.toggled.connect(ignore_binary_relations_funz)
         ignore_binary_relations_btn.setChecked(True)
 
+        ignore_planarity_btn = QCheckBox("Ignore Planarity")
+        def ignore_planarity_funz():
+            if self.ignore_planarity:
+                self.ignore_planarity = False
+            else:
+                self.ignore_planarity = True
+            self.use_last = False
+            self.send_data()
+
+        ignore_planarity_btn.toggled.connect(ignore_planarity_funz)
+        ignore_planarity_btn.setChecked(True)
+
         edge_nodes_btn = QCheckBox("Show Edge Nodes")
         def activate_edge_nodes():
             if self.show_edge_nodes:
@@ -121,14 +126,14 @@ class ExtraNodeOptionsWidget(QWidget):
         self.widget_list.append(self.labels_button.button)
         self.widget_list.append(ignore_binary_relations_btn)
         self.widget_list.append(edge_nodes_btn)
-        self.widget_list.append(self.iterations_selector.iterations_selector_label)
-        self.widget_list.append(self.iterations_selector.spinbox)
+        self.widget_list.append(ignore_planarity_btn)
+        self.widget_list.append(self.iterations_selector)
     def send_data(self) -> None:
         """
         Sends the modified options to the main menu.
         """
         dict = {"draw_labels": self.labels_button.button.isChecked(), "iterations": int(self.iterations_selector.spinbox.value()), "use_last": self.use_last,
-                "show_edge_nodes": self.show_edge_nodes, "ignore_binary_relations": self.ignore_binary_relations,}
+                "show_edge_nodes": self.show_edge_nodes, "ignore_binary_relations": self.ignore_binary_relations, "respect_planarity": self.ignore_planarity,}
         self.modified_options.emit(dict)
         self.use_last = True
 
@@ -214,3 +219,7 @@ class IterationsSelector(QWidget):
         self.spinbox.setValue(1000)
         self.spinbox.setSingleStep(1)
         self.spinbox.valueChanged.connect(iterations_selector_funz)
+        self.hbox = QHBoxLayout()
+        self.hbox.addWidget(self.iterations_selector_label)
+        self.hbox.addWidget(self.spinbox)
+        self.setLayout(self.hbox)
