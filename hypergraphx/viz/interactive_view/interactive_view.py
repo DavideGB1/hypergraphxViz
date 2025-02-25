@@ -8,7 +8,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QPushButton, QVBoxLayout, QSlider, QWidget, QHBoxLayout, QLabel, \
     QDoubleSpinBox, QFileDialog, QComboBox, QMessageBox, QListWidget, \
-    QListWidgetItem, QTabWidget
+    QListWidgetItem, QTabWidget, QLayout
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
@@ -92,13 +92,6 @@ class Window(QWidget):
         self.setLayout(layout)
         self.option_vbox()
         self.assign_PAOH()
-        self.examples_widgets = examples_generator()
-        for x in self.examples_widgets:
-            myQListWidgetItem = QListWidgetItem(self.examples_list)
-            myQListWidgetItem.setSizeHint(x.sizeHint())
-            self.examples_list.addItem(myQListWidgetItem)
-            self.examples_list.setItemWidget(myQListWidgetItem, x)
-            x.new_hypergraph.connect(self.update_hypergraph)
 
         # action called by the push button
     def add_sliders(self):
@@ -140,12 +133,7 @@ class Window(QWidget):
         slider_hbox.addWidget(slider_button)
 
         return slider_hbox
-    def update_hypergraph(self, example):
-        self.hypergraph = example["hypergraph"]
-        self.create_algorithm_options()
-        self.option_vbox()
-        self.assign_PAOH()
-        self.redraw()
+
     #Drawing
     def plot(self) -> None:
         """
@@ -447,6 +435,20 @@ class Window(QWidget):
         self.use_community_detection_algorithm()
         self.plot()
 
+    def update_hypergraph(self, example = None, hypergraph = None):
+        if example is not None:
+            self.hypergraph = example["hypergraph"]
+        if hypergraph is not None:
+            self.hypergraph = hypergraph
+        self.create_algorithm_options()
+        for edge in self.hypergraph.get_edges():
+            if len(edge) > self.max_edge:
+                self.max_edge = len(edge)
+        clear_layout(self.vbox)
+        self.vbox.deleteLater()
+        self.option_vbox()
+        self.assign_PAOH()
+        self.redraw()
 
 
     def option_vbox(self) -> None:
@@ -482,10 +484,7 @@ class Window(QWidget):
                 selected_file = file_dialog.selectedFiles()
                 try:
                     hypergraph = hypergraphx.readwrite.load_hypergraph(selected_file[0])
-                    self.hypergraph = hypergraph
-                    for edge in self.hypergraph.get_edges():
-                        if len(edge) > self.max_edge:
-                            self.max_edge = len(edge)
+                    self.update_hypergraph(None,hypergraph)
                     if self.hypergraph.is_weighted():
                         self.spin_box.setVisible(True)
                         self.spin_box_label.setVisible(True)
@@ -571,6 +570,13 @@ class Window(QWidget):
 
         self.vbox.addWidget(self.tab)
         self.canvas_hbox.addLayout(self.vbox, 20)
+        self.examples_widgets = examples_generator()
+        for x in self.examples_widgets:
+            myQListWidgetItem = QListWidgetItem(self.examples_list)
+            myQListWidgetItem.setSizeHint(x.sizeHint())
+            self.examples_list.addItem(myQListWidgetItem)
+            self.examples_list.setItemWidget(myQListWidgetItem, x)
+            x.new_hypergraph.connect(self.update_hypergraph)
     def create_algorithm_options(self) -> Combobox:
         """
         Create the selection list for the visualization function
@@ -617,7 +623,18 @@ class Window(QWidget):
             self.extra_attributes["in_edge_color"] = "green"
             self.extra_attributes["out_edge_color"] = "red"
 
-
+def clear_layout(layout: QLayout):
+    """
+    Function to clear a QLayout
+    Parameters
+    ----------
+    layout: QLayout
+    """
+    while layout.count():
+        item = layout.takeAt(0)
+        widget = item.widget()
+        if widget:
+            widget.deleteLater()
 
 def start_interactive_view(h: Hypergraph|TemporalHypergraph|DirectedHypergraph) -> None:
     """
