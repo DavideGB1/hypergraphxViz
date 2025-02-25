@@ -3,13 +3,9 @@ from math import cos, sin
 from typing import Optional
 import numpy as np
 from matplotlib import pyplot as plt
-from sympy.printing.pretty.pretty_symbology import line_width
-
 from __support import __check_edge_intersection, __filter_hypergraph, __ignore_unused_args, \
     __support_to_normal_hypergraph, _get_node_community, _draw_node_community, _get_community_info
 from hypergraphx import Hypergraph, DirectedHypergraph
-from hypergraphx.communities.hy_sc.model import HySC
-from hypergraphx.readwrite import load_hypergraph
 from hypergraphx.viz.__graphic_options import GraphicOptions
 
 

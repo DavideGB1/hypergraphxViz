@@ -1,14 +1,11 @@
 import copy
 import ctypes
 import sys
-from tkinter.ttk import Combobox
-import faulthandler
-
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QWindow
 from PyQt5.QtWidgets import QApplication, QPushButton, QVBoxLayout, QSlider, QWidget, QHBoxLayout, QLabel, \
     QDoubleSpinBox, QFileDialog, QComboBox, QMessageBox, QListWidget, \
-    QListWidgetItem, QTabWidget, QLayout
+    QListWidgetItem, QTabWidget, QLayout, QMainWindow
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
@@ -37,15 +34,24 @@ from hypergraphx.viz.interactive_view.__graphic_option_menu import GraphicOption
     get_Sets_options
 
 
-class Window(QWidget):
+class Window(QMainWindow):
 
     # constructor
     def __init__(self,hypergraph: Hypergraph|TemporalHypergraph|DirectedHypergraph, parent=None):
         super(Window, self).__init__(parent)
+        self.examples_widgets = examples_generator()
+        self.examples_list = QListWidget()
+        self.example_tab = QWidget()
+        self.community_options_list = QListWidget()
+        self.community_options_tab = QWidget()
+        self.graphic_options_list = QListWidget()
+        self.community_combobox = None
+        self.options_community = None
+        self.drawing_options = None
         self.setWindowTitle("HypergraphX Visualizer")
         self.setWindowIcon(QIcon("logo_cropped.svg"))
         myappid = 'mycompany.myproduct.subproduct.version'  # arbitrary string
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+        #ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         #Set Default Values
         self.community_algorithm_option_gui = None
         self.community_options_dict = CommunityOptionsDict()
@@ -78,7 +84,7 @@ class Window(QWidget):
                 self.max_edge = len(edge)
         #Defines Canvas and Options Toolbar
         self.canvas = FigureCanvas(self.figure)
-        self.toolbar = NavigationToolbar(self.canvas, self)
+        self.toolbar = NavigationToolbar(self.canvas)
         self.canvas_hbox.addWidget(self.canvas, 80)
         self.community_model = None
         # Sliders Management
@@ -90,7 +96,6 @@ class Window(QWidget):
         layout.addLayout(slider_hbox)
         # setting layout to the main window
         self.setLayout(layout)
-        self.option_vbox()
         self.assign_PAOH()
 
         # action called by the push button
@@ -220,7 +225,8 @@ class Window(QWidget):
         except KeyError:
             self.use_last = True
         self.plot()
-    def add_algorithm_options_button(self, widget, list, func):
+    @staticmethod
+    def add_algorithm_options_button(widget, list, func):
         list.clear()
         for x in widget.widget_list:
             myQListWidgetItem = QListWidgetItem(list)
@@ -347,7 +353,7 @@ class Window(QWidget):
     #Community
     def use_community_detection_algorithm(self):
         self.options_community[self.community_combobox.currentText()]()
-    def create_community_detection_options(self) -> Combobox:
+    def create_community_detection_options(self) -> QComboBox:
         """
         Create the selection list for the visualization function
         """
@@ -548,36 +554,30 @@ class Window(QWidget):
         graphic_options_tab = QWidget()
         vbox = QVBoxLayout()
         graphic_options_tab.setLayout(vbox)
-        self.graphic_options_list = QListWidget()
         vbox.addWidget(self.graphic_options_list)
         self.tab.addTab(graphic_options_tab, "Graphic Options")
 
-        self.community_options_tab = QWidget()
         vbox = QVBoxLayout()
         self.community_options_tab.setLayout(vbox)
-        self.community_options_list = QListWidget()
         vbox.addWidget(self.community_options_list)
         self.tab.addTab(self.community_options_tab, "Community Options")
         self.tab.setTabVisible(self.tab.indexOf(self.community_options_tab), False)
 
-        self.example_tab = QWidget()
         vbox = QVBoxLayout()
         self.example_tab.setLayout(vbox)
-        self.examples_list = QListWidget()
         vbox.addWidget(self.examples_list)
         self.tab.addTab(self.example_tab, "Examples")
         self.tab.setTabVisible(self.tab.indexOf(self.example_tab), True)
 
         self.vbox.addWidget(self.tab)
         self.canvas_hbox.addLayout(self.vbox, 20)
-        self.examples_widgets = examples_generator()
         for x in self.examples_widgets:
             myQListWidgetItem = QListWidgetItem(self.examples_list)
             myQListWidgetItem.setSizeHint(x.sizeHint())
             self.examples_list.addItem(myQListWidgetItem)
             self.examples_list.setItemWidget(myQListWidgetItem, x)
             x.new_hypergraph.connect(self.update_hypergraph)
-    def create_algorithm_options(self) -> Combobox:
+    def create_algorithm_options(self) -> QComboBox:
         """
         Create the selection list for the visualization function
         """
@@ -643,19 +643,9 @@ def start_interactive_view(h: Hypergraph|TemporalHypergraph|DirectedHypergraph) 
     ----------
     h: Hypergraph or TemporalHypergraph or DirectedHypergraph
     """
-    sys._excepthook = sys.excepthook
-
-    def exception_hook(exctype, value, traceback):
-        print(exctype, value, traceback)
-        sys._excepthook(exctype, value, traceback)
-        sys.exit(1)
-
-    sys.excepthook = exception_hook
     app = QApplication(sys.argv)
-    faulthandler.enable()
     main = Window(hypergraph=h)
     main.show()
-
     sys.exit(app.exec_())
 
 h = Hypergraph([(1,2,3),(4,5,6),(6,7,8,9),(10,11,12,1,4),(4,1),(3,6)])
