@@ -1,5 +1,6 @@
 import copy
 import ctypes
+import os
 import sys
 import faulthandler
 
@@ -34,7 +35,7 @@ from hypergraphx.viz.interactive_view.community_options.__community_option_menu 
 from hypergraphx.viz.interactive_view.__graphic_option_menu import GraphicOptionsWidget, \
     get_PAOH_options, get_Radial_options, get_Clique_options, get_ExtraNode_options, get_Bipartite_options, \
     get_Sets_options
-
+from sys import platform
 
 class Window(QMainWindow):
 
@@ -42,9 +43,14 @@ class Window(QMainWindow):
     def __init__(self,hypergraph: Hypergraph|TemporalHypergraph|DirectedHypergraph, parent=None):
         super(Window, self).__init__(parent)
         self.setWindowTitle("HypergraphX Visualizer")
-        self.setWindowIcon(QIcon("logo_cropped.svg"))
-        #myappid = 'mycompany.myproduct.subproduct.version'  # arbitrary string
-        #ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
+        scriptDir = os.path.dirname(os.path.realpath(__file__))
+        print(scriptDir)
+        self.setWindowIcon(QIcon(scriptDir + os.path.sep+ 'logo_cropped.svg'))
+        if "win" in sys.platform:
+            myappid = 'mycompany.myproduct.subproduct.version'  # arbitrary string
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
         #Set Default Values
         self.community_algorithm_option_gui = None
         self.community_options_dict = CommunityOptionsDict()
