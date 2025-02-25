@@ -104,6 +104,8 @@ def draw_bipartite(
                 pos_offsetted[k] = (v[0] + offset, v[1])
         nx.draw_networkx_labels(g, ax=ax, pos=pos_offsetted, labels=labels, font_size = graphicOptions.weight_size,
                                 font_color=graphicOptions.label_color)
+    ax.set_aspect('equal')
+    ax.autoscale(enable=True, axis='both')
     ax.axis("off")
 
 
