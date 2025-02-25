@@ -8,7 +8,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QPushButton, QVBoxLayout, QSlider, QWidget, QHBoxLayout, QLabel, \
     QDoubleSpinBox, QFileDialog, QComboBox, QMessageBox, QListWidget, \
-    QListWidgetItem, QTabWidget, QLayout
+    QListWidgetItem, QTabWidget, QLayout, QMainWindow
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
@@ -37,7 +37,7 @@ from hypergraphx.viz.interactive_view.__graphic_option_menu import GraphicOption
     get_Sets_options
 
 
-class Window(QWidget):
+class Window(QMainWindow):
 
     # constructor
     def __init__(self,hypergraph: Hypergraph|TemporalHypergraph|DirectedHypergraph, parent=None):
@@ -85,11 +85,13 @@ class Window(QWidget):
         slider_hbox = self.add_sliders()
         # Create layout and add everything
         layout = QVBoxLayout()
-        layout.addWidget(self.toolbar)
         layout.addLayout(self.canvas_hbox)
         layout.addLayout(slider_hbox)
         # setting layout to the main window
-        self.setLayout(layout)
+        central_widget = QWidget()
+        central_widget.setLayout(layout)
+        self.addToolBar(Qt.TopToolBarArea, self.toolbar)
+        self.setCentralWidget(central_widget)
         self.option_vbox()
         self.assign_PAOH()
 
