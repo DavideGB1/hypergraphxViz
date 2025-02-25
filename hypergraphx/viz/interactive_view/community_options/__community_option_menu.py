@@ -1,6 +1,8 @@
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QDoubleSpinBox, QPushButton, QCheckBox
 import random
+from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtWidgets import QWidget
+from hypergraphx.viz.interactive_view.custom_widgets import CheckBoxCustomWidget, SpinboxCustomWindget, RandomSeedButton
+
 
 class CommunityOptionsDict(dict):
     def __init__(self):
@@ -123,45 +125,3 @@ class MMSBMOptionsWidget(QWidget):
         dict = {"realizations": int(self.realizations.spinBox.value()), "number_communities": int(self.n_communities.spinBox.value()),
                 "seed" :random.randint(0,100000), "assortative": self.assortative.check_box.isChecked(), }
         self.modified_options.emit(dict)
-
-class SpinboxCustomWindget(QWidget):
-    update_status = pyqtSignal(dict)
-    def __init__(self, name, min, max,val, shadow_name = "", decimals = 0, step = 1):
-        super(SpinboxCustomWindget, self).__init__()
-        self.label = QLabel(name)
-        self.spinBox = QDoubleSpinBox()
-        self.spinBox.setDecimals(decimals)
-        self.spinBox.setRange(min, max)
-        self.spinBox.setValue(val)
-        self.spinBox.setSingleStep(step)
-        self.hbox = QHBoxLayout()
-        def spinBox_selection():
-            self.update_status.emit({shadow_name: int(self.spinBox.value())})
-
-        self.spinBox.valueChanged.connect(spinBox_selection)
-        self.hbox.addWidget(self.label)
-        self.hbox.addWidget(self.spinBox)
-        self.setLayout(self.hbox)
-    def get_val(self):
-        return self.spinBox.value()
-
-class CheckBoxCustomWidget(QWidget):
-    update_status = pyqtSignal(dict)
-    def __init__(self, name, status, shadow_name):
-        super(CheckBoxCustomWidget, self).__init__()
-        self.check_box = QCheckBox(name)
-        self.check_box.setChecked(status)
-        def checkbox_selection():
-            self.update_status.emit({shadow_name: self.check_box.isChecked()})
-        self.check_box.toggled.connect(checkbox_selection)
-
-class RandomSeedButton(QWidget):
-    update_status = pyqtSignal(dict)
-    def __init__(self, parent=None):
-        super(RandomSeedButton, self).__init__()
-        self.button = QPushButton("Random Seed")
-
-        def new_seed():
-            self.update_status.emit({"seed": random.randint(0,100000)})
-
-        self.button.clicked.connect(new_seed)

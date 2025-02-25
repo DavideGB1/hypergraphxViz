@@ -1,34 +1,12 @@
 from copy import deepcopy
 from enum import Enum
-
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtGui import QPixmap, QColor, QIcon
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QDoubleSpinBox, QColorDialog, QPushButton
+from PyQt5.QtWidgets import QWidget, QVBoxLayout
 from hypergraphx.viz.__graphic_options import GraphicOptions
 from hypergraphx.viz.interactive_view.community_options.__community_option_menu import SpinboxCustomWindget
+from hypergraphx.viz.interactive_view.custom_widgets import ComboBoxCustomWindget, ColorPickerCustomWidget
+from hypergraphx.viz.interactive_view.graphic_enum import GraphicOptionsName
 
-class GraphicOptionsName(Enum):
-    """
-    Enum used to translate some GUI labels into normal strings
-    """
-    node_shape = "Node Shape"
-    edge_shape = "Edge Shape"
-    node_color = "Node Color"
-    node_facecolor = "Node Face Color"
-    label_color = "Label Color"
-    in_edge_color = "In-Edge Color"
-    out_edge_color = "Out-Edge Color"
-    edge_node_color = "Edge Node Color"
-    edge_color = "Edge Color"
-    edge_size = "Edge Size"
-    label_size = "Label Size"
-    node_size = "Node Size"
-    radius_scale_factor = "Radius Scale Factor"
-    font_spacing_factor = "Font Spacing Factor"
-    rounding_radius_factor = "Rounding Radius Size"
-    polygon_expansion_factor = "Polygon Expansion Factor"
-    hyperedge_alpha = "Hyperedge Alpha"
-    weight_size = "Weights Size"
 
 def get_PAOH_options(weighted = False, is_directed = False):
     options = list()
@@ -287,59 +265,3 @@ class GraphicOptionsWidget(QWidget):
 
         spinbox.update_status.connect(spinBox_selection)
         self.widget_list.append(spinbox)
-
-class ComboBoxCustomWindget(QWidget):
-    update_status = pyqtSignal(dict)
-    def __init__(self,name, value, translation_dictionary):
-        super(ComboBoxCustomWindget, self).__init__()
-        self.hbox = QHBoxLayout()
-        self.label = QLabel(GraphicOptionsName[name].value)
-        self.hbox.addWidget(self.label)
-        self.combobox = QComboBox()
-
-
-        self.combobox.addItems(translation_dictionary.values())
-        self.combobox.setCurrentText(translation_dictionary[value])
-
-        def comboBox_selection():
-            key_list = list(translation_dictionary.keys())
-            val_list = list(translation_dictionary.values())
-            position = val_list.index(self.combobox.currentText())
-            self.update_status.emit({name: key_list[position]})
-
-        self.combobox.currentTextChanged.connect(comboBox_selection)
-        self.hbox.addWidget(self.combobox)
-        self.setLayout(self.hbox)
-
-class ColorPickerCustomWidget(QWidget):
-    update_status = pyqtSignal(dict)
-    def __init__(self, name, value, in_extra, graphic_options, extra_attributes):
-        super(ColorPickerCustomWidget, self).__init__()
-        self.hbox = QHBoxLayout()
-        label = QLabel(GraphicOptionsName[name].value)
-        self.hbox.addWidget(label)
-        color_btn = QPushButton()
-        pixmap = QPixmap(int(color_btn.width() * 0.95), int(color_btn.height() * 0.9))
-        pixmap.fill(QColor(value))
-        color_btn.setIcon(QIcon(pixmap))
-
-        def color_picker():
-            dialog = QColorDialog(self)
-            if in_extra:
-                dialog.setCurrentColor(QColor(extra_attributes[name]))
-            else:
-                dialog.setCurrentColor(QColor(graphic_options.__getattribute__(name)))
-                pass
-            dialog.exec_()
-            new_color = dialog.currentColor()
-            pixmap = QPixmap(int(color_btn.width() * 0.95), int(color_btn.height() * 0.9))
-            pixmap.fill(QColor(new_color))
-            color_btn.setIcon(QIcon(pixmap))
-            if in_extra:
-                extra_attributes[name] = value
-            else:
-                graphic_options.__setattr__(name, new_color.name())
-            self.update_status.emit(dict())
-        color_btn.clicked.connect(color_picker)
-        self.hbox.addWidget(color_btn)
-        self.setLayout(self.hbox)

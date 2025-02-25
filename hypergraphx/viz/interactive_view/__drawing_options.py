@@ -1,5 +1,6 @@
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QDoubleSpinBox, QPushButton, QCheckBox
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QCheckBox
+from hypergraphx.viz.interactive_view.custom_widgets import LabelButton, IterationsSelector
 
 
 class PAOHOptionsWidget(QWidget):
@@ -194,32 +195,3 @@ class SetOptionsWidget(QWidget):
         """
         dict = {"rounded_polygon":self.rounded_polygons_btn.isChecked(),"draw_labels": self.labels_button.button.isChecked()}
         self.modified_options.emit(dict)
-
-class LabelButton(QWidget):
-    update_status = pyqtSignal(dict)
-    def __init__(self, parent = None):
-        super(LabelButton, self).__init__()
-        self.button = QCheckBox("Show Labels")
-        self.button.setChecked(True)
-        def use_labels():
-            self.update_status.emit({ "val" : self.button.isChecked()})
-        self.button.toggled.connect(use_labels)
-
-class IterationsSelector(QWidget):
-    changed_value = pyqtSignal(dict)
-    def __init__(self, parent = None):
-        super(IterationsSelector, self).__init__()
-        self.iterations_selector_label = QLabel()
-        self.iterations_selector_label.setText("Number of Iterations:")
-        self.spinbox = QDoubleSpinBox()
-        def iterations_selector_funz():
-            self.changed_value.emit({"use_last": False})
-        self.spinbox.setDecimals(0)
-        self.spinbox.setRange(0, 100000000)
-        self.spinbox.setValue(1000)
-        self.spinbox.setSingleStep(1)
-        self.spinbox.valueChanged.connect(iterations_selector_funz)
-        self.hbox = QHBoxLayout()
-        self.hbox.addWidget(self.iterations_selector_label)
-        self.hbox.addWidget(self.spinbox)
-        self.setLayout(self.hbox)

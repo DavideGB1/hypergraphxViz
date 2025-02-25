@@ -45,7 +45,6 @@ class Window(QMainWindow):
         self.setWindowTitle("HypergraphX Visualizer")
 
         scriptDir = os.path.dirname(os.path.realpath(__file__))
-        print(scriptDir)
         self.setWindowIcon(QIcon(scriptDir + os.path.sep+ 'logo_cropped.png'))
         if "win" in sys.platform:
             myappid = 'mycompany.myproduct.subproduct.version'  # arbitrary string
@@ -101,46 +100,6 @@ class Window(QMainWindow):
         self.assign_PAOH()
 
         # action called by the push button
-    def add_sliders(self):
-        slider_label = QLabel()
-        slider_label.setAlignment(Qt.AlignLeft)
-        slider_label.setText("Edge Cardinality: " + str(self.slider_value))
-        def slider_value_changed():
-            self.slider_value = self.slider.value()
-            slider_label.setText("Edge Cardinality: " + str(self.slider_value))
-            self.plot()
-        def change_slider_type():
-            if self.ranged:
-                self.ranged = False
-                slider = QSlider(Qt.Horizontal)
-                slider.setMinimum(2)
-                slider.setMaximum(self.max_edge)
-            else:
-                self.ranged = True
-                slider = QRangeSlider(Qt.Orientation.Horizontal)
-                slider.setMinimum(2)
-                slider.setMaximum(self.max_edge)
-                slider.setValue((2, self.max_edge))
-            slider.setTickPosition(QSlider.TicksBelow)
-            slider.setTickInterval(1)
-            slider.setPageStep(0)
-            slider.valueChanged.connect(slider_value_changed)
-            slider_hbox.replaceWidget(self.slider, slider)
-            slider_hbox.removeWidget(self.slider)
-            self.slider = slider
-            slider_value_changed()
-        slider_hbox = QHBoxLayout()
-        change_slider_type()
-        slider_button = QPushButton("Change Slider Type")
-        slider_button.setChecked(True)
-        slider_button.toggle()
-        slider_button.clicked.connect(change_slider_type)
-        slider_hbox.addWidget(slider_label)
-        slider_hbox.addWidget(self.slider)
-        slider_hbox.addWidget(slider_button)
-
-        return slider_hbox
-
     #Drawing
     def plot(self) -> None:
         """
@@ -201,6 +160,14 @@ class Window(QMainWindow):
     def redraw(self):
         self.use_last = False
         self.plot()
+    #Get Support for Options
+    def get_drawing_algorithm_options(self, dict):
+        self.algorithm_options_dict = dict
+        try:
+            self.use_last = dict["use_last"]
+        except KeyError:
+            self.use_last = True
+        self.plot()
     def get_new_option(self, new_options: tuple[GraphicOptions,dict]) -> None:
         """
         Update the graphic options with the one sent from the option menu.
@@ -212,29 +179,49 @@ class Window(QMainWindow):
         self.graphic_options, self.extra_attributes = new_options
         self.use_last = True
         self.plot()
-
+    def update_hypergraph(self, example = None, hypergraph = None):
+        if example is not None:
+            self.hypergraph = example["hypergraph"]
+        if hypergraph is not None:
+            self.hypergraph = hypergraph
+        self.create_algorithm_options()
+        for edge in self.hypergraph.get_edges():
+            if len(edge) > self.max_edge:
+                self.max_edge = len(edge)
+        clear_layout(self.vbox)
+        self.vbox.deleteLater()
+        self.option_vbox()
+        self.assign_PAOH()
+        self.redraw()
+    def extra_options(self) -> None:
+        """
+        Generate the extra options list for the visualization functions
+        """
+        if self.current_function == draw_radial_layout:
+            self.extra_attributes = dict()
+            self.extra_attributes["radius_scale_factor"] = 1.0
+            self.extra_attributes["font_spacing_factor"] = 1.5
+        elif self.current_function == draw_PAOH and isinstance(self.hypergraph, TemporalHypergraph):
+            self.extra_attributes = dict()
+            self.extra_attributes["time_font_size"] = 18
+            self.extra_attributes["time_separation_line_color"] = "#000000"
+            self.extra_attributes["time_separation_line_size"] = 4
+        elif self.current_function == draw_sets:
+            self.extra_attributes = dict()
+            self.extra_attributes["hyperedge_alpha"] = 0.8
+            self.extra_attributes["rounding_radius_factor"] = 0.1
+            self.extra_attributes["polygon_expansion_factor"] = 1.8
+        else:
+            self.extra_attributes = dict()
+        if isinstance(self.hypergraph, DirectedHypergraph):
+            self.extra_attributes["in_edge_color"] = "green"
+            self.extra_attributes["out_edge_color"] = "red"
     def heaviest_edges(self) -> None:
         """
         Updates the label showing what % of edges we are considering.
         """
         self.spin_box_label.setText("Show {value}% Heaviest Edges".format(value=self.spin_box.value()))
         self.plot()
-    #Get Support for Options
-    def get_drawing_algorithm_options(self, dict):
-        self.algorithm_options_dict = dict
-        try:
-            self.use_last = dict["use_last"]
-        except KeyError:
-            self.use_last = True
-        self.plot()
-    def add_algorithm_options_button(self, widget, list, func):
-        list.clear()
-        for x in widget.widget_list:
-            myQListWidgetItem = QListWidgetItem(list)
-            myQListWidgetItem.setSizeHint(x.sizeHint())
-            list.addItem(myQListWidgetItem)
-            list.setItemWidget(myQListWidgetItem, x)
-        widget.modified_options.connect(func)
     #Assign Drawing Function
     def assign_PAOH(self) -> None:
         """
@@ -442,22 +429,50 @@ class Window(QMainWindow):
         self.use_community_detection_algorithm()
         self.plot()
 
-    def update_hypergraph(self, example = None, hypergraph = None):
-        if example is not None:
-            self.hypergraph = example["hypergraph"]
-        if hypergraph is not None:
-            self.hypergraph = hypergraph
-        self.create_algorithm_options()
-        for edge in self.hypergraph.get_edges():
-            if len(edge) > self.max_edge:
-                self.max_edge = len(edge)
-        clear_layout(self.vbox)
-        self.vbox.deleteLater()
-        self.option_vbox()
-        self.assign_PAOH()
-        self.redraw()
+    def open_file(self):
+        file_dialog = QFileDialog(self)
+        file_dialog.setWindowTitle("Open File")
+        file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
+        file_dialog.setViewMode(QFileDialog.ViewMode.Detail)
+        file_dialog.setNameFilters(["JSON (*.json)", "HGR (*.hgr)", "HGX (*.hgx)"])
 
+        if file_dialog.exec():
+            selected_file = file_dialog.selectedFiles()
+            try:
+                hypergraph = hypergraphx.readwrite.load_hypergraph(selected_file[0])
+                self.update_hypergraph(None, hypergraph)
+                if self.hypergraph.is_weighted():
+                    self.spin_box.setVisible(True)
+                    self.spin_box_label.setVisible(True)
+                else:
+                    self.spin_box.setVisible(False)
+                    self.spin_box_label.setVisible(False)
+                self.plot()
+            except ValueError:
+                msg = QMessageBox()
+                msg.setIcon(QMessageBox.Critical)
+                msg.setText("Error: Invalid Input File")
+                msg.setInformativeText('Input File is not .hgr | .json | .hgx')
+                msg.setWindowTitle("Error")
+                msg.exec_()
 
+    #Create GUI Components
+
+    def create_centrality_button(self):
+        combobox = QComboBox()
+        combobox.addItems(["No Centrality", "Degree Centrality"])
+        def calculate_centrality():
+            if self.centrality_combobox.currentText() == "No Centrality":
+                self.centrality = None
+            elif self.centrality_combobox.currentText() == "Degree Centrality":
+                self.centrality = degree_sequence(self.hypergraph)
+                mean = sum(self.centrality.values()) / len(self.centrality)
+                for k, v in self.centrality.items():
+                    self.centrality[k] = v / mean
+            self.use_last = True
+            self.plot()
+        combobox.currentTextChanged.connect(calculate_centrality)
+        return combobox
     def option_vbox(self) -> None:
         """
         Creates the standard options for the visualization functions
@@ -479,66 +494,26 @@ class Window(QMainWindow):
         combobox = self.create_algorithm_options()
         redraw = QPushButton("Redraw")
         redraw.clicked.connect(self.redraw)
+
         open_file_button = QPushButton("Open from File")
-        def open_file():
-            file_dialog = QFileDialog(self)
-            file_dialog.setWindowTitle("Open File")
-            file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
-            file_dialog.setViewMode(QFileDialog.ViewMode.Detail)
-            file_dialog.setNameFilters(["JSON (*.json)", "HGR (*.hgr)","HGX (*.hgx)"])
+        open_file_button.clicked.connect(self.open_file)
 
-            if file_dialog.exec():
-                selected_file = file_dialog.selectedFiles()
-                try:
-                    hypergraph = hypergraphx.readwrite.load_hypergraph(selected_file[0])
-                    self.update_hypergraph(None,hypergraph)
-                    if self.hypergraph.is_weighted():
-                        self.spin_box.setVisible(True)
-                        self.spin_box_label.setVisible(True)
-                    else:
-                        self.spin_box.setVisible(False)
-                        self.spin_box_label.setVisible(False)
-                    self.plot()
-                except ValueError:
-                    msg = QMessageBox()
-                    msg.setIcon(QMessageBox.Critical)
-                    msg.setText("Error: Invalid Input File")
-                    msg.setInformativeText('Input File is not .hgr | .json | .hgx')
-                    msg.setWindowTitle("Error")
-                    msg.exec_()
-
-        open_file_button.clicked.connect(open_file)
-        centrality_combobox = QComboBox()
-        centrality_combobox.addItems(["No Centrality","Degree Centrality"])
-
-        def centrality_calculate():
-            if centrality_combobox.currentText() == "No Centrality":
-                self.centrality = None
-            elif centrality_combobox.currentText() == "Degree Centrality":
-                self.centrality = degree_sequence(self.hypergraph)
-                mean = sum(self.centrality.values())/len(self.centrality)
-                for k,v in self.centrality.items():
-                    self.centrality[k] = v/mean
-            self.use_last = True
-            self.plot()
-
-        centrality_combobox.currentTextChanged.connect(centrality_calculate)
+        self.centrality_combobox = self.create_centrality_button()
 
         def activate_function():
             self.options_dict[combobox.currentText()]()
-
         combobox_communities = self.create_community_detection_options()
         combobox.currentTextChanged.connect(activate_function)
+
         self.vbox.addWidget(open_file_button)
         self.vbox.addWidget(combobox)
+
         community_label = QLabel("Community Detection Algorithm:")
         self.vbox.addWidget(community_label)
-        hbox = QHBoxLayout()
-        hbox.addWidget(combobox_communities,75)
-        self.vbox.addLayout(hbox)
+        self.vbox.addWidget(combobox_communities)
         centrality_label = QLabel("Centrality Calculation Method:")
         self.vbox.addWidget(centrality_label)
-        self.vbox.addWidget(centrality_combobox)
+        self.vbox.addWidget(self.centrality_combobox)
         self.vbox.addWidget(self.spin_box_label)
         self.vbox.addWidget(self.spin_box)
         self.vbox.addWidget(redraw)
@@ -605,30 +580,54 @@ class Window(QMainWindow):
             self.options_dict[combobox.currentText()]()
         combobox.currentTextChanged.connect(activate_function)
         return combobox
+    def add_algorithm_options_button(self, widget, list, func):
+        list.clear()
+        for x in widget.widget_list:
+            myQListWidgetItem = QListWidgetItem(list)
+            myQListWidgetItem.setSizeHint(x.sizeHint())
+            list.addItem(myQListWidgetItem)
+            list.setItemWidget(myQListWidgetItem, x)
+        widget.modified_options.connect(func)
+    def add_sliders(self):
+        slider_label = QLabel()
+        slider_label.setAlignment(Qt.AlignLeft)
+        slider_label.setText("Edge Cardinality: " + str(self.slider_value))
+        def slider_value_changed():
+            self.slider_value = self.slider.value()
+            slider_label.setText("Edge Cardinality: " + str(self.slider_value))
+            self.plot()
+        def change_slider_type():
+            if self.ranged:
+                self.ranged = False
+                slider = QSlider(Qt.Horizontal)
+                slider.setMinimum(2)
+                slider.setMaximum(self.max_edge)
+            else:
+                self.ranged = True
+                slider = QRangeSlider(Qt.Orientation.Horizontal)
+                slider.setMinimum(2)
+                slider.setMaximum(self.max_edge)
+                slider.setValue((2, self.max_edge))
+            slider.setTickPosition(QSlider.TicksBelow)
+            slider.setTickInterval(1)
+            slider.setPageStep(0)
+            slider.valueChanged.connect(slider_value_changed)
+            slider_hbox.replaceWidget(self.slider, slider)
+            slider_hbox.removeWidget(self.slider)
+            self.slider = slider
+            slider_value_changed()
+        slider_hbox = QHBoxLayout()
+        change_slider_type()
+        slider_button = QPushButton("Change Slider Type")
+        slider_button.setChecked(True)
+        slider_button.toggle()
+        slider_button.clicked.connect(change_slider_type)
+        slider_hbox.addWidget(slider_label)
+        slider_hbox.addWidget(self.slider)
+        slider_hbox.addWidget(slider_button)
 
-    def extra_options(self) -> None:
-        """
-        Generate the extra options list for the visualization functions
-        """
-        if self.current_function == draw_radial_layout:
-            self.extra_attributes = dict()
-            self.extra_attributes["radius_scale_factor"] = 1.0
-            self.extra_attributes["font_spacing_factor"] = 1.5
-        elif self.current_function == draw_PAOH and isinstance(self.hypergraph, TemporalHypergraph):
-            self.extra_attributes = dict()
-            self.extra_attributes["time_font_size"] = 18
-            self.extra_attributes["time_separation_line_color"] = "#000000"
-            self.extra_attributes["time_separation_line_size"] = 4
-        elif self.current_function == draw_sets:
-            self.extra_attributes = dict()
-            self.extra_attributes["hyperedge_alpha"] = 0.8
-            self.extra_attributes["rounding_radius_factor"] = 0.1
-            self.extra_attributes["polygon_expansion_factor"] = 1.8
-        else:
-            self.extra_attributes = dict()
-        if isinstance(self.hypergraph, DirectedHypergraph):
-            self.extra_attributes["in_edge_color"] = "green"
-            self.extra_attributes["out_edge_color"] = "red"
+        return slider_hbox
+
 
 def clear_layout(layout: QLayout):
     """
