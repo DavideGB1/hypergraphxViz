@@ -60,7 +60,7 @@ def bipartite_projection(h: Hypergraph):
         else:
             for node in original_edge:
                 g.add_edge(obj_to_id[node], obj_to_id[tuple(edge)], weight=weight)
-
+        idx += 1
     return g, id_to_obj
 
 

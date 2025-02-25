@@ -142,7 +142,7 @@ class BipartiteOptionsWidget(QWidget):
     def __init__(self, parent = None):
         super(BipartiteOptionsWidget, self).__init__(parent)
         self.widget_list = list()
-        self.alignment = "horizontal"
+        self.alignment = "vertical"
         def change_alignment():
             if self.alignment == "vertical":
                 self.alignment = "horizontal"
