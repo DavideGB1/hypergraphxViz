@@ -5,6 +5,7 @@ from networkx import is_planar, planar_layout
 from __support import __filter_hypergraph, __ignore_unused_args, _get_community_info, _get_node_community, \
     _draw_node_community
 from hypergraphx import Hypergraph, DirectedHypergraph
+from hypergraphx.measures.degree import degree_sequence
 from hypergraphx.representations.projections import (
     bipartite_projection,
     clique_projection, extra_node_projection)
@@ -172,9 +173,17 @@ def draw_clique(
         mapping, col = _get_community_info(hypergraph)
     for node in g.nodes():
         if u is None:
-            nx.draw_networkx_nodes(G=g, pos=pos, ax=ax, node_color=graphicOptions.node_color[node],
-                               node_size=graphicOptions.node_size[node], node_shape=graphicOptions.node_shape[node],
-                               edgecolors = graphicOptions.node_facecolor[node], **kwargs)
+            nx.draw_networkx_nodes(
+                g,
+                pos,
+                nodelist=[node],
+                node_size=graphicOptions.node_size[node],
+                node_shape=graphicOptions.node_shape[node],
+                node_color=graphicOptions.node_color[node],
+                edgecolors=graphicOptions.node_facecolor[node],
+                ax=ax,
+                **kwargs
+            )
         else:
             wedge_sizes, wedge_colors = _get_node_community(mapping,node, u, col,0.1)
             _draw_node_community(ax, node, center=pos[node], radius = graphicOptions.node_size[node]/7000,wedge_sizes= wedge_sizes, wedge_colors = wedge_colors, graphicOptions = graphicOptions )
