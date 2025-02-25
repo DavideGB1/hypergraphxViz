@@ -1,7 +1,6 @@
 import copy
 import ctypes
 import sys
-from tkinter.ttk import Combobox
 import faulthandler
 
 from PyQt5.QtCore import Qt
@@ -44,8 +43,8 @@ class Window(QMainWindow):
         super(Window, self).__init__(parent)
         self.setWindowTitle("HypergraphX Visualizer")
         self.setWindowIcon(QIcon("logo_cropped.svg"))
-        myappid = 'mycompany.myproduct.subproduct.version'  # arbitrary string
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+        #myappid = 'mycompany.myproduct.subproduct.version'  # arbitrary string
+        #ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         #Set Default Values
         self.community_algorithm_option_gui = None
         self.community_options_dict = CommunityOptionsDict()
@@ -349,7 +348,7 @@ class Window(QMainWindow):
     #Community
     def use_community_detection_algorithm(self):
         self.options_community[self.community_combobox.currentText()]()
-    def create_community_detection_options(self) -> Combobox:
+    def create_community_detection_options(self) -> QComboBox:
         """
         Create the selection list for the visualization function
         """
@@ -579,7 +578,7 @@ class Window(QMainWindow):
             self.examples_list.addItem(myQListWidgetItem)
             self.examples_list.setItemWidget(myQListWidgetItem, x)
             x.new_hypergraph.connect(self.update_hypergraph)
-    def create_algorithm_options(self) -> Combobox:
+    def create_algorithm_options(self) -> QComboBox:
         """
         Create the selection list for the visualization function
         """
