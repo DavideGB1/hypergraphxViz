@@ -46,7 +46,7 @@ class Window(QMainWindow):
 
         scriptDir = os.path.dirname(os.path.realpath(__file__))
         print(scriptDir)
-        self.setWindowIcon(QIcon(scriptDir + os.path.sep+ 'logo_cropped.svg'))
+        self.setWindowIcon(QIcon(scriptDir + os.path.sep+ 'logo_cropped.png'))
         if "win" in sys.platform:
             myappid = 'mycompany.myproduct.subproduct.version'  # arbitrary string
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
