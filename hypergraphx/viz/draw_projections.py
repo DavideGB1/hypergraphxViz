@@ -265,9 +265,13 @@ def draw_extra_node(
         else:
             #Calculate the position of each edge node and then fixes it in the final drawing
             edgeList = [x for x in g.nodes() if str(x).startswith('E')]
-            hyperedges_relations = __hyperedges_relations_detection(h, obj_to_id)
+            hyperedges_relations = __hyperedges_relations_detection(hypergraph, obj_to_id)
             posEdges = __edges_graph_creation(hyperedges_relations, edgeList, drawing=draw_edge_graph)
-            pos = nx.spring_layout(G=g, pos=posEdges, iterations=iterations, weight="weight", fixed=edgeList)
+            if len(posEdges) > 0:
+                pos = nx.spring_layout(G=g, pos=posEdges, iterations=iterations, weight="weight", fixed=edgeList)
+            else:
+                pos = nx.spring_layout(G=g, iterations=iterations, weight="weight")
+
 
     # Ensure that all the nodes have the graphical attributes specified
     graphicOptions.check_if_options_are_valid(g)
