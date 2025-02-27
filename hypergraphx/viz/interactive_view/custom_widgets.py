@@ -1,9 +1,9 @@
 import random
 
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtGui import QColor, QPixmap, QIcon
+from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtGui import QColor, QPixmap, QIcon, QFont
 from PyQt5.QtWidgets import QWidget, QCheckBox, QLabel, QDoubleSpinBox, QHBoxLayout, QPushButton, QColorDialog, \
-    QComboBox
+    QComboBox, QVBoxLayout
 
 from hypergraphx.viz.interactive_view.graphic_enum import GraphicOptionsName
 
@@ -132,3 +132,15 @@ class RandomSeedButton(QWidget):
             self.update_status.emit({"seed": random.randint(0,100000)})
 
         self.button.clicked.connect(new_seed)
+
+class WaitingScreen(QWidget):
+    def __init__(self, parent=None):
+        super(WaitingScreen, self).__init__()
+        self.layout = QVBoxLayout()
+        #self.icon = QIcon()
+        #self.layout.addWidget(self.icon)
+        self.layout.setAlignment(Qt.AlignCenter)
+        self.label = QLabel("Calculation in progress...")
+        self.label.setFont(QFont("Arial", 20))
+        self.layout.addWidget(self.label)
+        self.setLayout(self.layout)

@@ -8,7 +8,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QPushButton, QVBoxLayout, QSlider, QWidget, QHBoxLayout, QLabel, \
     QDoubleSpinBox, QFileDialog, QComboBox, QMessageBox, QListWidget, \
-    QListWidgetItem, QTabWidget, QLayout, QMainWindow
+    QListWidgetItem, QTabWidget, QLayout, QMainWindow, QStackedLayout, QSplashScreen
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
@@ -36,6 +36,9 @@ from hypergraphx.viz.interactive_view.__graphic_option_menu import GraphicOption
     get_PAOH_options, get_Radial_options, get_Clique_options, get_ExtraNode_options, get_Bipartite_options, \
     get_Sets_options
 from sys import platform
+
+from hypergraphx.viz.interactive_view.custom_widgets import WaitingScreen
+
 
 class Window(QMainWindow):
 
@@ -77,6 +80,7 @@ class Window(QMainWindow):
         self.max_edge = 0
         self.last_pos = dict()
         self.centrality_on = False
+        self.stacked = QStackedLayout()
         for edge in h.get_edges():
             if len(edge) > self.max_edge:
                 self.max_edge = len(edge)
@@ -91,21 +95,42 @@ class Window(QMainWindow):
         layout = QVBoxLayout()
         layout.addLayout(self.canvas_hbox)
         layout.addLayout(slider_hbox)
+        dummy = QWidget()
+        dummy.setLayout(layout)
+        self.stacked.addWidget(dummy)
         # setting layout to the main window
         central_widget = QWidget()
-        central_widget.setLayout(layout)
+        central_widget.setLayout(self.stacked)
         self.addToolBar(Qt.TopToolBarArea, self.toolbar)
         self.setCentralWidget(central_widget)
         self.option_vbox()
-        self.assign_PAOH()
+        self.use_default()
+        self.stacked.addWidget(WaitingScreen())
 
-        # action called by the push button
+    def change_focus(self):
+        if self.stacked.currentIndex() == 0:
+            self.stacked.setCurrentIndex(1)
+        else:
+            self.stacked.setCurrentIndex(0)
+        self.repaint()
+    def use_default(self):
+        if isinstance(self.hypergraph, TemporalHypergraph):
+            self.assign_PAOH()
+            self.combobox_drawing.setCurrentIndex(0)
+        elif isinstance(self.hypergraph, DirectedHypergraph):
+            self.assign_extra_node()
+            self.combobox_drawing.setCurrentIndex(0)
+        else:
+            self.assign_sets()
+            self.combobox_drawing.setCurrentIndex(0)
+
     #Drawing
     def plot(self) -> None:
         """
         Plot the hypergraph on screen using the assigner draw function.
         """
         #Clears the plot
+        self.change_focus()
         self.figure.clear()
         ax = self.figure.add_subplot(111)
         #Try to get the extra attributes
@@ -157,6 +182,7 @@ class Window(QMainWindow):
                 rounding_radius_size = rounding_radius_size, hyperedge_alpha = hyperedge_alpha,pos = last_pos, u = self.community_model, **self.algorithm_options_dict)
         self.use_last = False
         self.canvas.draw()
+        self.change_focus()
     def redraw(self):
         self.use_last = False
         self.plot()
@@ -180,6 +206,7 @@ class Window(QMainWindow):
         self.use_last = True
         self.plot()
     def update_hypergraph(self, example = None, hypergraph = None):
+        self.change_focus()
         if example is not None:
             self.hypergraph = example["hypergraph"]
         if hypergraph is not None:
@@ -191,8 +218,8 @@ class Window(QMainWindow):
         clear_layout(self.vbox)
         self.vbox.deleteLater()
         self.option_vbox()
-        self.assign_PAOH()
-        self.redraw()
+        self.change_focus()
+        self.use_default()
     def extra_options(self) -> None:
         """
         Generate the extra options list for the visualization functions
@@ -340,7 +367,10 @@ class Window(QMainWindow):
         self.plot()
     #Community
     def use_community_detection_algorithm(self):
+        self.change_focus()
         self.options_community[self.community_combobox.currentText()]()
+        self.change_focus()
+        self.redraw()
     def create_community_detection_options(self) -> QComboBox:
         """
         Create the selection list for the visualization function
@@ -366,7 +396,6 @@ class Window(QMainWindow):
             K=self.community_options_dict["number_communities"],
             weighted_L=False
         )
-        self.redraw()
     def use_MT(self):
         self.update_community_options_gui(MTOptionsWidget())
 
@@ -385,7 +414,6 @@ class Window(QMainWindow):
         )
         u_HypergraphMT = normalize_array(u_HypergraphMT, axis=1)
         self.community_model = u_HypergraphMT
-        self.redraw()
     def use_MMSBM(self):
         self.update_community_options_gui(MMSBMOptionsWidget())
 
@@ -410,11 +438,9 @@ class Window(QMainWindow):
         u_HyMMSBM = normalize_array(u_HyMMSBM, axis=1)
 
         self.community_model = u_HyMMSBM
-        self.redraw()
     def no_community(self):
         self.update_community_options_gui(None)
         self.community_model = None
-        self.redraw()
     def update_community_options_gui(self, gui):
         if gui is None:
             self.community_algorithm_option_gui = None
@@ -491,7 +517,7 @@ class Window(QMainWindow):
             self.spin_box.setVisible(False)
             self.spin_box_label.setVisible(False)
 
-        combobox = self.create_algorithm_options()
+        self.combobox_drawing = self.create_algorithm_options()
         redraw = QPushButton("Redraw")
         redraw.clicked.connect(self.redraw)
 
@@ -501,12 +527,12 @@ class Window(QMainWindow):
         self.centrality_combobox = self.create_centrality_button()
 
         def activate_function():
-            self.options_dict[combobox.currentText()]()
+            self.options_dict[self.combobox_drawing.currentText()]()
         combobox_communities = self.create_community_detection_options()
-        combobox.currentTextChanged.connect(activate_function)
+        self.combobox_drawing.currentTextChanged.connect(activate_function)
 
         self.vbox.addWidget(open_file_button)
-        self.vbox.addWidget(combobox)
+        self.vbox.addWidget(self.combobox_drawing)
 
         community_label = QLabel("Community Detection Algorithm:")
         self.vbox.addWidget(community_label)
@@ -567,11 +593,11 @@ class Window(QMainWindow):
         if isinstance(self.hypergraph, TemporalHypergraph):
             self.options_dict = { "PAOH": self.assign_PAOH}
         elif isinstance(self.hypergraph, DirectedHypergraph):
-            self.options_dict = { "PAOH": self.assign_PAOH,"Radial": self.assign_radial, "Extra-Node": self.assign_extra_node,
+            self.options_dict = { "Extra-Node": self.assign_extra_node, "PAOH": self.assign_PAOH,"Radial": self.assign_radial,
                                   "Bipartite": self.assign_bipartite }
         else:
-            self.options_dict = {"PAOH": self.assign_PAOH,"Radial": self.assign_radial,
-                         "Extra-Node": self.assign_extra_node, "Bipartite": self.assign_bipartite, "Sets": self.assign_sets}
+            self.options_dict = {"Sets": self.assign_sets, "PAOH": self.assign_PAOH,"Radial": self.assign_radial,
+                         "Extra-Node": self.assign_extra_node, "Bipartite": self.assign_bipartite}
             if not self.hypergraph.is_weighted():
                 self.options_dict["Clique"] = self.assign_clique_projection
 
