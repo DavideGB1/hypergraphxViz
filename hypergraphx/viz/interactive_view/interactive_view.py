@@ -1,20 +1,19 @@
 import copy
 import ctypes
+import faulthandler
 import os
 import sys
-import faulthandler
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QPushButton, QVBoxLayout, QSlider, QWidget, QHBoxLayout, QLabel, \
-    QDoubleSpinBox, QFileDialog, QComboBox, QMessageBox, QListWidget, \
-    QListWidgetItem, QTabWidget, QLayout, QMainWindow, QStackedLayout, QSplashScreen
+    QDoubleSpinBox, QComboBox, QListWidget, \
+    QListWidgetItem, QTabWidget, QLayout, QMainWindow, QStackedLayout
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from superqt import QRangeSlider
 
-import hypergraphx.readwrite
 from hypergraphx import Hypergraph, TemporalHypergraph, DirectedHypergraph
 from hypergraphx.communities.hy_mmsbm.model import HyMMSBM
 from hypergraphx.communities.hy_sc.model import HySC
@@ -29,15 +28,13 @@ from hypergraphx.viz.draw_radial import draw_radial_layout
 from hypergraphx.viz.draw_sets import draw_sets
 from hypergraphx.viz.interactive_view.__drawing_options import PAOHOptionsWidget, RadialOptionsWidget, \
     CliqueOptionsWidget, ExtraNodeOptionsWidget, BipartiteOptionsWidget, SetOptionsWidget
-from hypergraphx.viz.interactive_view.__examples import examples_generator
-from hypergraphx.viz.interactive_view.community_options.__community_option_menu import SpectralClusteringOptionsWidget, \
-    CommunityOptionsDict, MTOptionsWidget, MMSBMOptionsWidget
 from hypergraphx.viz.interactive_view.__graphic_option_menu import GraphicOptionsWidget, \
     get_PAOH_options, get_Radial_options, get_Clique_options, get_ExtraNode_options, get_Bipartite_options, \
     get_Sets_options
-from sys import platform
-
+from hypergraphx.viz.interactive_view.community_options.__community_option_menu import SpectralClusteringOptionsWidget, \
+    CommunityOptionsDict, MTOptionsWidget, MMSBMOptionsWidget
 from hypergraphx.viz.interactive_view.custom_widgets import WaitingScreen
+from hypergraphx.viz.interactive_view.table_view import ModifyHypergraphMenu
 
 
 class Window(QMainWindow):
@@ -99,10 +96,19 @@ class Window(QMainWindow):
         dummy.setLayout(layout)
         self.stacked.addWidget(dummy)
         # setting layout to the main window
-        central_widget = QWidget()
-        central_widget.setLayout(self.stacked)
+
+        self.central_tab = QTabWidget()
+
+        drawing_tab = QWidget()
+        drawing_tab.setLayout(self.stacked)
+        modify_hypergraph_tab = ModifyHypergraphMenu(hypergraph)
+        modify_hypergraph_tab.updated_hypergraph.connect(self.update_hypergraph)
+        self.central_tab.addTab(drawing_tab, "Drawing Area")
+        self.central_tab.addTab(modify_hypergraph_tab, "Modify Hypergraph")
+
+
         self.addToolBar(Qt.TopToolBarArea, self.toolbar)
-        self.setCentralWidget(central_widget)
+        self.setCentralWidget(self.central_tab)
         self.option_vbox()
         self.use_default()
         self.stacked.addWidget(WaitingScreen())
@@ -217,6 +223,7 @@ class Window(QMainWindow):
                 self.max_edge = len(edge)
         clear_layout(self.vbox)
         self.vbox.deleteLater()
+
         self.option_vbox()
         self.change_focus()
         self.use_default()
@@ -455,33 +462,6 @@ class Window(QMainWindow):
         self.use_community_detection_algorithm()
         self.plot()
 
-    def open_file(self):
-        file_dialog = QFileDialog(self)
-        file_dialog.setWindowTitle("Open File")
-        file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
-        file_dialog.setViewMode(QFileDialog.ViewMode.Detail)
-        file_dialog.setNameFilters(["JSON (*.json)", "HGR (*.hgr)", "HGX (*.hgx)"])
-
-        if file_dialog.exec():
-            selected_file = file_dialog.selectedFiles()
-            try:
-                hypergraph = hypergraphx.readwrite.load_hypergraph(selected_file[0])
-                self.update_hypergraph(None, hypergraph)
-                if self.hypergraph.is_weighted():
-                    self.spin_box.setVisible(True)
-                    self.spin_box_label.setVisible(True)
-                else:
-                    self.spin_box.setVisible(False)
-                    self.spin_box_label.setVisible(False)
-                self.plot()
-            except ValueError:
-                msg = QMessageBox()
-                msg.setIcon(QMessageBox.Critical)
-                msg.setText("Error: Invalid Input File")
-                msg.setInformativeText('Input File is not .hgr | .json | .hgx')
-                msg.setWindowTitle("Error")
-                msg.exec_()
-
     #Create GUI Components
 
     def create_centrality_button(self):
@@ -521,9 +501,6 @@ class Window(QMainWindow):
         redraw = QPushButton("Redraw")
         redraw.clicked.connect(self.redraw)
 
-        open_file_button = QPushButton("Open from File")
-        open_file_button.clicked.connect(self.open_file)
-
         self.centrality_combobox = self.create_centrality_button()
 
         def activate_function():
@@ -531,7 +508,6 @@ class Window(QMainWindow):
         combobox_communities = self.create_community_detection_options()
         self.combobox_drawing.currentTextChanged.connect(activate_function)
 
-        self.vbox.addWidget(open_file_button)
         self.vbox.addWidget(self.combobox_drawing)
 
         community_label = QLabel("Community Detection Algorithm:")
@@ -568,23 +544,10 @@ class Window(QMainWindow):
         self.tab.addTab(self.community_options_tab, "Community Options")
         self.tab.setTabVisible(self.tab.indexOf(self.community_options_tab), False)
 
-        self.example_tab = QWidget()
-        vbox = QVBoxLayout()
-        self.example_tab.setLayout(vbox)
-        self.examples_list = QListWidget()
-        vbox.addWidget(self.examples_list)
-        self.tab.addTab(self.example_tab, "Examples")
-        self.tab.setTabVisible(self.tab.indexOf(self.example_tab), True)
 
         self.vbox.addWidget(self.tab)
         self.canvas_hbox.addLayout(self.vbox, 20)
-        self.examples_widgets = examples_generator()
-        for x in self.examples_widgets:
-            myQListWidgetItem = QListWidgetItem(self.examples_list)
-            myQListWidgetItem.setSizeHint(x.sizeHint())
-            self.examples_list.addItem(myQListWidgetItem)
-            self.examples_list.setItemWidget(myQListWidgetItem, x)
-            x.new_hypergraph.connect(self.update_hypergraph)
+
     def create_algorithm_options(self) -> QComboBox:
         """
         Create the selection list for the visualization function
