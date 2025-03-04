@@ -1,4 +1,5 @@
 from copy import deepcopy, copy
+from types import NoneType
 
 from PyQt5.QtCore import pyqtSignal, Qt
 
@@ -22,23 +23,18 @@ class HypergraphTable(QTableWidget):
         self.use_nodes = nodes
         self.update_table(hypergraph)
         # Table will fit the screen horizontally
-        if self.use_nodes:
-            self.setHorizontalHeaderLabels(['Name', 'Metadata'])
-        else:
-            if hypergraph.is_weighted():
-                self.setHorizontalHeaderLabels(['Edge','Weight', 'Metadata'])
-            else:
-                self.setHorizontalHeaderLabels(['Edge', 'Metadata'])
-
         self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
     def remove_row(self):
         self.removeRow(self.currentRow())
     def update_table_nodes(self, hypergraph):
+
         num_row = hypergraph.num_nodes()
         num_col = 2
         self.setRowCount(num_row)
         self.setColumnCount(num_col)
+        if self.use_nodes:
+            self.setHorizontalHeaderLabels(['Name', 'Metadata'])
         curr_row = 0
         for node in hypergraph.get_nodes():
             self.setItem(curr_row, 0, QTableWidgetItem(str(node)))
@@ -54,6 +50,10 @@ class HypergraphTable(QTableWidget):
             idx = 0
         self.setRowCount(num_row)
         self.setColumnCount(num_col)
+        if hypergraph.is_weighted():
+            self.setHorizontalHeaderLabels(['Edge', 'Weight', 'Metadata'])
+        else:
+            self.setHorizontalHeaderLabels(['Edge', 'Metadata'])
         curr_row = 0
 
         for edge in hypergraph.get_edges():
@@ -133,20 +133,23 @@ class ModifyHypergraphMenu(QMainWindow):
         self.remove_node = QAction("Remove Row", self)
         self.remove_node.triggered.connect(self.remove_row)
         self.add_node = QAction("Add Row", self)
-        self.add_node.triggered.connect(self.add_row)
+        self.add_node.triggered.connect(self.add_node_func)
 
         toolbar.addAction(self.add_node)
         toolbar.addAction(self.remove_node)
         self.addToolBar(Qt.TopToolBarArea, toolbar)
 
     def remove_row(self):
-        if self.vertical_tab.currentWidget().use_nodes:
-            try:
-                self.hypergraph.remove_node(self.vertical_tab.currentWidget().currentItem().text(), True)
-            except KeyError:
-                self.hypergraph.remove_node(int(self.vertical_tab.currentWidget().currentItem().text()), True)
-        else:
-            self.hypergraph.remove_edge(eval(self.vertical_tab.currentWidget().currentItem().text()))
+        try:
+            if self.vertical_tab.currentWidget().use_nodes:
+                try:
+                    self.hypergraph.remove_node(self.vertical_tab.currentWidget().currentItem().text(), True)
+                except KeyError:
+                    self.hypergraph.remove_node(int(self.vertical_tab.currentWidget().currentItem().text()), True)
+            else:
+                self.hypergraph.remove_edge(eval(self.vertical_tab.currentWidget().currentItem().text()))
+        except Exception as e:
+            pass
         self.vertical_tab.currentWidget().remove_row()
         self.update_hypergraph()
     def add_row(self):
@@ -154,7 +157,7 @@ class ModifyHypergraphMenu(QMainWindow):
            self.add_node()
         else:
             self.add_edge()
-    def add_node(self):
+    def add_node_func(self):
         dialog = QDialog(self)
         dialog.setWindowTitle("Add Node")
         layout = QVBoxLayout()
