@@ -138,6 +138,7 @@ class __vector:
 def draw_sets(
     hypergraph: Hypergraph,
     u = None,
+    k = 0,
     cardinality: tuple[int, int] | int = -1,
     x_heaviest: float = 1.0,
     draw_labels: bool = True,
@@ -306,7 +307,7 @@ def draw_sets(
         nx.draw_networkx_edge_labels(G, pos_higher, edge_labels=labels, bbox={'alpha': 0, 'pad': 1}, verticalalignment="top")
     # Draw the Nodes
     if u is not None:
-        mapping, col = _get_community_info(hypergraph)
+        mapping, col = _get_community_info(hypergraph,k)
 
     for node in G.nodes():
         if u is None:

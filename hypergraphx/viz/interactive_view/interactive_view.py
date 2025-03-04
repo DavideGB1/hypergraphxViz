@@ -182,7 +182,7 @@ class Window(QMainWindow):
             self.graphic_options.add_centrality_factor_dict(None)
         #Plot and draw the hypergraph using it's function
         self.last_pos = self.current_function(self.hypergraph, cardinality= self.slider_value, x_heaviest = float(self.spin_box.value()/100), ax=ax,
-                time_font_size = time_font_size, time_separation_line_color = time_separation_line_color,
+                time_font_size = time_font_size, time_separation_line_color = time_separation_line_color,k=self.community_options_dict["number_communities"],
                 graphicOptions=copy.deepcopy(self.graphic_options), radius_scale_factor=radius_scale_factor, font_spacing_factor=font_spacing_factor,
                 time_separation_line_width = time_separation_line_width, polygon_expansion_factor = polygon_expansion_factor,
                 rounding_radius_size = rounding_radius_size, hyperedge_alpha = hyperedge_alpha,pos = last_pos, u = self.community_model, **self.algorithm_options_dict)
@@ -392,7 +392,7 @@ class Window(QMainWindow):
         self.community_combobox.currentTextChanged.connect(self.use_community_detection_algorithm)
         return self.community_combobox
     def use_spectral_clustering(self):
-        self.update_community_options_gui(SpectralClusteringOptionsWidget())
+        self.update_community_options_gui(SpectralClusteringOptionsWidget(self.hypergraph.num_nodes()))
 
         model = HySC(
             seed=self.community_options_dict["seed"],
@@ -404,7 +404,7 @@ class Window(QMainWindow):
             weighted_L=False
         )
     def use_MT(self):
-        self.update_community_options_gui(MTOptionsWidget())
+        self.update_community_options_gui(MTOptionsWidget(self.hypergraph.num_nodes()))
 
         model = HypergraphMT(
             n_realizations=self.community_options_dict["realizations"],
@@ -422,7 +422,7 @@ class Window(QMainWindow):
         u_HypergraphMT = normalize_array(u_HypergraphMT, axis=1)
         self.community_model = u_HypergraphMT
     def use_MMSBM(self):
-        self.update_community_options_gui(MMSBMOptionsWidget())
+        self.update_community_options_gui(MMSBMOptionsWidget(self.hypergraph.num_nodes()))
 
         best_model = None
         best_loglik = float("-inf")

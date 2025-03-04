@@ -22,6 +22,7 @@ from hypergraphx.viz.__support import __ignore_unused_args, __filter_hypergraph,
 def draw_PAOH(
     h: Hypergraph | TemporalHypergraph | DirectedHypergraph,
     u = None,
+    k = 2,
     cardinality: tuple[int,int]|int = -1,
     x_heaviest: float = 1.0,
     space_optimization: bool = False,
@@ -126,7 +127,7 @@ def draw_PAOH(
     idx_timestamp = 0
     graphicOptions.check_if_options_are_valid(hypergraph)
     if u is not None:
-        mapping, col = _get_community_info(hypergraph)
+        mapping, col = _get_community_info(hypergraph,k)
     #Draw each column
     for timestamp in timestamps:
         #Stamp the timestamp name

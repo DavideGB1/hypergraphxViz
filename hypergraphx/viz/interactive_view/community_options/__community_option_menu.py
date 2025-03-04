@@ -25,11 +25,11 @@ class CommunityOptionsDict(dict):
 
 class SpectralClusteringOptionsWidget(QWidget):
     modified_options = pyqtSignal(dict)
-    def __init__(self, parent = None):
+    def __init__(self, max,parent = None):
         super(SpectralClusteringOptionsWidget, self).__init__(parent)
         self.widget_list = list()
 
-        self.n_communities = SpinboxCustomWindget("Number of Communities", 2, 1000,2, "number_communities")
+        self.n_communities = SpinboxCustomWindget("Number of Communities", 2, max,2, "number_communities")
         self.n_communities.update_status.connect(self.send_data)
 
         self.realizations = SpinboxCustomWindget("Realizations", 1, 1000, 10, "realizations")
@@ -52,11 +52,11 @@ class SpectralClusteringOptionsWidget(QWidget):
 
 class MTOptionsWidget(QWidget):
     modified_options = pyqtSignal(dict)
-    def __init__(self, parent = None):
+    def __init__(self, max,parent = None):
         super(MTOptionsWidget, self).__init__(parent)
         self.widget_list = list()
 
-        self.n_communities = SpinboxCustomWindget("Number of Communities", 2, 1000, 2, "number_communities")
+        self.n_communities = SpinboxCustomWindget("Number of Communities", 2, max, 2, "number_communities")
         self.n_communities.update_status.connect(self.send_data)
 
         self.realizations = SpinboxCustomWindget("Realizations", 1, 1000, 10, "realizations")
@@ -97,11 +97,11 @@ class MTOptionsWidget(QWidget):
 
 class MMSBMOptionsWidget(QWidget):
     modified_options = pyqtSignal(dict)
-    def __init__(self, parent = None):
+    def __init__(self, max,parent = None):
         super(MMSBMOptionsWidget, self).__init__(parent)
         self.widget_list = list()
 
-        self.n_communities = SpinboxCustomWindget("Number of Communities", 2, 1000, 2, "number_communities")
+        self.n_communities = SpinboxCustomWindget("Number of Communities", 2, max, 2, "number_communities")
         self.n_communities.update_status.connect(self.send_data)
 
         self.realizations = SpinboxCustomWindget("Realizations", 1, 1000, 10, "realizations")

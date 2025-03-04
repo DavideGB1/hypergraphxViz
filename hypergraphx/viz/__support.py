@@ -1,5 +1,6 @@
 import inspect
 import math
+import colorcet as cc
 from math import trunc
 from typing import Tuple
 import matplotlib
@@ -278,12 +279,12 @@ def extract_pie_properties(
 def _draw_node_community(ax,node, center,radius, wedge_sizes, wedge_colors, graphicOptions):
     ax.pie(x=wedge_sizes, colors=wedge_colors, center=center, radius=radius,
            wedgeprops={"edgecolor": graphicOptions.node_facecolor[node]})
-def _get_community_info(hypergraph, col=None):
+def _get_community_info(hypergraph, p = 2,col=None,):
     _, mappingID2Name = hypergraph.binary_incidence_matrix(return_mapping=True)
     mappingName2ID = {n: i for i, n in mappingID2Name.items()}
     if col is None:
-        cmap = sns.color_palette("Paired", desat=0.7)
-        col = {k: matplotlib.colors.to_hex(cmap[k * 2], keep_alpha=False) for k in np.arange(5)}
+        cmap = sns.color_palette(cc.glasbey, n_colors=p)
+        col = {k: matplotlib.colors.to_hex(cmap[k], keep_alpha=False) for k in np.arange(p)}
     return mappingName2ID, col
 def _get_node_community(mappingName2ID, node, u, col,threshold ):
     wedge_sizes, wedge_colors = extract_pie_properties(

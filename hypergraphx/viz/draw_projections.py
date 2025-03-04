@@ -15,6 +15,7 @@ from hypergraphx.viz.__graphic_options import GraphicOptions
 def draw_bipartite(
     h: Hypergraph|DirectedHypergraph,
     u = None,
+    k=2,
     cardinality: tuple[int,int]|int = -1,
     x_heaviest: float = 1.0,
     draw_labels=True,
@@ -73,7 +74,7 @@ def draw_bipartite(
                                width=graphicOptions.edge_size[edge], arrows=isinstance(h, DirectedHypergraph), **kwargs)
 
     if u is not None:
-        mapping, col = _get_community_info(hypergraph)
+        mapping, col = _get_community_info(hypergraph,k)
     for node in node_list:
         if u is None:
             nx.draw_networkx_nodes(g, ax=ax, pos=pos, nodelist=[node], node_shape=graphicOptions.node_shape[node],
@@ -114,6 +115,7 @@ def draw_bipartite(
 def draw_clique(
     h: Hypergraph,
     u=None,
+    k=2,
     cardinality: tuple[int,int]|int = -1,
     x_heaviest: float = 1.0,
     draw_labels=True,
@@ -170,7 +172,7 @@ def draw_clique(
         nx.draw_networkx_edges(G=g, pos=pos, edgelist=[edge], ax=ax, edge_color=graphicOptions.edge_color[edge],
                                width=graphicOptions.edge_size[edge], **kwargs)
     if u is not None:
-        mapping, col = _get_community_info(hypergraph)
+        mapping, col = _get_community_info(hypergraph,k)
     for node in g.nodes():
         if u is None:
             nx.draw_networkx_nodes(
@@ -202,6 +204,7 @@ def draw_clique(
 def draw_extra_node(
     h: Hypergraph,
     u = None,
+    k = 2,
     respect_planarity = False,
     cardinality: tuple[int,int]|int = -1,
     x_heaviest: float = 1.0,
@@ -257,7 +260,7 @@ def draw_extra_node(
         plt.subplot(1, 1, 1)
         ax = plt.gca()
     if u is not None:
-        mapping, col = _get_community_info(hypergraph)
+        mapping, col = _get_community_info(hypergraph,k)
     else:
         mapping = None
         col = None
