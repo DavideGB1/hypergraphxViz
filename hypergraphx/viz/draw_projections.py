@@ -92,7 +92,9 @@ def draw_bipartite(
                                nodelist=[edge], **kwargs)
     # Draw labels
     if draw_labels:
-        labels = dict((n, n) for n in g.nodes())
+        labels = dict((n, id_to_obj[n]) for n in g.nodes() if n.startswith('N'))
+        labels_edge = dict((n, n) for n in g.nodes() if n.startswith('E'))
+        labels.update(labels_edge)
         nx.draw_networkx_labels(g, ax=ax, pos=pos, labels=labels, font_size=graphicOptions.label_size,
                                 font_color=graphicOptions.label_color)
     if h.is_weighted():
