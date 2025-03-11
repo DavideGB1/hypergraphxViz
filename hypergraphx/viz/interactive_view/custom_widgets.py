@@ -3,7 +3,8 @@ import random
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QColor, QPixmap, QIcon, QFont
 from PyQt5.QtWidgets import QWidget, QCheckBox, QLabel, QDoubleSpinBox, QHBoxLayout, QPushButton, QColorDialog, \
-    QComboBox, QVBoxLayout
+    QComboBox, QVBoxLayout, QDockWidget, QSlider
+from superqt import QRangeSlider
 
 from hypergraphx.viz.interactive_view.graphic_enum import GraphicOptionsName
 
@@ -144,3 +145,64 @@ class WaitingScreen(QWidget):
         self.label.setFont(QFont("Arial", 20))
         self.layout.addWidget(self.label)
         self.setLayout(self.layout)
+
+class SliderDockWidget(QDockWidget):
+    update_value = pyqtSignal(tuple)
+    def __init__(self, max_edge):
+        super().__init__()
+        self.slider = QSlider()
+        self.max_edge = max_edge
+        self.ranged = False
+        self.slider_label = QLabel()
+        self.slider_label.setAlignment(Qt.AlignLeft)
+        self.slider_hbox = QHBoxLayout()
+        self.change_slider_type()
+        slider_button = QPushButton("Change Slider Type")
+        slider_button.setChecked(True)
+        slider_button.toggle()
+        slider_button.clicked.connect(self.change_slider_type)
+        self.slider_hbox.addWidget(self.slider_label)
+        self.slider_hbox.addWidget(self.slider)
+        self.slider_hbox.addWidget(slider_button)
+        self.widget = QWidget()
+        self.widget.setLayout(self.slider_hbox)
+        self.slider_label.setText("Edge Cardinality: " + str(self.slider.value()))
+        self.setWidget(self.widget)
+        self.setFeatures(QDockWidget.NoDockWidgetFeatures)
+        self.slider_value_changed()
+
+    def change_slider_type(self):
+        if self.ranged:
+            self.ranged = False
+            slider = QSlider(Qt.Horizontal)
+            slider.setMinimum(2)
+            slider.setMaximum(self.max_edge)
+        else:
+            self.ranged = True
+            slider = QRangeSlider(Qt.Orientation.Horizontal)
+            slider.setMinimum(2)
+            slider.setMaximum(self.max_edge)
+            slider.setValue((2, self.max_edge))
+        slider.setTickPosition(QSlider.TicksBelow)
+        slider.setTickInterval(1)
+        slider.setPageStep(0)
+        slider.valueChanged.connect(self.slider_value_changed)
+        self.slider_hbox.replaceWidget(self.slider, slider)
+        self.slider_hbox.removeWidget(self.slider)
+        self.slider = slider
+        self.slider_value_changed()
+
+    def slider_value_changed(self):
+        self.slider_label.setText("Edge Cardinality: " + str(self.slider.value()))
+        value = self.slider.value()
+        if isinstance(value,tuple):
+            self.update_value.emit(self.slider.value())
+        else:
+            self.update_value.emit((value, value))
+    def update_max(self, new_max_edge):
+        self.max_edge = new_max_edge
+        self.slider.setMaximum(self.max_edge)
+        if self.ranged:
+            self.slider.setValue((2, self.max_edge))
+        else:
+            self.slider.setValue(2)

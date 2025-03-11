@@ -2,12 +2,13 @@ from copy import deepcopy, copy
 from types import NoneType
 
 from PyQt5.QtCore import pyqtSignal, Qt
+from pandas.core.computation.ops import isnumeric
 
 from hypergraphx.readwrite.save import save_hypergraph
 import hypergraphx
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QMainWindow, QToolBar, \
     QAction, QFileDialog, QMessageBox, QDialog, QVBoxLayout, QLabel, QSpinBox, QPlainTextEdit, QPushButton, \
-    QMenu, QMenuBar
+    QMenu, QMenuBar, QTextEdit, QLineEdit
 from pyqt_vertical_tab_widget import VerticalTabWidget
 import hypergraphx
 from hypergraphx.generation import random_hypergraph
@@ -133,7 +134,7 @@ class ModifyHypergraphMenu(QMainWindow):
         self.remove_node = QAction("Remove Row", self)
         self.remove_node.triggered.connect(self.remove_row)
         self.add_node = QAction("Add Row", self)
-        self.add_node.triggered.connect(self.add_node_func)
+        self.add_node.triggered.connect(self.add_row)
 
         toolbar.addAction(self.add_node)
         toolbar.addAction(self.remove_node)
@@ -154,7 +155,7 @@ class ModifyHypergraphMenu(QMainWindow):
         self.update_hypergraph()
     def add_row(self):
         if self.vertical_tab.currentWidget().use_nodes:
-           self.add_node()
+           self.add_node_func()
         else:
             self.add_edge()
     def add_node_func(self):
@@ -162,13 +163,13 @@ class ModifyHypergraphMenu(QMainWindow):
         dialog.setWindowTitle("Add Node")
         layout = QVBoxLayout()
         n_nodes_label = QLabel("Node Name:")
-        n_nodes_textarea = QPlainTextEdit()
+        n_nodes_textarea = QLineEdit()
         layout.addWidget(n_nodes_label)
         layout.addWidget(n_nodes_textarea)
 
         metadata_label = QLabel("Node Metadata:")
-        metadata_textarea = QPlainTextEdit()
-        metadata_textarea.insertPlainText("Insert the metadata (example class:CS, gender:M).\n")
+        metadata_textarea = QTextEdit()
+        metadata_textarea.setPlaceholderText("Insert the metadata (example class:CS, gender:M).")
         layout.addWidget(metadata_label)
         layout.addWidget(metadata_textarea)
         generate = QPushButton("Add Node")
@@ -176,19 +177,18 @@ class ModifyHypergraphMenu(QMainWindow):
         layout.addWidget(generate)
         dialog.setLayout(layout)
         if dialog.exec() == QDialog.Accepted:
-            self.hypergraph.add_node(int(n_nodes_textarea.toPlainText()), str_to_dict(metadata_textarea.toPlainText()))
+            self.hypergraph.add_node(n_nodes_textarea.text().replace("\n",""), str_to_dict(metadata_textarea.toPlainText()))
             self.update_hypergraph()
     def add_edge(self):
         dialog = QDialog(self)
         dialog.setWindowTitle("Add Edge")
         layout = QVBoxLayout()
         edge_label = QLabel("Edge:")
-        edge_textarea = QPlainTextEdit()
-        edge_textarea.insertPlainText("Insert the edge like 1,2,3,4.\n")
+        edge_textarea = QLineEdit()
+        edge_textarea.setPlaceholderText("Insert the edge like 1,2,3,4.\n")
         layout.addWidget(edge_label)
         layout.addWidget(edge_textarea)
         if self.hypergraph.is_weighted():
-            print("pesato")
             weight_label = QLabel("Weight:")
             weight_spinbox = QSpinBox()
             weight_spinbox.setValue(1)
@@ -197,8 +197,8 @@ class ModifyHypergraphMenu(QMainWindow):
             layout.addWidget(weight_label)
             layout.addWidget(weight_spinbox)
         metadata_label = QLabel("Edge Metadata:")
-        metadata_textarea = QPlainTextEdit()
-        metadata_textarea.insertPlainText("Insert the metadata (example class:CS, gender:M).\n")
+        metadata_textarea = QTextEdit()
+        metadata_textarea.setPlaceholderText("Insert the metadata (example class:CS, gender:M).\n")
         layout.addWidget(metadata_label)
         layout.addWidget(metadata_textarea)
         generate = QPushButton("Add Edge")
@@ -209,7 +209,7 @@ class ModifyHypergraphMenu(QMainWindow):
             weight = 1
             if self.hypergraph.is_weighted():
                 weight = int(weight_spinbox.value())
-            self.hypergraph.add_edge(str_to_tuple(edge_textarea.toPlainText()),weight, str_to_dict(metadata_textarea.toPlainText()))
+            self.hypergraph.add_edge(str_to_tuple(edge_textarea.text()),weight, str_to_dict(metadata_textarea.toPlainText()))
             self.update_hypergraph()
 
     def open_file(self):
@@ -278,7 +278,8 @@ class ModifyHypergraphMenu(QMainWindow):
         def edges_dictionary_converter():
             edges_dict = {}
             print(text.toPlainText())
-            values = text.toPlainText().split(",")
+            values = text.toPlainText().replace("Insert the edges dictionary (example 2:14).\n",'')
+            values = values.split(",")
             for pair in values:
                 try:
                     k, v = pair.split(":")
@@ -366,7 +367,10 @@ def str_to_tuple(string: str):
     vals = []
     for val in res:
         try:
-            vals.append(int(val))
+            if val.isnumeric():
+                vals.append(int(val))
+            else:
+                vals.append(val)
         except ValueError:
             pass
 

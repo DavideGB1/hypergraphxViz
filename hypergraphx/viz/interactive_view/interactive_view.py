@@ -8,7 +8,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QPushButton, QVBoxLayout, QSlider, QWidget, QHBoxLayout, QLabel, \
     QDoubleSpinBox, QComboBox, QListWidget, \
-    QListWidgetItem, QTabWidget, QLayout, QMainWindow, QStackedLayout
+    QListWidgetItem, QTabWidget, QLayout, QMainWindow, QStackedLayout, QDockWidget
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
@@ -33,7 +33,7 @@ from hypergraphx.viz.interactive_view.__graphic_option_menu import GraphicOption
     get_Sets_options
 from hypergraphx.viz.interactive_view.community_options.__community_option_menu import SpectralClusteringOptionsWidget, \
     CommunityOptionsDict, MTOptionsWidget, MMSBMOptionsWidget
-from hypergraphx.viz.interactive_view.custom_widgets import WaitingScreen
+from hypergraphx.viz.interactive_view.custom_widgets import WaitingScreen, SliderDockWidget
 from hypergraphx.viz.interactive_view.table_view import ModifyHypergraphMenu
 
 
@@ -70,7 +70,6 @@ class Window(QMainWindow):
         self.ranged = True
         self.community_option_menu = None
         self.option_menu = None
-        self.slider_value = 2
         self.hypergraph = hypergraph
         self.canvas_hbox = QHBoxLayout()
         self.figure = plt.figure()
@@ -81,24 +80,26 @@ class Window(QMainWindow):
         for edge in h.get_edges():
             if len(edge) > self.max_edge:
                 self.max_edge = len(edge)
+        self.slider_value = (2, self.max_edge)
         #Defines Canvas and Options Toolbar
         self.canvas = FigureCanvas(self.figure)
         self.toolbar = NavigationToolbar(self.canvas, self)
         self.canvas_hbox.addWidget(self.canvas, 80)
         self.community_model = None
         # Sliders Management
-        slider_hbox = self.add_sliders()
         # Create layout and add everything
-        layout = QVBoxLayout()
-        layout.addLayout(self.canvas_hbox)
-        layout.addLayout(slider_hbox)
-        dummy = QWidget()
-        dummy.setLayout(layout)
-        self.stacked.addWidget(dummy)
+        layout = QMainWindow()
+        layout.addToolBar(Qt.TopToolBarArea, self.toolbar)
+        layout.setCentralWidget(self.canvas)
+        self.slider = SliderDockWidget(self.max_edge)
+        self.slider.update_value.connect(self.new_slider_value)
+        layout.addDockWidget(Qt.BottomDockWidgetArea, self.slider)
+
+
         # setting layout to the main window
 
         self.central_tab = QTabWidget()
-
+        self.stacked.addWidget(layout)
         drawing_tab = QWidget()
         drawing_tab.setLayout(self.stacked)
         modify_hypergraph_tab = ModifyHypergraphMenu(hypergraph)
@@ -107,12 +108,20 @@ class Window(QMainWindow):
         self.central_tab.addTab(modify_hypergraph_tab, "Modify Hypergraph")
 
 
-        self.addToolBar(Qt.TopToolBarArea, self.toolbar)
         self.setCentralWidget(self.central_tab)
         self.option_vbox()
         self.use_default()
         self.stacked.addWidget(WaitingScreen())
 
+        dummy2 = QWidget()
+        dummy2.setLayout(self.vbox)
+        tmp2 = QDockWidget()
+        tmp2.setWidget(dummy2)
+        tmp2.setFeatures(QDockWidget.NoDockWidgetFeatures)
+        layout.addDockWidget(Qt.RightDockWidgetArea, tmp2)
+    def new_slider_value(self, value):
+        self.slider_value = value
+        self.plot()
     def change_focus(self):
         if self.stacked.currentIndex() == 0:
             self.stacked.setCurrentIndex(1)
@@ -222,8 +231,8 @@ class Window(QMainWindow):
             if len(edge) > self.max_edge:
                 self.max_edge = len(edge)
         clear_layout(self.vbox)
-        self.vbox.deleteLater()
 
+        self.slider.update_max(self.max_edge)
         self.option_vbox()
         self.change_focus()
         self.use_default()
@@ -483,7 +492,6 @@ class Window(QMainWindow):
         """
         Creates the standard options for the visualization functions
         """
-        self.vbox = QVBoxLayout()
         self.spin_box = QDoubleSpinBox()
         self.spin_box.setDecimals(0)
         self.spin_box.setRange(0, 100)
@@ -508,6 +516,9 @@ class Window(QMainWindow):
         combobox_communities = self.create_community_detection_options()
         self.combobox_drawing.currentTextChanged.connect(activate_function)
 
+        drawing_label = QLabel("Drawing Algorithm:")
+
+        self.vbox.addWidget(drawing_label)
         self.vbox.addWidget(self.combobox_drawing)
 
         community_label = QLabel("Community Detection Algorithm:")
@@ -543,10 +554,7 @@ class Window(QMainWindow):
         vbox.addWidget(self.community_options_list)
         self.tab.addTab(self.community_options_tab, "Community Options")
         self.tab.setTabVisible(self.tab.indexOf(self.community_options_tab), False)
-
-
         self.vbox.addWidget(self.tab)
-        self.canvas_hbox.addLayout(self.vbox, 20)
 
     def create_algorithm_options(self) -> QComboBox:
         """
@@ -577,46 +585,6 @@ class Window(QMainWindow):
             list.addItem(myQListWidgetItem)
             list.setItemWidget(myQListWidgetItem, x)
         widget.modified_options.connect(func)
-    def add_sliders(self):
-        slider_label = QLabel()
-        slider_label.setAlignment(Qt.AlignLeft)
-        slider_label.setText("Edge Cardinality: " + str(self.slider_value))
-        def slider_value_changed():
-            self.slider_value = self.slider.value()
-            slider_label.setText("Edge Cardinality: " + str(self.slider_value))
-            self.plot()
-        def change_slider_type():
-            if self.ranged:
-                self.ranged = False
-                slider = QSlider(Qt.Horizontal)
-                slider.setMinimum(2)
-                slider.setMaximum(self.max_edge)
-            else:
-                self.ranged = True
-                slider = QRangeSlider(Qt.Orientation.Horizontal)
-                slider.setMinimum(2)
-                slider.setMaximum(self.max_edge)
-                slider.setValue((2, self.max_edge))
-            slider.setTickPosition(QSlider.TicksBelow)
-            slider.setTickInterval(1)
-            slider.setPageStep(0)
-            slider.valueChanged.connect(slider_value_changed)
-            slider_hbox.replaceWidget(self.slider, slider)
-            slider_hbox.removeWidget(self.slider)
-            self.slider = slider
-            slider_value_changed()
-        slider_hbox = QHBoxLayout()
-        change_slider_type()
-        slider_button = QPushButton("Change Slider Type")
-        slider_button.setChecked(True)
-        slider_button.toggle()
-        slider_button.clicked.connect(change_slider_type)
-        slider_hbox.addWidget(slider_label)
-        slider_hbox.addWidget(self.slider)
-        slider_hbox.addWidget(slider_button)
-
-        return slider_hbox
-
 
 def clear_layout(layout: QLayout):
     """
@@ -653,5 +621,5 @@ def start_interactive_view(h: Hypergraph|TemporalHypergraph|DirectedHypergraph) 
 
     sys.exit(app.exec_())
 
-h = Hypergraph([(1,2,3),(4,5,6),(6,7,8,9),(10,11,12,1,4),(4,1),(3,6)])
+h = Hypergraph([("A","B","C"),('D','C')])
 start_interactive_view(h)
