@@ -6,13 +6,12 @@ import sys
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QApplication, QPushButton, QVBoxLayout, QSlider, QWidget, QHBoxLayout, QLabel, \
+from PyQt5.QtWidgets import QApplication, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLabel, \
     QDoubleSpinBox, QComboBox, QListWidget, \
     QListWidgetItem, QTabWidget, QLayout, QMainWindow, QStackedLayout, QDockWidget
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-from superqt import QRangeSlider
 
 from hypergraphx import Hypergraph, TemporalHypergraph, DirectedHypergraph
 from hypergraphx.communities.hy_mmsbm.model import HyMMSBM
@@ -67,7 +66,6 @@ class Window(QMainWindow):
         self.graphic_options = GraphicOptions()
         self.graphic_options_widget = GraphicOptionsWidget(self.graphic_options, self.extra_attributes)
         self.slider = None
-        self.ranged = True
         self.community_option_menu = None
         self.option_menu = None
         self.hypergraph = hypergraph
@@ -75,7 +73,6 @@ class Window(QMainWindow):
         self.figure = plt.figure()
         self.max_edge = 0
         self.last_pos = dict()
-        self.centrality_on = False
         self.stacked = QStackedLayout()
         for edge in h.get_edges():
             if len(edge) > self.max_edge:

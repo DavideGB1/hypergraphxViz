@@ -36,4 +36,4 @@ class QExampleAction(QAction):
         self.setText(name)
         self.hypergraph = deepcopy(hypergraph)
     def return_hypergraph(self):
-        return self.hypergraph
+        return deepcopy(self.hypergraph)
