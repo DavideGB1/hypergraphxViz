@@ -248,9 +248,7 @@ class Window(QWidget):
             self.hypergraph = example["hypergraph"]
         if hypergraph is not None:
             self.hypergraph = hypergraph
-
-        self.max_edge = max(self.hypergraph.distribution_sizes().keys())
-        self.slider.update_max(self.max_edge)
+        self.max_edge = max(self.hypergraph.get_sizes())
         if isinstance(self.hypergraph, Hypergraph):
             self.drawing_options_widget = DrawingOptionsDockWidget(weighted= self.hypergraph.is_weighted(),hypergraph_type="normal",n_nodes=self.hypergraph.num_nodes())
         elif isinstance(self.hypergraph, DirectedHypergraph):
@@ -262,6 +260,7 @@ class Window(QWidget):
         self.drawing_options_widget.update()
         self.change_focus()
         self.use_default()
+        self.slider.update_max(self.max_edge)
 
     #Community
     def use_spectral_clustering(self):

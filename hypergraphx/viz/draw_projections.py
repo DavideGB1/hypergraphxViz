@@ -459,5 +459,5 @@ def __draw_in_plot(
     #Draw labels
     if draw_labels:
         labels = dict((n, n) for n in g.nodes() if not str(n).startswith('E'))
-        nx.draw_networkx_labels(g, ax=ax, pos=pos, labels=labels, font_size = graphicOptions.weight_size,
+        nx.draw_networkx_labels(g, ax=ax, pos=pos, labels=labels, font_size = graphicOptions.label_size,
                                 font_color=graphicOptions.label_color, **kwargs)
