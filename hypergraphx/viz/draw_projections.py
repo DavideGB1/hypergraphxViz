@@ -110,10 +110,10 @@ def draw_bipartite(
                 pos_offsetted[k] = (v[0] + offset, v[1])
         nx.draw_networkx_labels(g, ax=ax, pos=pos_offsetted, labels=labels, font_size = graphicOptions.weight_size,
                                 font_color=graphicOptions.label_color)
-    ax.set_aspect('equal')
+    ax.set_aspect('auto')
     ax.autoscale(enable=True, axis='both')
     ax.axis("off")
-
+    plt.tight_layout()
 
 @__ignore_unused_args
 def draw_clique(
@@ -199,9 +199,10 @@ def draw_clique(
         nx.draw_networkx_labels(G=g, pos=pos, ax=ax, labels=labels, font_size=graphicOptions.label_size,
                                 font_color=graphicOptions.label_color, **kwargs)
 
-    ax.set_aspect('equal')
+    ax.set_aspect('auto')
     ax.axis("off")
     ax.autoscale(enable=True, axis='both')
+    plt.tight_layout()
     return pos
 
 @__ignore_unused_args
@@ -306,9 +307,10 @@ def draw_extra_node(
     __draw_in_plot(g, pos, u = u,mapping = mapping, col = col, ax = ax, show_edge_nodes=show_edge_nodes, draw_labels=draw_labels,
                    graphicOptions = graphicOptions,isDirected=isinstance(h, DirectedHypergraph), isWeighted = hypergraph.is_weighted(), **kwargs)
 
-    ax.set_aspect('equal')
+    ax.set_aspect('auto')
     ax.autoscale(enable=True, axis='both')
     ax.axis("off")
+    plt.tight_layout()
     return pos
 
 def __edges_graph_creation(hyperedges_relations: dict, edgeList: list, drawing: bool = False) -> dict:

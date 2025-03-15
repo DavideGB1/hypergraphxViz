@@ -278,3 +278,4 @@ def draw_radial_layout(
     ax.set_ylim([-max_y-1,max_y+1])
     ax.axis("off")
     plt.axis("off")
+    plt.tight_layout()

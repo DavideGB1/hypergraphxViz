@@ -264,7 +264,10 @@ class GraphicOptionsWidget(QWidget):
             def spinBox_selection_ns():
                 if self.balance_n_l_size.isChecked():
                     ls = spinbox.get_val()/30
-                    self.label_size_spinbox.spinBox.setValue(ls)
+                    try:
+                        self.label_size_spinbox.spinBox.setValue(ls)
+                    except Exception:
+                        pass
                 self.graphic_options.__setattr__(name, spinbox.get_val())
                 self.send_data()
             spinbox.update_status.connect(spinBox_selection_ns)
@@ -273,7 +276,10 @@ class GraphicOptionsWidget(QWidget):
             def spinBox_selection_ls():
                 if self.balance_n_l_size.isChecked():
                     ns = spinbox.get_val()*30
-                    self.node_size_spinbox.spinBox.setValue(ns)
+                    try:
+                        self.node_size_spinbox.spinBox.setValue(ns)
+                    except Exception:
+                        pass
                 self.graphic_options.__setattr__(name, spinbox.get_val())
                 self.send_data()
             spinbox.update_status.connect(spinBox_selection_ls)

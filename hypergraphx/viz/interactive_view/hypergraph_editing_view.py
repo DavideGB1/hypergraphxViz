@@ -1,5 +1,3 @@
-import ast
-
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QMainWindow, QToolBar, \
     QAction, QFileDialog, QMessageBox, QDialog, QVBoxLayout, QLabel, QSpinBox, QPlainTextEdit, QPushButton, \
@@ -22,13 +20,7 @@ class ValidationDelegate(QStyledItemDelegate):
             validator = QtGui.QDoubleValidator(-10000000, 10000000,6, editor)
             editor.setValidator(validator)
         return editor
-class ValidationDelegate(QStyledItemDelegate):
-    def createEditor(self, parent, option, index):
-        editor = super().createEditor(parent, option, index)
-        if isinstance(editor, QtWidgets.QLineEdit):
-            validator = QtGui.QDoubleValidator(-10000000, 10000000,6, editor)
-            editor.setValidator(validator)
-        return editor
+
 
 class HypergraphTable(QTableWidget):
     update_status = pyqtSignal(dict)
@@ -38,6 +30,7 @@ class HypergraphTable(QTableWidget):
         self.valid_col = 1
         self.use_nodes = nodes
         self.old_values = dict()
+        self.hypergraph = hypergraph
         self.update_table(hypergraph)
         # Table will fit the screen horizontally
         self.horizontalHeader().setStretchLastSection(True)
@@ -93,6 +86,7 @@ class HypergraphTable(QTableWidget):
             self.update_table_nodes(hypergraph)
         else:
             self.update_table_eges(hypergraph)
+        self.hypergraph = hypergraph
 
     def check_new_cell_value(self, item):
         txt = ""
@@ -106,8 +100,21 @@ class HypergraphTable(QTableWidget):
                 self.old_values[item.row(), item.column()] = txt
             self.last_changes = not self.last_changes
             item.setText(txt)
+            if self.use_nodes:
+                node = str_to_int_or_float(self.itemAt(item.row(), 0).text())
+                self.hypergraph.set_node_metadata(node,val)
+            else:
+                edge = list(str_to_tuple(self.itemAt(item.row(), 0).text()))
+                edge = sorted(edge)
+                self.hypergraph.set_edge_metadata(list(edge), val)
         else:
             self.last_changes = not self.last_changes
+        if item.column() != self.valid_col and item.column() == 1:
+            if self.hypergraph.is_weighted():
+                edge = list(str_to_tuple(self.itemAt(item.row(), 0).text()))
+                weight = str_to_int_or_float(item.text())
+                self.hypergraph.set_weight(edge,weight)
+                self.update_status.emit({})
 
 class ModifyHypergraphMenu(QMainWindow):
     updated_hypergraph = pyqtSignal(dict)
@@ -119,7 +126,7 @@ class ModifyHypergraphMenu(QMainWindow):
         self._createToolBar()
         self.nodes_tab = HypergraphTable(self.hypergraph)
         self.edges_tab = HypergraphTable(self.hypergraph, False)
-
+        self.edges_tab.update_status.connect(self.changed_weights)
         self.vertical_tab.addTab(self.nodes_tab, "Nodes")
         self.vertical_tab.addTab(self.edges_tab, "Edges")
         self.vertical_tab.currentChanged.connect(self._change_name)
@@ -387,10 +394,11 @@ class ModifyHypergraphMenu(QMainWindow):
                 pass
 
     def update_hypergraph(self):
-        self.edges_tab.update_table(self.hypergraph)
-        self.nodes_tab.update_table(self.hypergraph)
-
-        self.updated_hypergraph.emit({ "hypergraph": self.hypergraph})
+            self.edges_tab.update_table(self.hypergraph)
+            self.nodes_tab.update_table(self.hypergraph)
+            self.updated_hypergraph.emit({ "hypergraph": self.hypergraph})
+    def changed_weights(self):
+        self.updated_hypergraph.emit({"hypergraph": self.hypergraph})
 
 def str_to_dict(string: str):
     dict = {}
@@ -405,6 +413,10 @@ def str_to_dict(string: str):
             pass
     return dict
 def str_to_tuple(string: str):
+    string = string.removeprefix("(")
+    string = string.removesuffix(")")
+    string = string.replace("'","")
+    string = string.replace(", ",",")
     res = string.split(",")
     vals = []
     for val in res:

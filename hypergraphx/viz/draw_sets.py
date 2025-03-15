@@ -354,4 +354,5 @@ def draw_sets(
     ax.axis("off")
     plt.axis("equal")
     plt.axis("off")
+    plt.tight_layout()
     return pos
