@@ -28,6 +28,8 @@ class PAOHOptionsWidget(QWidget):
         """
         dict = {"space_optimization": self.space_optimization}
         self.modified_options.emit(dict)
+    def get_options(self):
+        return {"space_optimization": self.space_optimization}
 
 class RadialOptionsWidget(QWidget):
     modified_options = pyqtSignal(dict)
@@ -45,6 +47,8 @@ class RadialOptionsWidget(QWidget):
         """
         dict = {"draw_labels": self.labels_button.button.isChecked()}
         self.modified_options.emit(dict)
+    def get_options(self):
+        return {"draw_labels": self.labels_button.button.isChecked()}
 
 class CliqueOptionsWidget(QWidget):
     modified_options = pyqtSignal(dict)
@@ -74,6 +78,13 @@ class CliqueOptionsWidget(QWidget):
                 "use_last": self.use_last}
         self.modified_options.emit(dict)
         self.use_last = True
+    def get_options(self):
+        try:
+            self.use_last = dict["use_last"]
+        except KeyError:
+            self.use_last = True
+        return {"draw_labels": self.labels_button.button.isChecked(), "iterations": int(self.iterations_selector.spinbox.value()),
+                "use_last": self.use_last}
 
 class ExtraNodeOptionsWidget(QWidget):
     modified_options = pyqtSignal(dict)
@@ -137,6 +148,9 @@ class ExtraNodeOptionsWidget(QWidget):
                 "show_edge_nodes": self.show_edge_nodes, "ignore_binary_relations": self.ignore_binary_relations, "respect_planarity": self.ignore_planarity,}
         self.modified_options.emit(dict)
         self.use_last = True
+    def get_options(self):
+        return {"draw_labels": self.labels_button.button.isChecked(), "iterations": int(self.iterations_selector.spinbox.value()), "use_last": self.use_last,
+                "show_edge_nodes": self.show_edge_nodes, "ignore_binary_relations": self.ignore_binary_relations, "respect_planarity": self.ignore_planarity,}
 
 class BipartiteOptionsWidget(QWidget):
     modified_options = pyqtSignal(dict)
@@ -166,6 +180,8 @@ class BipartiteOptionsWidget(QWidget):
         """
         dict = {"align": self.alignment, "draw_labels": self.labels_button.button.isChecked()}
         self.modified_options.emit(dict)
+    def get_options(self):
+        return {"align": self.alignment, "draw_labels": self.labels_button.button.isChecked()}
 
 class SetOptionsWidget(QWidget):
     modified_options = pyqtSignal(dict)
@@ -195,3 +211,5 @@ class SetOptionsWidget(QWidget):
         """
         dict = {"rounded_polygon":self.rounded_polygons_btn.isChecked(),"draw_labels": self.labels_button.button.isChecked()}
         self.modified_options.emit(dict)
+    def get_options(self):
+        return {"rounded_polygon":self.rounded_polygons_btn.isChecked(),"draw_labels": self.labels_button.button.isChecked()}

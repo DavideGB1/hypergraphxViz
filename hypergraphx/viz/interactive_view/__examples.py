@@ -1,10 +1,6 @@
 from copy import deepcopy
-
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QPushButton, QAction
-
+from PyQt5.QtWidgets import QAction
 from hypergraphx import Hypergraph, DirectedHypergraph
-
 
 def examples_generator():
     examples = dict()

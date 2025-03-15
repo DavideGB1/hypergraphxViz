@@ -1,11 +1,4 @@
-from copy import deepcopy, copy
-from types import NoneType
-
 from PyQt5.QtCore import pyqtSignal, Qt
-from pandas.core.computation.ops import isnumeric
-
-from hypergraphx.readwrite.save import save_hypergraph
-import hypergraphx
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QMainWindow, QToolBar, \
     QAction, QFileDialog, QMessageBox, QDialog, QVBoxLayout, QLabel, QSpinBox, QPlainTextEdit, QPushButton, \
     QMenu, QMenuBar, QTextEdit, QLineEdit
@@ -72,7 +65,7 @@ class HypergraphTable(QTableWidget):
 class ModifyHypergraphMenu(QMainWindow):
     updated_hypergraph = pyqtSignal(dict)
 
-    def __init__(self, hypergraph,parent = None):
+    def __init__(self, hypergraph):
         super(ModifyHypergraphMenu, self).__init__()
         self.vertical_tab = VerticalTabWidget()
         self.hypergraph = hypergraph
@@ -149,7 +142,7 @@ class ModifyHypergraphMenu(QMainWindow):
                     self.hypergraph.remove_node(int(self.vertical_tab.currentWidget().currentItem().text()), True)
             else:
                 self.hypergraph.remove_edge(eval(self.vertical_tab.currentWidget().currentItem().text()))
-        except Exception as e:
+        except Exception:
             pass
         self.vertical_tab.currentWidget().remove_row()
         self.update_hypergraph()

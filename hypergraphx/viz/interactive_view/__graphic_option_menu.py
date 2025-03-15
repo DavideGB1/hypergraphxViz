@@ -1,5 +1,4 @@
 from copy import deepcopy
-from enum import Enum
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QWidget, QVBoxLayout
 from hypergraphx.viz.__graphic_options import GraphicOptions
@@ -161,7 +160,7 @@ class GraphicOptionsWidget(QWidget):
         except TypeError:
             pass
 
-        for attribute_name in attributes:
+        for attribute_name in attributes.keys():
             if attribute_name in relevant:
                 if "color" in attribute_name:
                     self.add_color_picker(attribute_name, attributes[attribute_name])
