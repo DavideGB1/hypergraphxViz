@@ -1,15 +1,17 @@
 from typing import Optional
+
 import matplotlib.pyplot as plt
 import networkx as nx
 from networkx import is_planar, planar_layout
-from __support import __filter_hypergraph, __ignore_unused_args, _get_community_info, _get_node_community, \
+
+from hypergraphx.viz.__support import __filter_hypergraph, __ignore_unused_args, _get_community_info, _get_node_community, \
     _draw_node_community
 from hypergraphx import Hypergraph, DirectedHypergraph
-from hypergraphx.measures.degree import degree_sequence
 from hypergraphx.representations.projections import (
     bipartite_projection,
     clique_projection, extra_node_projection)
 from hypergraphx.viz.__graphic_options import GraphicOptions
+
 
 @__ignore_unused_args
 def draw_bipartite(
@@ -207,6 +209,7 @@ def draw_extra_node(
     h: Hypergraph,
     u = None,
     k = 2,
+    weight_positioning=0,
     respect_planarity = False,
     cardinality: tuple[int,int]|int = -1,
     x_heaviest: float = 1.0,
@@ -273,6 +276,16 @@ def draw_extra_node(
             g.remove_edge(*binary_edge)
         isolated = list(nx.isolates(g))
         g.remove_nodes_from(isolated)
+    if hypergraph.is_weighted():
+        for edge in g.edges():
+            weight = g.get_edge_data(edge[0], edge[1])['weight']
+            match weight_positioning:
+                case 0:
+                    g[edge[0]][edge[1]]['weight'] = 1
+                case 1:
+                    pass
+                case 2:
+                    g[edge[0]][edge[1]]['weight'] = 1 / weight
     if pos is None:
         if is_planar(g) and respect_planarity:
             pos = planar_layout(g)

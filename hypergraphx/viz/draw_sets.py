@@ -1,13 +1,13 @@
 import math
 import random
 from typing import Optional
+
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-from networkx import kamada_kawai_layout
+from networkx import kamada_kawai_layout, spring_layout
+
 from hypergraphx import Hypergraph
-from hypergraphx.communities.hy_sc.model import HySC
-from hypergraphx.readwrite import load_hypergraph
 from hypergraphx.representations.projections import clique_projection
 from hypergraphx.viz.__graphic_options import GraphicOptions
 from hypergraphx.viz.__support import __ignore_unused_args, __filter_hypergraph, _get_node_community, \
@@ -139,6 +139,7 @@ def draw_sets(
     hypergraph: Hypergraph,
     u = None,
     k = 0,
+    weight_positioning = 0,
     cardinality: tuple[int, int] | int = -1,
     x_heaviest: float = 1.0,
     draw_labels: bool = True,
@@ -204,15 +205,29 @@ def draw_sets(
 
     #Filter the Hypergraph nodes and edges
     hypergraph = __filter_hypergraph(hypergraph, cardinality, x_heaviest)
-    isolated = hypergraph.isolated_nodes()
-    for node in isolated:
-        hypergraph.remove_node(node)
+    try:
+        for node in hypergraph.isolated_nodes():
+            hypergraph.remove_node(node)
+    except AttributeError:
+        pass
+
     if graphicOptions is None:
         graphicOptions = GraphicOptions()
     # Extract node positions based on the hypergraph clique projection.
     if pos is None:
         g = clique_projection(hypergraph)
-        pos = kamada_kawai_layout(g, scale=scale)
+        if hypergraph.is_weighted():
+            for edge in g.edges():
+                weight = g.get_edge_data(edge[0], edge[1])['weight']
+                match weight_positioning:
+                    case 0:
+                        g[edge[0]][edge[1]]['weight'] = 1
+                    case 1:
+                        pass
+                    case 2:
+                        g[edge[0]][edge[1]]['weight'] = 1 / weight
+        first_pos = kamada_kawai_layout(g, scale=scale)
+        pos = spring_layout(g,pos=first_pos, iterations=1000)
 
 
     # Set color hyperedges of size > 2 (order > 1).
@@ -228,7 +243,15 @@ def draw_sets(
     G = nx.Graph()
     G.add_nodes_from(hypergraph.get_nodes())
     for e in edges:
-        G.add_edge(e[0], e[1], weight = hypergraph.get_weight(e))
+        weight = hypergraph.get_weight(e)
+        match weight_positioning:
+            case 0:
+                weight = 1
+            case 1:
+                pass
+            case 2:
+                weight = 1/weight
+        G.add_edge(e[0], e[1], weight = weight, original_weight = hypergraph.get_weight(e))
 
     #Ensure that all the nodes and binary edges have the graphical attributes specified
     graphicOptions.check_if_options_are_valid(G)
@@ -299,7 +322,7 @@ def draw_sets(
         nx.draw_networkx_edges(G, pos, edgelist=[edge], width=graphicOptions.edge_size[edge],
                                edge_color=graphicOptions.edge_color[edge], ax=ax, **kwargs)
     if hypergraph.is_weighted():
-        labels = nx.get_edge_attributes(G, 'weight')
+        labels = nx.get_edge_attributes(G, 'original_weight')
         pos_higher = {}
         y_off = 0.1
         for k, v in pos.items():
