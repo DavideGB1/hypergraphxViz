@@ -1,6 +1,7 @@
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QCheckBox
-from hypergraphx.viz.interactive_view.custom_widgets import LabelButton, IterationsSelector
+from hypergraphx.viz.interactive_view.custom_widgets import LabelButton, IterationsSelector, ComboBoxCustomWindget, \
+    SpinboxCustomWindget
 
 
 class PAOHOptionsWidget(QWidget):
@@ -191,7 +192,10 @@ class SetOptionsWidget(QWidget):
         self.rounded_polygons = True
         self.labels_button = LabelButton()
         self.labels_button.update_status.connect(self.send_data)
-
+        self.iterations_selector = IterationsSelector()
+        self.iterations_selector.changed_value.connect(self.send_data)
+        self.scale_spinbox= SpinboxCustomWindget("Scale Factor",0.1,100,1,"scale_factor", 2,0.1)
+        self.scale_spinbox.update_status.connect(self.send_data)
         self.rounded_polygons_btn = QCheckBox("Draw Rounded Polygons")
         def rounded_polygons():
             if self.rounded_polygons:
@@ -205,11 +209,16 @@ class SetOptionsWidget(QWidget):
 
         self.widget_list.append(self.labels_button.button)
         self.widget_list.append(self.rounded_polygons_btn)
+        self.widget_list.append(self.iterations_selector)
+        self.widget_list.append(self.scale_spinbox)
+
     def send_data(self) -> None:
         """
         Sends the modified options to the main menu.
         """
-        dict = {"rounded_polygon":self.rounded_polygons_btn.isChecked(),"draw_labels": self.labels_button.button.isChecked()}
+        dict = {"rounded_polygon":self.rounded_polygons_btn.isChecked(),"draw_labels": self.labels_button.button.isChecked(),
+                "iterations": int(self.iterations_selector.spinbox.value()), "scale": self.scale_spinbox.spinBox.value()}
         self.modified_options.emit(dict)
     def get_options(self):
-        return {"rounded_polygon":self.rounded_polygons_btn.isChecked(),"draw_labels": self.labels_button.button.isChecked()}
+        return {"rounded_polygon":self.rounded_polygons_btn.isChecked(),"draw_labels": self.labels_button.button.isChecked(),
+                "iterations": int(self.iterations_selector.spinbox.value()), "scale": self.scale_spinbox.spinBox.value()}

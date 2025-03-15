@@ -148,6 +148,7 @@ def draw_sets(
     hyperedge_facecolor_by_order: Optional[dict] = None,
     hyperedge_alpha: float | dict = 0.8,
     scale: int = 1,
+    iterations: int = 1000,
     rounding_radius_size: float = 0.1,
     polygon_expansion_factor: float = 1.8,
     pos: Optional[dict] = None,
@@ -227,7 +228,7 @@ def draw_sets(
                     case 2:
                         g[edge[0]][edge[1]]['weight'] = 1 / weight
         first_pos = kamada_kawai_layout(g, scale=scale)
-        pos = spring_layout(g,pos=first_pos, iterations=1000)
+        pos = spring_layout(g,pos=first_pos, iterations=iterations)
 
 
     # Set color hyperedges of size > 2 (order > 1).

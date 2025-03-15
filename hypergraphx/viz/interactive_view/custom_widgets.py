@@ -104,7 +104,7 @@ class SpinboxCustomWindget(QWidget):
         self.spinBox.setSingleStep(step)
         self.hbox = QHBoxLayout()
         def spinBox_selection():
-            self.update_status.emit({shadow_name: int(self.spinBox.value())})
+            self.update_status.emit({shadow_name: self.spinBox.value()})
 
         self.spinBox.valueChanged.connect(spinBox_selection)
         self.hbox.addWidget(self.label)
