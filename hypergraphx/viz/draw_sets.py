@@ -348,7 +348,7 @@ def draw_sets(
             )
         else:
             wedge_sizes, wedge_colors = _get_node_community(mapping,node, u, col,0.1)
-            _draw_node_community(ax, node, center=pos[node], radius = graphicOptions.node_size[node]/7000,wedge_sizes= wedge_sizes, wedge_colors = wedge_colors, graphicOptions = graphicOptions )
+            _draw_node_community(ax, node, pos[node], wedge_sizes, wedge_colors, graphicOptions, **kwargs)
 
     ax.axis("equal")
     ax.axis("off")

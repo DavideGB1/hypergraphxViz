@@ -176,14 +176,8 @@ def draw_PAOH(
                             markersize=graphicOptions.node_size[node]/20, **kwargs)
                         else:
                             wedge_sizes, wedge_colors = _get_node_community(mapping, node, u, col, 0.1)
-                            if len(wedge_sizes) > 1:
-                                draw_pie_marker(ax,idx,list(node_mapping.values()).index(node),wedge_sizes, wedge_colors, marker_size = graphicOptions.node_size[node]/20,markeredgecolor=graphicOptions.node_facecolor[node] )
-                            else:
-                                ax.plot(idx, list(node_mapping.values()).index(node),
-                                    marker=graphicOptions.node_shape[node],
-                                    color=wedge_colors[0],
-                                    markeredgecolor=graphicOptions.node_facecolor[node],
-                                    markersize=graphicOptions.node_size[node]/20 , **kwargs)
+                            _draw_node_community(ax,node,(idx,list(node_mapping.values()).index(node)),
+                                                 wedge_sizes,wedge_colors, graphicOptions,20,**kwargs)
 
             idx += 0.5
         #Plot the separating line for the timestamps
@@ -250,21 +244,3 @@ def __PAOH_edge_placemente_calculation(l: list)  -> list:
         good_column_set = True
 
     return column_list
-
-def draw_pie_marker(ax, x, y, ratios, colors, marker_size=20, markeredgecolor='None'):
-    if len(ratios) != len(colors):
-        raise ValueError("Number of ratios and colors must be equal.")
-
-    cumulative_ratio = 0
-    for i, ratio in enumerate(ratios):
-        start_angle = cumulative_ratio
-        end_angle = cumulative_ratio + ratio
-
-        x_vals = np.cos(2 * np.pi * np.linspace(start_angle, end_angle))
-        y_vals = np.sin(2 * np.pi * np.linspace(start_angle, end_angle))
-        xy = np.row_stack([[0, 0], np.column_stack([x_vals, y_vals])])
-
-        ax.plot(x, y, marker=xy, ms=marker_size, markerfacecolor=colors[i],
-                markeredgecolor=markeredgecolor, linestyle='None')
-
-        cumulative_ratio = end_angle

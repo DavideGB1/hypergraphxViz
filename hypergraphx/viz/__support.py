@@ -276,9 +276,32 @@ def extract_pie_properties(
     wedge_colors = [colors[k] for k in valid_groups]
     return wedge_sizes, wedge_colors
 
-def _draw_node_community(ax,node, center,radius, wedge_sizes, wedge_colors, graphicOptions):
-    ax.pie(x=wedge_sizes, colors=wedge_colors, center=center, radius=radius,
-           wedgeprops={"edgecolor": graphicOptions.node_facecolor[node]})
+def _draw_node_community(ax, node, center, ratios, colors, graphicOptions,scale=17,**kwargs):
+    if len(ratios) > 1:
+        if len(ratios) != len(colors):
+            raise ValueError("Number of ratios and colors must be equal.")
+
+        cumulative_ratio = 0
+        for i, ratio in enumerate(ratios):
+            start_angle = cumulative_ratio
+            end_angle = cumulative_ratio + ratio
+
+            x_vals = np.cos(2 * np.pi * np.linspace(start_angle, end_angle))
+            y_vals = np.sin(2 * np.pi * np.linspace(start_angle, end_angle))
+            xy = np.row_stack([[0, 0], np.column_stack([x_vals, y_vals])])
+
+            ax.plot(center[0], center[1], marker=xy, ms=graphicOptions.node_size[node]/scale, markerfacecolor=colors[i],
+                    markeredgecolor=graphicOptions.node_facecolor[node])
+
+            cumulative_ratio = end_angle
+    else:
+        ax.plot(center[0], center[1],
+                marker=graphicOptions.node_shape[node],
+                color=colors[0],
+                markeredgecolor=graphicOptions.node_facecolor[node],
+                markersize=graphicOptions.node_size[node] / scale, **kwargs)
+
+
 def _get_community_info(hypergraph, p = 2,col=None,):
     _, mappingID2Name = hypergraph.binary_incidence_matrix(return_mapping=True)
     mappingName2ID = {n: i for i, n in mappingID2Name.items()}

@@ -248,8 +248,8 @@ def draw_radial_layout(
                             markersize=graphicOptions.node_size[node]/30,markeredgecolor=graphicOptions.node_facecolor[node], **kwargs)
                     else:
                         wedge_sizes, wedge_colors = _get_node_community(mapping, node, u, col, 0.1)
-                        _draw_node_community(ax, node, center=(value_x, value_y), radius=graphicOptions.node_size[node]/2100, wedge_sizes=wedge_sizes,
-                                             wedge_colors=wedge_colors, graphicOptions=graphicOptions)
+                        _draw_node_community(ax, node, (value_x, value_y),
+                                             wedge_sizes, wedge_colors, graphicOptions,30, **kwargs)
 
             if hypergraph.is_weighted():
                 start_node = nodes_mapping.transform([edge[-1]])[0]

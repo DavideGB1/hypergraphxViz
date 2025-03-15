@@ -84,7 +84,7 @@ def draw_bipartite(
                             edgecolors = graphicOptions.node_facecolor[node], **kwargs)
         else:
             wedge_sizes, wedge_colors = _get_node_community(mapping,id_to_obj[node], u, col,0.01)
-            _draw_node_community(ax, node, center=pos[node], radius = graphicOptions.node_size[node]/7000,wedge_sizes= wedge_sizes, wedge_colors = wedge_colors, graphicOptions = graphicOptions )
+            _draw_node_community(ax, node, pos[node], wedge_sizes, wedge_colors, graphicOptions, **kwargs)
 
     # Draw nodes that represents edges
     edge_list = [x for x in g.nodes() if x.startswith('E')]
@@ -192,7 +192,7 @@ def draw_clique(
             )
         else:
             wedge_sizes, wedge_colors = _get_node_community(mapping,node, u, col,0.1)
-            _draw_node_community(ax, node, center=pos[node], radius = graphicOptions.node_size[node]/7000,wedge_sizes= wedge_sizes, wedge_colors = wedge_colors, graphicOptions = graphicOptions )
+            _draw_node_community(ax, node, pos[node], wedge_sizes, wedge_colors, graphicOptions, **kwargs)
 
     if draw_labels:
         labels = dict((n, n) for n in g.nodes())
@@ -435,7 +435,7 @@ def __draw_in_plot(
             )
         else:
             wedge_sizes, wedge_colors = _get_node_community(mapping,node, u, col,0.1)
-            _draw_node_community(ax, node, center=pos[node], radius = graphicOptions.node_size[node]/7000,wedge_sizes= wedge_sizes, wedge_colors = wedge_colors, graphicOptions = graphicOptions )
+            _draw_node_community(ax, node, pos[node], wedge_sizes, wedge_colors, graphicOptions, **kwargs)
 
     #Draw nodes that represents edges
     if show_edge_nodes:
