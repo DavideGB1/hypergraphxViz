@@ -239,6 +239,7 @@ class Window(QWidget):
         self.change_focus()
     #Get Support for Options
     def update_hypergraph(self, example = None, hypergraph = None):
+        self.community_model = None
         self.main_layout.removeDockWidget(self.drawing_options_widget)
         self.drawing_options_widget.deleteLater()
         self.drawing_options_widget = None
@@ -258,6 +259,7 @@ class Window(QWidget):
             self.drawing_options_widget = DrawingOptionsDockWidget(weighted= self.hypergraph.is_weighted(),hypergraph_type="temporal",n_nodes=len(self.hypergraph.get_nodes()))
         self.drawing_options_widget.update_value.connect(self.must_change_name)
         self.main_layout.addDockWidget(Qt.RightDockWidgetArea, self.drawing_options_widget)
+        self.drawing_options_widget.update()
         self.change_focus()
         self.use_default()
 

@@ -1,28 +1,53 @@
+import ast
+
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QMainWindow, QToolBar, \
     QAction, QFileDialog, QMessageBox, QDialog, QVBoxLayout, QLabel, QSpinBox, QPlainTextEdit, QPushButton, \
-    QMenu, QMenuBar, QTextEdit, QLineEdit
+    QMenu, QMenuBar, QTextEdit, QLineEdit, QStyledItemDelegate
 from pyqt_vertical_tab_widget import VerticalTabWidget
 import hypergraphx
 from hypergraphx.generation import random_hypergraph
 from hypergraphx.generation.random import random_uniform_hypergraph
 from hypergraphx.readwrite.save import save_hypergraph
 from hypergraphx.viz.interactive_view.__examples import examples_generator
+from PyQt5 import QtCore, QtGui, QtWidgets
 
+class ReadOnlyDelegate(QStyledItemDelegate):
+    def createEditor(self, parent, option, index):
+        return
+class ValidationDelegate(QStyledItemDelegate):
+    def createEditor(self, parent, option, index):
+        editor = super().createEditor(parent, option, index)
+        if isinstance(editor, QtWidgets.QLineEdit):
+            validator = QtGui.QDoubleValidator(-10000000, 10000000,6, editor)
+            editor.setValidator(validator)
+        return editor
+class ValidationDelegate(QStyledItemDelegate):
+    def createEditor(self, parent, option, index):
+        editor = super().createEditor(parent, option, index)
+        if isinstance(editor, QtWidgets.QLineEdit):
+            validator = QtGui.QDoubleValidator(-10000000, 10000000,6, editor)
+            editor.setValidator(validator)
+        return editor
 
 class HypergraphTable(QTableWidget):
     update_status = pyqtSignal(dict)
     def __init__(self, hypergraph, nodes = True  ):
         super(HypergraphTable, self).__init__()
+        self.last_changes = True
+        self.valid_col = 1
         self.use_nodes = nodes
+        self.old_values = dict()
         self.update_table(hypergraph)
         # Table will fit the screen horizontally
         self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.setItemDelegateForColumn(0, ReadOnlyDelegate(self))
+        self.itemChanged.connect(self.check_new_cell_value)
+
     def remove_row(self):
         self.removeRow(self.currentRow())
     def update_table_nodes(self, hypergraph):
-
         num_row = hypergraph.num_nodes()
         num_col = 2
         self.setRowCount(num_row)
@@ -33,6 +58,7 @@ class HypergraphTable(QTableWidget):
         for node in hypergraph.get_nodes():
             self.setItem(curr_row, 0, QTableWidgetItem(str(node)))
             self.setItem(curr_row, 1, QTableWidgetItem(str(hypergraph.get_node_metadata(node))))
+            self.old_values[curr_row,1] = str(hypergraph.get_node_metadata(node))
             curr_row += 1
     def update_table_eges(self, hypergraph):
         num_row = hypergraph.num_edges()
@@ -46,22 +72,43 @@ class HypergraphTable(QTableWidget):
         self.setColumnCount(num_col)
         if hypergraph.is_weighted():
             self.setHorizontalHeaderLabels(['Edge', 'Weight', 'Metadata'])
+            self.valid_col = 2
         else:
             self.setHorizontalHeaderLabels(['Edge', 'Metadata'])
+            self.valid_col = 1
         curr_row = 0
 
         for edge in hypergraph.get_edges():
             self.setItem(curr_row, 0, QTableWidgetItem(str(edge)))
             if hypergraph.is_weighted():
                 self.setItem(curr_row, idx, QTableWidgetItem(str(hypergraph.get_weight(edge))))
+                self.setItemDelegateForColumn(idx, ValidationDelegate(self))
             else:
                 self.setItem(curr_row, idx+1, QTableWidgetItem(str(hypergraph.get_edge_metadata(edge))))
+                self.old_values[curr_row, idx+1] = str(hypergraph.get_edge_metadata(edge))
+
             curr_row += 1
     def update_table(self, hypergraph):
         if self.use_nodes:
             self.update_table_nodes(hypergraph)
         else:
             self.update_table_eges(hypergraph)
+
+    def check_new_cell_value(self, item):
+        txt = ""
+        if item.column() == self.valid_col and self.last_changes:
+            text = item.text()
+            val = str_to_dict(text)
+            if val == {}:
+                txt = self.old_values[item.row(), item.column()]
+            else:
+                txt = str(val)
+                self.old_values[item.row(), item.column()] = txt
+            self.last_changes = not self.last_changes
+            item.setText(txt)
+        else:
+            self.last_changes = not self.last_changes
+
 class ModifyHypergraphMenu(QMainWindow):
     updated_hypergraph = pyqtSignal(dict)
 
@@ -351,7 +398,9 @@ def str_to_dict(string: str):
     for pair in values:
         try:
             k, v = pair.split(":")
-            dict[k.strip()] = v.strip()
+            k = str_to_int_or_float(k.strip())
+            v = str_to_int_or_float(v.strip())
+            dict[k] = v
         except ValueError:
             pass
     return dict
@@ -360,11 +409,17 @@ def str_to_tuple(string: str):
     vals = []
     for val in res:
         try:
-            if val.isnumeric():
-                vals.append(int(val))
-            else:
-                vals.append(val)
+            vals.append(str_to_int_or_float(val))
         except ValueError:
             pass
 
     return tuple(vals)
+
+def str_to_int_or_float(string):
+  try:
+    return int(string)
+  except ValueError:
+    try:
+      return float(string)
+    except ValueError:
+      return string

@@ -1,6 +1,6 @@
 from copy import deepcopy
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QWidget, QVBoxLayout
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QCheckBox
 from hypergraphx.viz.__graphic_options import GraphicOptions
 from hypergraphx.viz.interactive_view.community_options.__community_option_menu import SpinboxCustomWindget
 from hypergraphx.viz.interactive_view.custom_widgets import ComboBoxCustomWindget, ColorPickerCustomWidget
@@ -139,10 +139,16 @@ class GraphicOptionsWidget(QWidget):
     modified_options = pyqtSignal(tuple)
     def __init__(self,graphic_options = GraphicOptions(),extra_attributes = None, relevant = get_PAOH_options(), parent = None):
         super(GraphicOptionsWidget, self).__init__(parent)
+        self.label_size_spinbox = None
+        self.node_size_spinbox = None
+        self.balance_node_label_sizes = True
+        self.balance_n_l_size = QCheckBox("Balance Node and Label Sizes")
+        self.balance_n_l_size.setChecked(True)
         self.graphic_options = deepcopy(graphic_options)
         self.extra_attributes = dict()
         self.extra_attributes = extra_attributes
         self.widget_list = list()
+        self.widget_list.append(self.balance_n_l_size)
         attributes = self.graphic_options.__dict__
         to_remove = [attribute for attribute in attributes if "default" in attribute]
         for attribute in to_remove:
@@ -159,7 +165,6 @@ class GraphicOptionsWidget(QWidget):
             attributes.update(extra_attributes)
         except TypeError:
             pass
-
         for attribute_name in attributes.keys():
             if attribute_name in relevant:
                 if "color" in attribute_name:
@@ -254,13 +259,31 @@ class GraphicOptionsWidget(QWidget):
             spinbox = SpinboxCustomWindget(GraphicOptionsName[name].value, 1,1000000000,value, name)
         else:
             spinbox = SpinboxCustomWindget("", 0,1,value, "", 2, 0.1)
-
-        def spinBox_selection():
-            if in_extra:
-                self.extra_attributes[name] = spinbox.get_val()
-            else:
+        if name == "node_size":
+            self.node_size_spinbox = spinbox
+            def spinBox_selection_ns():
+                if self.balance_n_l_size.isChecked():
+                    ls = spinbox.get_val()/30
+                    self.label_size_spinbox.spinBox.setValue(ls)
                 self.graphic_options.__setattr__(name, spinbox.get_val())
-            self.send_data()
+                self.send_data()
+            spinbox.update_status.connect(spinBox_selection_ns)
+        if name == "label_size":
+            self.label_size_spinbox = spinbox
+            def spinBox_selection_ls():
+                if self.balance_n_l_size.isChecked():
+                    ns = spinbox.get_val()*30
+                    self.node_size_spinbox.spinBox.setValue(ns)
+                self.graphic_options.__setattr__(name, spinbox.get_val())
+                self.send_data()
+            spinbox.update_status.connect(spinBox_selection_ls)
+        else:
+            def spinBox_selection():
+                if in_extra:
+                    self.extra_attributes[name] = spinbox.get_val()
+                else:
+                    self.graphic_options.__setattr__(name, spinbox.get_val())
+                self.send_data()
+            spinbox.update_status.connect(spinBox_selection)
 
-        spinbox.update_status.connect(spinBox_selection)
         self.widget_list.append(spinbox)
