@@ -1,6 +1,31 @@
 from hypergraphx import Hypergraph
 
 
+def _canon_edge(edge):
+    edge = tuple(edge)
+
+    if len(edge) == 2:
+        if isinstance(edge[0], tuple) and isinstance(edge[1], tuple):
+            # Sort the inner tuples and return
+            return (tuple(sorted(edge[0])), tuple(sorted(edge[1])))
+        elif not isinstance(edge[0], tuple) and not isinstance(edge[1], tuple):
+            # Sort the edge itself if it contains IDs (non-tuple elements)
+            return tuple(sorted(edge))
+
+    return tuple(sorted(edge))
+
+
+def _get_size(edge):
+    if len(edge) == 2 and isinstance(edge[0], tuple) and isinstance(edge[1], tuple):
+        return len(edge[0]) + len(edge[1])
+    else:
+        return len(edge)
+
+
+def _get_order(edge):
+    return _get_size(edge) - 1
+
+
 class TemporalHypergraph:
     """
     A Temporal Hypergraph is a hypergraph where each hyperedge is associated with a specific timestamp.
@@ -98,6 +123,25 @@ class TemporalHypergraph:
         self._adj = adj_dict
 
     def get_incident_edges(self, node):
+        """
+        Get the edges incident to a node.
+
+        Parameters
+        ----------
+        node: object
+            The node to get the incident edges for.
+
+        Returns
+        -------
+        list
+            A list of edges incident to the node.
+
+        Raises
+        ------
+        ValueError
+            If the node is not in the hypergraph.
+
+        """
         if node not in self._adj:
             raise ValueError("Node {} not in hypergraph.".format(node))
         return [self._reverse_edge_list[e_id] for e_id in self._adj[node]]
@@ -128,12 +172,14 @@ class TemporalHypergraph:
         return self._node_metadata
 
     def set_edge_metadata(self, edge, metadata):
+        edge = _canon_edge(edge)
         if edge not in self._edge_list:
             raise ValueError("Edge {} not in hypergraph.".format(edge))
         e_id = self._edge_list[edge]
         self._edge_metadata[e_id] = metadata
 
     def get_edge_metadata(self, edge, time):
+        edge = _canon_edge(edge)
         k = (time, edge)
         if k not in self._edge_list:
             raise ValueError("Edge {} not in hypergraph.".format(edge))
@@ -173,12 +219,14 @@ class TemporalHypergraph:
         return self._weighted
 
     def get_weight(self, edge, time):
+        edge = _canon_edge(edge)
         if (time, edge) not in self._edge_list:
             raise ValueError("Edge {} not in hypergraph.".format(edge))
         e_id = self._edge_list[(time, edge)]
         return self._weights[e_id]
 
     def set_weight(self, edge, time, weight):
+        edge = _canon_edge(edge)
         if not self._weighted and weight != 1:
             raise ValueError(
                 "If the hypergraph is not weighted, weight can be 1 or None."
@@ -193,7 +241,60 @@ class TemporalHypergraph:
             return self._node_metadata
         return list(self._node_metadata.keys())
 
+    def get_times_for_edge(self, edge):
+        edge = _canon_edge(edge)
+        times = []
+        for time, _edge in self._edge_list.keys():
+            if _edge == edge:
+                times.append(time)
+        return times
+
+    def get_sizes(self):
+        """
+        Get the size of each edge in the hypergraph.
+
+        Returns
+        -------
+        list
+            A list of integers representing the size of each edge.
+        """
+        return [_get_size(edge[1]) for edge in self._edge_list.keys()]
+
+    def get_orders(self):
+        """
+        Get the order of each edge in the hypergraph.
+
+        Returns
+        -------
+        list
+            A list of integers representing the order of each edge.
+        """
+        return [_get_order(edge[1]) for edge in self._edge_list.keys()]
+
     def add_edge(self, edge, time, weight=None, metadata=None):
+        """
+        Add an edge to the temporal hypergraph. If the edge already exists, the weight is updated.
+
+        Parameters
+        ----------
+        edge : tuple
+            The edge to add. If the hypergraph is undirected, should be a tuple.
+            If the hypergraph is directed, should be a tuple of two tuples.
+        time: int
+            The time at which the edge occurs.
+        weight: float, optional
+            The weight of the edge. Default is None.
+
+        metadata: dict, optional
+            Metadata for the edge. Default is an empty dictionary.
+
+        Raises
+        ------
+        TypeError
+            If time is not an integer.
+        ValueError
+            If the hypergraph is not weighted and weight is not None or 1.
+        """
         if not isinstance(time, int):
             raise TypeError("Time must be an integer")
 
@@ -209,7 +310,7 @@ class TemporalHypergraph:
         if t < 0:
             raise ValueError("Time must be a positive integer")
 
-        _edge = tuple(sorted(edge))
+        _edge = _canon_edge(edge)
         edge = (t, _edge)
 
         if edge not in self._edge_list:
@@ -247,6 +348,7 @@ class TemporalHypergraph:
         ValueError
             If the edge is not in the hypergraph.
         """
+        _edge = _canon_edge(edge)
         if edge not in self._edge_list:
             raise ValueError(f"Edge {edge} not in hypergraph.")
 
@@ -311,6 +413,27 @@ class TemporalHypergraph:
             del self._node_metadata[node]
 
     def add_edges(self, edge_list, time_list, weights=None, metadata=None):
+        """
+        Add multiple edges to the temporal hypergraph.
+
+        Parameters
+        ----------
+        edge_list: list
+            A list of edges to add.
+        time_list: list
+            A list of times corresponding to each edge in `edge_list`.
+        weights: list, optional
+            A list of weights for each edge in `edge_list`. Must be provided if the hypergraph is weighted.
+        metadata: list, optional
+            A list of metadata dictionaries for each edge in `edge_list`.
+
+        Raises
+        ------
+        TypeError
+            If `edge_list` and `time_list` are not lists.
+        ValueError
+            If `edge_list` and `time_list` have mismatched lengths.
+        """
         if not isinstance(edge_list, list) or not isinstance(time_list, list):
             raise TypeError("Edge list and time list must be lists")
 
@@ -345,6 +468,21 @@ class TemporalHypergraph:
                 i += 1
 
     def get_edges(self, time_window=None, metadata=False):
+        """
+        Get the edges in the temporal hypergraph. If a time window is provided, only edges within the window are returned.
+
+        Parameters
+        ----------
+        time_window: tuple, optional
+            A tuple of two integers representing the start and end times of the window.
+        metadata: bool, optional
+            If True, return edge metadata. Default is False.
+
+        Returns
+        -------
+        list
+            A list of edges in the hypergraph.
+        """
         edges = []
         if time_window is None:
             if metadata:
@@ -433,7 +571,7 @@ class TemporalHypergraph:
         self._node_metadata[node][field] = value
 
     def set_attr_to_edge_metadata(self, edge, time, field, value):
-        edge = tuple(sorted(edge))
+        _edge = _canon_edge(edge)
         if edge not in self._edge_metadata:
             raise ValueError("Edge {} not in hypergraph.".format(edge))
         self._edge_metadata[self._edge_list[(time, edge)]][field] = value
@@ -444,10 +582,20 @@ class TemporalHypergraph:
         del self._node_metadata[node][field]
 
     def remove_attr_from_edge_metadata(self, edge, time, field):
-        edge = tuple(sorted(edge))
+        _edge = _canon_edge(edge)
         if edge not in self._edge_metadata:
             raise ValueError("Edge {} not in hypergraph.".format(edge))
         del self._edge_metadata[self._edge_list[(time, edge)]][field]
+
+    def degree(self, node, order=None, size=None):
+        from hypergraphx.measures.degree import degree
+
+        return degree(self, node, order=order, size=size)
+
+    def degree_sequence(self, order=None, size=None):
+        from hypergraphx.measures.degree import degree_sequence
+
+        return degree_sequence(self, order=order, size=size)
 
     def expose_data_structures(self):
         """

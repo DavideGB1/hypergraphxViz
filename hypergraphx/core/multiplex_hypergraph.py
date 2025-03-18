@@ -1,6 +1,20 @@
 from hypergraphx import Hypergraph
 
 
+def _canon_edge(edge):
+    edge = tuple(edge)
+
+    if len(edge) == 2:
+        if isinstance(edge[0], tuple) and isinstance(edge[1], tuple):
+            # Sort the inner tuples and return
+            return (tuple(sorted(edge[0])), tuple(sorted(edge[1])))
+        elif not isinstance(edge[0], tuple) and not isinstance(edge[1], tuple):
+            # Sort the edge itself if it contains IDs (non-tuple elements)
+            return tuple(sorted(edge))
+
+    return tuple(sorted(edge))
+
+
 class MultiplexHypergraph:
     """
     A Multiplex Hypergraph is a hypergraph where hyperedges are organized into multiple layers.
@@ -99,6 +113,16 @@ class MultiplexHypergraph:
         if node not in self._adj:
             raise ValueError("Node {} not in hypergraph.".format(node))
         return [self._reverse_edge_list[e_id] for e_id in self._adj[node]]
+
+    def degree(self, node, order=None, size=None):
+        from hypergraphx.measures.degree import degree
+
+        return degree(self, node, order=order, size=size)
+
+    def degree_sequence(self, order=None, size=None):
+        from hypergraphx.measures.degree import degree_sequence
+
+        return degree_sequence(self, order=order, size=size)
 
     def get_edge_metadata(self, edge, layer):
         edge = tuple(sorted(edge))
@@ -259,7 +283,7 @@ class MultiplexHypergraph:
 
         self._existing_layers.add(layer)
 
-        edge = tuple(sorted(edge))
+        edge = _canon_edge(edge)
         k = (edge, layer)
         order = len(edge) - 1
 
@@ -299,6 +323,7 @@ class MultiplexHypergraph:
         ValueError
             If the edge is not in the hypergraph.
         """
+        edge = _canon_edge(edge)
         if edge not in self._edge_list:
             raise ValueError(f"Edge {edge} not in hypergraph.")
 
@@ -371,7 +396,8 @@ class MultiplexHypergraph:
             return list(self._edge_list.keys())
 
     def get_weight(self, edge, layer):
-        k = (tuple(sorted(edge)), layer)
+        edge = _canon_edge(edge)
+        k = (edge, layer)
         if k not in self._edge_list:
             raise ValueError("Edge {} not in hypergraph.".format(k))
         else:
@@ -383,7 +409,7 @@ class MultiplexHypergraph:
                 "If the hypergraph is not weighted, weight can be 1 or None."
             )
 
-        k = (tuple(sorted(edge)), layer)
+        k = (_canon_edge(edge), layer)
         if k not in self._edge_list:
             raise ValueError("Edge {} not in hypergraph.".format(edge))
         else:
@@ -433,7 +459,7 @@ class MultiplexHypergraph:
         self._node_metadata[node][field] = value
 
     def set_attr_to_edge_metadata(self, edge, layer, field, value):
-        edge = tuple(sorted(edge))
+        edge = _canon_edge(edge)
         if edge not in self._edge_metadata:
             raise ValueError("Edge {} not in hypergraph.".format(edge))
         self._edge_metadata[self._edge_list[(edge, layer)]][field] = value
@@ -444,7 +470,7 @@ class MultiplexHypergraph:
         del self._node_metadata[node][field]
 
     def remove_attr_from_edge_metadata(self, edge, layer, field):
-        edge = tuple(sorted(edge))
+        edge = _canon_edge(edge)
         if edge not in self._edge_metadata:
             raise ValueError("Edge {} not in hypergraph.".format(edge))
         del self._edge_metadata[self._edge_list[(edge, layer)]][field]
