@@ -6,8 +6,10 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 from networkx import kamada_kawai_layout, spring_layout
+from scipy.spatial import ConvexHull
 
 from hypergraphx import Hypergraph
+from hypergraphx.readwrite import load_hypergraph
 from hypergraphx.representations.projections import clique_projection
 from hypergraphx.viz.__graphic_options import GraphicOptions
 from hypergraphx.viz.__support import __ignore_unused_args, __filter_hypergraph, _get_node_community, \
@@ -228,7 +230,10 @@ def draw_sets(
                     case 2:
                         g[edge[0]][edge[1]]['weight'] = 1 / weight
         first_pos = kamada_kawai_layout(g, scale=scale)
-        pos = spring_layout(g,pos=first_pos, iterations=iterations)
+        if first_pos != {}:
+            pos = spring_layout(g,pos=first_pos, iterations=iterations)
+        else:
+            pos = spring_layout(g, iterations=iterations)
 
 
     # Set color hyperedges of size > 2 (order > 1).
@@ -304,6 +309,12 @@ def draw_sets(
                 points = [
                     (x_c + polygon_expansion_factor * (x - x_c), y_c + polygon_expansion_factor * (y - y_c), a, b) for x, y, a, b in points
                 ]
+                if len(points) >= 5:
+                    points_dict = {(a,b) :(c,d) for (a,b,c,d) in points}
+                    points_2d = [(a,b) for a,b,c,d in points]
+                    hull = ConvexHull(points_2d)
+                    hull_points = [ (hull.points[x][0],hull.points[x][1]) for x in hull.vertices]
+                    points = [(a,b,points_dict[(a,b)][0],points_dict[(a,b)][1]) for a,b in hull_points]
                 _draw_hyperedge_set(points, rounding_radius_size, hyperedge_alpha[hye], color, facecolor, ax)
             else:
                 #Draw the hyperedge as a normal polygon with the vertexes in the points
