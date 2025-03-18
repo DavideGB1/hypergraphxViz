@@ -1,6 +1,7 @@
 from copy import deepcopy
 from PyQt5.QtWidgets import QAction
-from hypergraphx import Hypergraph, DirectedHypergraph
+from hypergraphx import Hypergraph, DirectedHypergraph, TemporalHypergraph
+
 
 def examples_generator():
     examples = dict()
@@ -20,6 +21,17 @@ def examples_generator():
     weighted.add_edge((4,1),1)
     weighted.add_edge((3,6),7)
     examples["Weighted"] = weighted
+    temporal = TemporalHypergraph()
+    temporal.add_edge((1, 2, 3), 1)
+    temporal.add_edge((4, 5, 6), 1)
+    temporal.add_edge((6, 7, 8, 9), 1)
+    temporal.add_edge((1, 2), 2)
+    temporal.add_edge((4, 5, 6,3), 2)
+    temporal.add_edge((6, 7, 8, 9,1), 2)
+    temporal.add_edge((1, 2,5), 3)
+    temporal.add_edge((4, 5, 6, 3,9), 3)
+    temporal.add_edge((6, 7, 8), 3)
+    examples["Temporal"] = temporal
     actions = list()
     for k,v in examples.items():
         action = QExampleAction(k,v)
