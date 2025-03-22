@@ -137,7 +137,7 @@ class DrawingOptionsDockWidget(QDockWidget):
         widget.modified_options.connect(func)
     def create_centrality_combobox(self):
         self.centrality_combobox = QComboBox()
-        self.centrality_combobox.addItems(["No Centrality", "Degree Centrality"])
+        self.centrality_combobox.addItems(["No Centrality", "Degree Centrality", "Betweenness Centrality", "Adjacency Factor (t=1)", "Adjacency Factor (t=2)"])
         self.centrality_combobox.currentTextChanged.connect(self.update_centrality)
         self.vbox.addWidget(self.centrality_combobox)
     def update_centrality(self):
