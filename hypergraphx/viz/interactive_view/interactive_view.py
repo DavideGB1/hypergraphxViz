@@ -17,6 +17,7 @@ from hypergraphx.communities.hy_mmsbm.model import HyMMSBM
 from hypergraphx.communities.hy_sc.model import HySC
 from hypergraphx.communities.hypergraph_mt.model import HypergraphMT
 from hypergraphx.measures.degree import degree_sequence
+from hypergraphx.measures.s_centralities import s_betweenness, s_betweenness_nodes
 from hypergraphx.utils import normalize_array
 from hypergraphx.viz.__graphic_options import GraphicOptions
 from hypergraphx.viz.draw_PAOH import draw_PAOH
@@ -149,6 +150,18 @@ class Window(QWidget):
             self.centrality = None
         elif input["centrality"] == "Degree Centrality":
             self.centrality = degree_sequence(self.hypergraph)
+            mean = sum(self.centrality.values()) / len(self.centrality)
+            for k, v in self.centrality.items():
+                self.centrality[k] = v / mean
+        elif input["centrality"] == "Betweenness Centrality":
+            self.centrality = s_betweenness_nodes(self.hypergraph)
+        elif input["centrality"] == "Adjacency Factor (t=1)":
+            self.centrality = self.hypergraph.adjacency_factor( t= 1)
+            mean = sum(self.centrality.values()) / len(self.centrality)
+            for k, v in self.centrality.items():
+                self.centrality[k] = v / mean
+        elif input["centrality"] == "Adjacency Factor (t=2)":
+            self.centrality = self.hypergraph.adjacency_factor( t= 2)
             mean = sum(self.centrality.values()) / len(self.centrality)
             for k, v in self.centrality.items():
                 self.centrality[k] = v / mean
