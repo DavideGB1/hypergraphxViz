@@ -11,12 +11,14 @@ from PyQt5.QtWidgets import QApplication, QVBoxLayout, QWidget, QHBoxLayout, QLa
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.figure import Figure
 
 from hypergraphx import Hypergraph, TemporalHypergraph, DirectedHypergraph
 from hypergraphx.communities.hy_mmsbm.model import HyMMSBM
 from hypergraphx.communities.hy_sc.model import HySC
 from hypergraphx.communities.hypergraph_mt.model import HypergraphMT
-from hypergraphx.measures.degree import degree_sequence
+from hypergraphx.measures.degree import degree_sequence, degree_distribution
+from hypergraphx.measures.s_centralities import s_betweenness, s_closeness
 from hypergraphx.utils import normalize_array
 from hypergraphx.viz.__graphic_options import GraphicOptions
 from hypergraphx.viz.draw_PAOH import draw_PAOH
@@ -28,6 +30,7 @@ from hypergraphx.viz.interactive_view.community_options.__community_option_menu 
 from hypergraphx.viz.interactive_view.custom_widgets import WaitingScreen, SliderDockWidget
 from hypergraphx.viz.interactive_view.drawing_options_widget import DrawingOptionsDockWidget
 from hypergraphx.viz.interactive_view.hypergraph_editing_view import ModifyHypergraphMenu
+from hypergraphx.viz.interactive_view.stats_view import HypergraphStatsWidget
 
 
 class Window(QWidget):
@@ -96,9 +99,11 @@ class Window(QWidget):
         self.stacked.addWidget(self.main_layout)
         drawing_tab = QWidget()
         drawing_tab.setLayout(self.stacked)
+        self.central_tab.addTab(drawing_tab, "Drawing Area")
+        self.stats_tab = HypergraphStatsWidget(self.hypergraph)
+        self.central_tab.addTab(self.stats_tab, "Statistics")
         modify_hypergraph_tab = ModifyHypergraphMenu(hypergraph)
         modify_hypergraph_tab.updated_hypergraph.connect(self.update_hypergraph)
-        self.central_tab.addTab(drawing_tab, "Drawing Area")
         self.central_tab.addTab(modify_hypergraph_tab, "Modify Hypergraph")
 
 
@@ -237,6 +242,7 @@ class Window(QWidget):
         self.use_last = False
         self.canvas.draw()
         self.change_focus()
+
     #Get Support for Options
     def update_hypergraph(self, example = None, hypergraph = None):
         self.community_model = None
@@ -261,6 +267,8 @@ class Window(QWidget):
         self.change_focus()
         self.use_default()
         self.slider.update_max(self.max_edge)
+        self.stats_tab.update_hypergraph(self.hypergraph)
+
 
     #Community
     def use_spectral_clustering(self):

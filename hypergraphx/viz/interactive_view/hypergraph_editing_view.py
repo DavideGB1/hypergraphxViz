@@ -313,7 +313,7 @@ class ModifyHypergraphMenu(QMainWindow):
         layout.addWidget(n_nodes_spinbox)
         edges_label = QLabel("Edges Dictionary:")
         text = QPlainTextEdit()
-        text.insertPlainText("Insert the edges dictionary (example 2:14).\n")
+        text.setPlaceholderText("Insert the edges dictionary (example 2:14).\n")
         button = QPushButton("Add Edges")
         edges_dictionary = dict()
         current_edges_label = QLabel("Current Edges:")

@@ -23,7 +23,7 @@ def _sort_for_visualization(motifs: list):
     return motifs
 
 
-def plot_motifs(motifs: list, save_name: str = None):
+def plot_motifs(motifs: list, save_name: str = None, ax = None):
     """
     Plot motifs. Motifs are sorted in such a way to show first lower order motifs, then higher order motifs.
 
@@ -46,9 +46,11 @@ def plot_motifs(motifs: list, save_name: str = None):
     """
     if len(motifs) != 6:
         raise ValueError("Motifs must be a list of length 6.")
+    if ax is None:
+        fig, ax = plt.subplots()
     motifs = _sort_for_visualization(motifs)
     cols = ["#cd3031" if (x < 0) else "#557fa3" for x in motifs]
-    g = sns.barplot(x=["I", "II", "III", "IV", "V", "VI"], y=motifs, palette=cols)
+    g = sns.barplot(x=["I", "II", "III", "IV", "V", "VI"], y=motifs, palette=cols, ax = ax)
     g.axhline(0, color="black", linewidth=0.5)
     plt.ylim(-1, 1)
     plt.ylabel("Motif abundance score")
