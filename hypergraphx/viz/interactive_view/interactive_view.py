@@ -11,14 +11,12 @@ from PyQt5.QtWidgets import QApplication, QVBoxLayout, QWidget, QHBoxLayout, QLa
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-from matplotlib.figure import Figure
 
 from hypergraphx import Hypergraph, TemporalHypergraph, DirectedHypergraph
 from hypergraphx.communities.hy_mmsbm.model import HyMMSBM
 from hypergraphx.communities.hy_sc.model import HySC
 from hypergraphx.communities.hypergraph_mt.model import HypergraphMT
-from hypergraphx.measures.degree import degree_sequence, degree_distribution
-from hypergraphx.measures.s_centralities import s_betweenness, s_closeness
+from hypergraphx.measures.degree import degree_sequence
 from hypergraphx.utils import normalize_array
 from hypergraphx.viz.__graphic_options import GraphicOptions
 from hypergraphx.viz.draw_PAOH import draw_PAOH
