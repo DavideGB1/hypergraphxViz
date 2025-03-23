@@ -154,6 +154,8 @@ class Window(QWidget):
                 self.centrality[k] = v / mean
         elif input["centrality"] == "Betweenness Centrality":
             self.centrality = s_betweenness_nodes(self.hypergraph)
+            for k in self.centrality.keys():
+                self.centrality[k] += 0.5
         elif input["centrality"] == "Adjacency Factor (t=1)":
             self.centrality = self.hypergraph.adjacency_factor( t= 1)
             mean = sum(self.centrality.values()) / len(self.centrality)

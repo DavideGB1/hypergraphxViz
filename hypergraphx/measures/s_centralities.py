@@ -15,8 +15,10 @@ def s_betweenness(H: Hypergraph, s=1):
     -------
     dict. The betweenness centrality for each edge in the hypergraph. The keys are the edges and the values are the betweenness centrality.
     """
-
-    lg, id_to_edge = line_graph(H, s=s)
+    if isinstance(H, DirectedHypergraph):
+        lg, id_to_edge = H.to_line_graph(s=s)
+    else:
+        lg, id_to_edge = line_graph(H, s=s)
     b = nx.betweenness_centrality(lg)
     return {id_to_edge[k]: v for k, v in b.items()}
 
@@ -32,7 +34,10 @@ def s_closeness(H: Hypergraph, s=1):
     -------
     dict. The closeness centrality for each edge in the hypergraph. The keys are the edges and the values are the closeness centrality.
     """
-    lg, id_to_edge = line_graph(H, s=s)
+    if isinstance(H, DirectedHypergraph):
+        lg, id_to_edge = H.to_line_graph(s=s)
+    else:
+        lg, id_to_edge = line_graph(H, s=s)
     c = nx.closeness_centrality(lg)
     return {id_to_edge[k]: v for k, v in c.items()}
 

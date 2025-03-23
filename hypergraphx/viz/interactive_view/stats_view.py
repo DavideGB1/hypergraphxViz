@@ -5,6 +5,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from pyqt_vertical_tab_widget import VerticalTabWidget
 from qtpy import QtCore
 
+from hypergraphx import Hypergraph
 from hypergraphx.measures.s_centralities import s_betweenness, s_closeness, s_betweenness_nodes, s_closeness_nodes
 from hypergraphx.motifs import compute_motifs
 from hypergraphx.viz.plot_motifs import plot_motifs
@@ -17,27 +18,21 @@ class HypergraphStatsWidget(QMainWindow):
         super(HypergraphStatsWidget, self).__init__()
         self.vertical_tab = VerticalTabWidget()
         self.hypergraph = hypergraph
-        degree_tab = self.degree_widget()
-        centrality_tab = self.centrality_widget()
-        self.motifs_tab = MotifsWidget(self.hypergraph)
-        adj_factor_widgtet = self.adjacency_widget()
-        self.vertical_tab.addTab(degree_tab, "Degree")
-        self.vertical_tab.addTab(centrality_tab, "Centrality")
-        self.vertical_tab.addTab(self.motifs_tab, "Motifs")
-        self.vertical_tab.addTab(adj_factor_widgtet, "Adjacency")
-        self.setCentralWidget(self.vertical_tab)
+        self.update_hypergraph(self.hypergraph)
     def update_hypergraph(self, hypergraph):
         self.hypergraph = hypergraph
         self.vertical_tab = VerticalTabWidget()
         self.hypergraph = hypergraph
         degree_tab = self.degree_widget()
         centrality_tab = self.centrality_widget()
-        self.motifs_tab = MotifsWidget(self.hypergraph)
-        adj_factor_widgtet = self.adjacency_widget()
         self.vertical_tab.addTab(degree_tab, "Degree")
         self.vertical_tab.addTab(centrality_tab, "Centrality")
-        self.vertical_tab.addTab(self.motifs_tab, "Motifs")
-        self.vertical_tab.addTab(adj_factor_widgtet, "Adjacency")
+        if isinstance(hypergraph, Hypergraph):
+            self.motifs_tab = MotifsWidget(self.hypergraph)
+            self.vertical_tab.addTab(self.motifs_tab, "Motifs")
+        if isinstance(hypergraph, Hypergraph):
+            adj_factor_widgtet = self.adjacency_widget()
+            self.vertical_tab.addTab(adj_factor_widgtet, "Adjacency")
         if self.hypergraph.is_weighted():
             weight_tab = self.weight_widget()
             self.vertical_tab.addTab(weight_tab, "Weights")
