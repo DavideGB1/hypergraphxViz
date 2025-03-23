@@ -75,8 +75,7 @@ class Window(QWidget):
         self.drawing_options = None
         self.last_pos = dict()
         self.stacked = QStackedLayout()
-        self.max_edge = max(h.distribution_sizes().keys())
-        self.slider_value = (2, self.max_edge)
+        self.slider_value = (2, self.hypergraph.max_size())
         #Defines Canvas and Options Toolbar
         self.canvas = FigureCanvas(self.figure)
         self.toolbar = NavigationToolbar(self.canvas, self)
@@ -87,7 +86,7 @@ class Window(QWidget):
         self.main_layout = QMainWindow()
         self.main_layout.addToolBar(Qt.TopToolBarArea, self.toolbar)
         self.main_layout.setCentralWidget(self.canvas)
-        self.slider = SliderDockWidget(self.max_edge)
+        self.slider = SliderDockWidget(self.hypergraph.max_size())
         self.slider.update_value.connect(self.new_slider_value)
         self.main_layout.addDockWidget(Qt.BottomDockWidgetArea, self.slider)
 
@@ -265,7 +264,6 @@ class Window(QWidget):
             self.hypergraph = example["hypergraph"]
         if hypergraph is not None:
             self.hypergraph = hypergraph
-        self.max_edge = max(self.hypergraph.get_sizes())
         if isinstance(self.hypergraph, Hypergraph):
             self.drawing_options_widget = DrawingOptionsDockWidget(weighted= self.hypergraph.is_weighted(),hypergraph_type="normal",n_nodes=self.hypergraph.num_nodes())
         elif isinstance(self.hypergraph, DirectedHypergraph):
@@ -277,7 +275,7 @@ class Window(QWidget):
         self.drawing_options_widget.update()
         self.change_focus()
         self.use_default()
-        self.slider.update_max(self.max_edge)
+        self.slider.update_max(self.hypergraph.max_size())
         self.stats_tab.update_hypergraph(self.hypergraph)
 
 
