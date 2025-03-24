@@ -4,6 +4,7 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from pyqt_vertical_tab_widget import VerticalTabWidget
 from qtpy import QtCore
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
 from hypergraphx import Hypergraph, TemporalHypergraph
 from hypergraphx.measures.s_centralities import s_betweenness, s_closeness, s_betweenness_nodes, s_closeness_nodes, \
@@ -42,6 +43,8 @@ class HypergraphStatsWidget(QMainWindow):
     def __create_widgets(self,figure):
         canvas = FigureCanvas(figure)
         layout = QVBoxLayout()
+        toolbar = NavigationToolbar(canvas, self)
+        layout.addWidget(toolbar)
         layout.addWidget(canvas)
         widget = QWidget()
         widget.setLayout(layout)
