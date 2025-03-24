@@ -141,15 +141,22 @@ def draw_PAOH(
             column_set = sorted(column_set)
             #Plot each column in the relative position
             for edge in column_set:
-                original_edge = edge
+                if isinstance(hypergraph, TemporalHypergraph):
+                    original_edge = (list(timestamp_mapping.keys())[idx_timestamp], edge)
+                else:
+                    original_edge = edge
                 edge = tuple(sorted(edge))
                 first_node = edge[0]
                 last_node = edge[-1]
                 ax.plot([idx, idx], [list(node_mapping.values()).index(first_node), list(node_mapping.values()).index(last_node)],
                         color=graphicOptions.edge_color[original_edge], linewidth = graphicOptions.edge_size[original_edge], zorder = -1,**kwargs)
                 if hypergraph.is_weighted():
-                    ax.text(idx, list(node_mapping.values()).index(last_node)+0.25, str(hypergraph.get_weight(original_edge)),
-                            horizontalalignment='center', fontsize = graphicOptions.weight_size)
+                    if isinstance(hypergraph, TemporalHypergraph):
+                        weight = str(hypergraph.get_weight(original_edge[1], original_edge[0]))
+                    else:
+                        weight = str(hypergraph.get_weight(original_edge))
+                    ax.text(idx, list(node_mapping.values()).index(last_node)+0.25, weight,
+                        horizontalalignment='center', fontsize = graphicOptions.weight_size)
                 if isDirected:
                     true_edge = edge_directed_mapping[original_edge]
                     edge_metadata =  hypergraph.get_edge_metadata(original_edge)
