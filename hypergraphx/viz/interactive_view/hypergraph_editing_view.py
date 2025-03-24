@@ -95,8 +95,11 @@ class HypergraphTable(QTableWidget):
             else:
                 self.setItem(curr_row, 0, QTableWidgetItem(str(edge)))
             if hypergraph.is_weighted():
-                self.setItem(curr_row, idx, QTableWidgetItem(str(hypergraph.get_weight(edge))))
-                self.setItemDelegateForColumn(idx, ValidationDelegate(self))
+                if isinstance(hypergraph, TemporalHypergraph):
+                    self.setItem(curr_row, idx, QTableWidgetItem(str(hypergraph.get_weight(edge[1],edge[0]))))
+                else:
+                    self.setItem(curr_row, idx, QTableWidgetItem(str(hypergraph.get_weight(edge))))
+                    self.setItemDelegateForColumn(idx, ValidationDelegate(self))
             else:
                 if isinstance(hypergraph, TemporalHypergraph):
                     self.setItem(curr_row, idx+1, QTableWidgetItem(str(hypergraph.get_edge_metadata(edge[1],edge[0]))))
