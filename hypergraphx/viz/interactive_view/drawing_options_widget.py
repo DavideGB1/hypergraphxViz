@@ -36,9 +36,10 @@ class DrawingOptionsDockWidget(QDockWidget):
         drawing_label = QLabel("Drawing Algorithm:")
         self.vbox.addWidget(drawing_label)
         self.create_drawing_combobox()
-        community_label = QLabel("Community Detection Algorithm:")
-        self.vbox.addWidget(community_label)
-        self.create_community_detection_combobox()
+        if self.hypergraph_type == "normal":
+            community_label = QLabel("Community Detection Algorithm:")
+            self.vbox.addWidget(community_label)
+            self.create_community_detection_combobox()
         centrality_label = QLabel("Centrality Calculation Method:")
         self.vbox.addWidget(centrality_label)
         self.create_centrality_combobox()
@@ -137,7 +138,10 @@ class DrawingOptionsDockWidget(QDockWidget):
         widget.modified_options.connect(func)
     def create_centrality_combobox(self):
         self.centrality_combobox = QComboBox()
-        self.centrality_combobox.addItems(["No Centrality", "Degree Centrality", "Betweenness Centrality", "Adjacency Factor (t=1)", "Adjacency Factor (t=2)"])
+        if self.hypergraph_type == "normal":
+            self.centrality_combobox.addItems(["No Centrality", "Degree Centrality", "Betweenness Centrality", "Adjacency Factor (t=1)", "Adjacency Factor (t=2)"])
+        else:
+            self.centrality_combobox.addItems(["No Centrality", "Degree Centrality", "Betweenness Centrality"])
         self.centrality_combobox.currentTextChanged.connect(self.update_centrality)
         self.vbox.addWidget(self.centrality_combobox)
     def update_centrality(self):
@@ -256,8 +260,12 @@ class DrawingOptionsDockWidget(QDockWidget):
         else:
             heaviest_value = 1
             weight_influence = "No Relationship"
+        try:
+            cda = self.community_combobox.currentText()
+        except Exception:
+            cda = "None"
         self.update_value.emit({"%_heaviest_edges": heaviest_value,"centrality": self.centrality_combobox.currentText(),
-                                "community_detection_algorithm": self.community_combobox.currentText(),
+                                "community_detection_algorithm": cda,
                                 "drawing_options":self.drawing_combobox.currentText() ,"use_last": self.use_last, "algorithm_options":self.algorithm_options_dict,
                                 "graphic_options": self.graphic_options,"extra_attributes": self.extra_attributes,
                                 "community_options": self.community_options_dict, "weight_influence": weight_influence})
