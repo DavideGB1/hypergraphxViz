@@ -1,9 +1,12 @@
+import re
+
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QMainWindow, QToolBar, \
     QAction, QFileDialog, QMessageBox, QDialog, QVBoxLayout, QLabel, QSpinBox, QPlainTextEdit, QPushButton, \
     QMenu, QMenuBar, QTextEdit, QLineEdit, QStyledItemDelegate
 from pyqt_vertical_tab_widget import VerticalTabWidget
 import hypergraphx
+from hypergraphx import DirectedHypergraph, TemporalHypergraph, Hypergraph
 from hypergraphx.generation import random_hypergraph
 from hypergraphx.generation.random import random_uniform_hypergraph
 from hypergraphx.readwrite.save import save_hypergraph
@@ -36,7 +39,7 @@ class HypergraphTable(QTableWidget):
         self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.setItemDelegateForColumn(0, ReadOnlyDelegate(self))
-        self.itemChanged.connect(self.check_new_cell_value)
+        #self.itemChanged.connect(self.check_new_cell_value)
 
     def remove_row(self):
         self.removeRow(self.currentRow())
@@ -55,40 +58,64 @@ class HypergraphTable(QTableWidget):
             curr_row += 1
     def update_table_eges(self, hypergraph):
         num_row = hypergraph.num_edges()
-        if hypergraph.is_weighted():
+        col_names = []
+        if isinstance(hypergraph, DirectedHypergraph):
             num_col = 3
             idx = 1
+            self.valid_col = 2
+            col_names = ["Edge Source", "Edge Destination", "Metadata"]
+        elif isinstance(hypergraph, TemporalHypergraph):
+            num_col = 3
+            idx = 1
+            self.valid_col = 2
+            col_names = ["Edge", "Time", "Metadata"]
         else:
             num_col = 2
             idx = 0
+            self.valid_col = 1
+            col_names = ["Edge", "Metadata"]
+
+        if hypergraph.is_weighted():
+            num_col += 1
+            idx += 1
+            self.valid_col += 1
+            col_names.insert(idx, "Weight")
         self.setRowCount(num_row)
         self.setColumnCount(num_col)
-        if hypergraph.is_weighted():
-            self.setHorizontalHeaderLabels(['Edge', 'Weight', 'Metadata'])
-            self.valid_col = 2
-        else:
-            self.setHorizontalHeaderLabels(['Edge', 'Metadata'])
-            self.valid_col = 1
+        self.setHorizontalHeaderLabels(col_names)
         curr_row = 0
 
         for edge in hypergraph.get_edges():
-            self.setItem(curr_row, 0, QTableWidgetItem(str(edge)))
+            if isinstance(hypergraph, DirectedHypergraph):
+                self.setItem(curr_row, 0, QTableWidgetItem(str(edge[0])))
+                self.setItem(curr_row, 1, QTableWidgetItem(str(edge[1])))
+            elif isinstance(hypergraph, TemporalHypergraph):
+                self.setItem(curr_row, 0, QTableWidgetItem(str(edge[1])))
+                self.setItem(curr_row, 1, QTableWidgetItem(str(edge[0])))
+            else:
+                self.setItem(curr_row, 0, QTableWidgetItem(str(edge)))
             if hypergraph.is_weighted():
                 self.setItem(curr_row, idx, QTableWidgetItem(str(hypergraph.get_weight(edge))))
                 self.setItemDelegateForColumn(idx, ValidationDelegate(self))
             else:
-                self.setItem(curr_row, idx+1, QTableWidgetItem(str(hypergraph.get_edge_metadata(edge))))
-                self.old_values[curr_row, idx+1] = str(hypergraph.get_edge_metadata(edge))
+                if isinstance(hypergraph, TemporalHypergraph):
+                    self.setItem(curr_row, idx+1, QTableWidgetItem(str(hypergraph.get_edge_metadata(edge[1],edge[0]))))
+                    self.old_values[curr_row, idx+1] = str(hypergraph.get_edge_metadata(edge[1],edge[0]))
+                else:
+                    self.setItem(curr_row, idx+1, QTableWidgetItem(str(hypergraph.get_edge_metadata(edge))))
+                    self.old_values[curr_row, idx+1] = str(hypergraph.get_edge_metadata(edge))
 
             curr_row += 1
     def update_table(self, hypergraph):
+        #self.itemChanged.connect(self.nothing)
+        self.hypergraph = hypergraph
         if self.use_nodes:
             self.update_table_nodes(hypergraph)
         else:
             self.update_table_eges(hypergraph)
-        self.hypergraph = hypergraph
 
-    def check_new_cell_value(self, item):
+        #self.itemChanged.connect(self.check_new_cell_value)
+    '''def check_new_cell_value(self, item):
         txt = ""
         if item.column() == self.valid_col and self.last_changes:
             text = item.text()
@@ -104,7 +131,14 @@ class HypergraphTable(QTableWidget):
                 node = str_to_int_or_float(self.itemAt(item.row(), 0).text())
                 self.hypergraph.set_node_metadata(node,val)
             else:
-                edge = list(str_to_tuple(self.itemAt(item.row(), 0).text()))
+                if isinstance(self.hypergraph, DirectedHypergraph):
+                    edge_src = list(str_to_tuple(self.itemAt(item.row(), 0).text()))
+                    edge_trg = list(str_to_tuple(self.itemAt(item.row(), 1).text()))
+                    edge = (edge_src, edge_trg)
+                    if edge_trg == edge_src:
+                        cio = 1
+                else:
+                    edge = list(str_to_tuple(self.itemAt(item.row(), 0).text()))
                 edge = sorted(edge)
                 self.hypergraph.set_edge_metadata(list(edge), val)
         else:
@@ -115,7 +149,7 @@ class HypergraphTable(QTableWidget):
                 weight = str_to_int_or_float(item.text())
                 self.hypergraph.set_weight(edge,weight)
                 self.update_status.emit({})
-
+'''
 class ModifyHypergraphMenu(QMainWindow):
     updated_hypergraph = pyqtSignal(dict)
 
@@ -204,13 +238,28 @@ class ModifyHypergraphMenu(QMainWindow):
         if self.vertical_tab.currentWidget().use_nodes:
            self.add_node_func()
         else:
-            self.add_edge()
+            if isinstance(self.hypergraph,Hypergraph):
+                self.add_edge_normal()
+            elif isinstance(self.hypergraph,DirectedHypergraph):
+                self.add_edge_directed()
+            elif isinstance(self.hypergraph, TemporalHypergraph):
+                self.add_edge_temporal()
     def add_node_func(self):
+        generate = QPushButton("Add Node")
+        def val_input(txt):
+            if numerical_hypergraph(self.hypergraph) and txt.isnumeric():
+                generate.setEnabled(True)
+            elif not numerical_hypergraph(self.hypergraph) and not txt.isnumeric() :
+                generate.setEnabled(True)
+            else:
+                generate.setEnabled(False)
+
         dialog = QDialog(self)
         dialog.setWindowTitle("Add Node")
         layout = QVBoxLayout()
         n_nodes_label = QLabel("Node Name:")
         n_nodes_textarea = QLineEdit()
+        n_nodes_textarea.textChanged.connect(val_input)
         layout.addWidget(n_nodes_label)
         layout.addWidget(n_nodes_textarea)
 
@@ -219,20 +268,32 @@ class ModifyHypergraphMenu(QMainWindow):
         metadata_textarea.setPlaceholderText("Insert the metadata (example class:CS, gender:M).")
         layout.addWidget(metadata_label)
         layout.addWidget(metadata_textarea)
-        generate = QPushButton("Add Node")
+        generate.setEnabled(False)
         generate.clicked.connect(dialog.accept)
         layout.addWidget(generate)
         dialog.setLayout(layout)
         if dialog.exec() == QDialog.Accepted:
             self.hypergraph.add_node(n_nodes_textarea.text().replace("\n",""), str_to_dict(metadata_textarea.toPlainText()))
             self.update_hypergraph()
-    def add_edge(self):
+    def add_edge_normal(self):
+        generate = QPushButton("Add Edge")
+
+        def val_edge_input(input):
+            regex_num = r"^\d+(?:,\d+)*$"
+            regex_word = r"^[a-zA-Z]+(?:,[a-zA-Z]+)*$"
+            if numerical_hypergraph(self.hypergraph) and re.match(regex_num, input):
+                    generate.setEnabled(True)
+            elif re.match(regex_word, input) and not numerical_hypergraph(self.hypergraph):
+                generate.setEnabled(True)
+            else:
+                generate.setEnabled(False)
         dialog = QDialog(self)
         dialog.setWindowTitle("Add Edge")
         layout = QVBoxLayout()
         edge_label = QLabel("Edge:")
         edge_textarea = QLineEdit()
         edge_textarea.setPlaceholderText("Insert the edge like 1,2,3,4.\n")
+        edge_textarea.textChanged.connect(val_edge_input)
         layout.addWidget(edge_label)
         layout.addWidget(edge_textarea)
         if self.hypergraph.is_weighted():
@@ -248,8 +309,8 @@ class ModifyHypergraphMenu(QMainWindow):
         metadata_textarea.setPlaceholderText("Insert the metadata (example class:CS, gender:M).\n")
         layout.addWidget(metadata_label)
         layout.addWidget(metadata_textarea)
-        generate = QPushButton("Add Edge")
         generate.clicked.connect(dialog.accept)
+        generate.setEnabled(False)
         layout.addWidget(generate)
         dialog.setLayout(layout)
         if dialog.exec() == QDialog.Accepted:
@@ -257,6 +318,112 @@ class ModifyHypergraphMenu(QMainWindow):
             if self.hypergraph.is_weighted():
                 weight = int(weight_spinbox.value())
             self.hypergraph.add_edge(str_to_tuple(edge_textarea.text()),weight, str_to_dict(metadata_textarea.toPlainText()))
+            self.update_hypergraph()
+
+    def add_edge_directed(self):
+        generate = QPushButton("Add Edge")
+        generate.setEnabled(False)
+        edge_textarea_src = QLineEdit()
+        edge_textarea_trg = QLineEdit()
+        val = 0
+        def val_edge_input(input):
+            regex_num = r"^\d+(?:,\d+)*$"
+            regex_word = r"^[a-zA-Z]+(?:,[a-zA-Z]+)*$"
+
+            if re.match(regex_num, edge_textarea_src.text()) and re.match(regex_num, edge_textarea_trg.text()) and numerical_hypergraph(self.hypergraph):
+                    generate.setEnabled(True)
+            elif re.match(regex_word, edge_textarea_src.text()) and re.match(regex_word, edge_textarea_trg.text()) and not numerical_hypergraph(self.hypergraph):
+                    generate.setEnabled(True)
+            else:
+                generate.setEnabled(False)
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Add Edge")
+        layout = QVBoxLayout()
+        edge_label_src = QLabel("Edge Source:")
+        edge_textarea_src.setPlaceholderText("Insert the edge like 1,2,3,4.\n")
+        edge_textarea_src.textChanged.connect(val_edge_input)
+        edge_label_trg = QLabel("Edge Destination:")
+        edge_textarea_trg.setPlaceholderText("Insert the edge like 1,2,3,4.\n")
+        edge_textarea_trg.textChanged.connect(val_edge_input)
+        layout.addWidget(edge_label_src)
+        layout.addWidget(edge_textarea_src)
+        layout.addWidget(edge_label_trg)
+        layout.addWidget(edge_textarea_trg)
+        if self.hypergraph.is_weighted():
+            weight_label = QLabel("Weight:")
+            weight_spinbox = QSpinBox()
+            weight_spinbox.setValue(1)
+            weight_spinbox.setMinimum(1)
+            weight_spinbox.setSingleStep(1)
+            layout.addWidget(weight_label)
+            layout.addWidget(weight_spinbox)
+        metadata_label = QLabel("Edge Metadata:")
+        metadata_textarea = QTextEdit()
+        metadata_textarea.setPlaceholderText("Insert the metadata (example class:CS, gender:M).\n")
+        layout.addWidget(metadata_label)
+        layout.addWidget(metadata_textarea)
+        generate.clicked.connect(dialog.accept)
+        layout.addWidget(generate)
+        dialog.setLayout(layout)
+        if dialog.exec() == QDialog.Accepted:
+            weight = 1
+            if self.hypergraph.is_weighted():
+                weight = int(weight_spinbox.value())
+            self.hypergraph.add_edge((str_to_tuple(edge_textarea_src.text()), str_to_tuple(edge_textarea_trg.text())),weight, str_to_dict(metadata_textarea.toPlainText()))
+            self.update_hypergraph()
+
+    def add_edge_temporal(self):
+        generate = QPushButton("Add Edge")
+
+        def val_edge_input(input):
+            regex_num = r"^\d+(?:,\d+)*$"
+            regex_word = r"^[a-zA-Z]+(?:,[a-zA-Z]+)*$"
+            if numerical_hypergraph(self.hypergraph) and re.match(regex_num, input):
+                    generate.setEnabled(True)
+            elif re.match(regex_word, input) and not numerical_hypergraph(self.hypergraph):
+                generate.setEnabled(True)
+            else:
+                generate.setEnabled(False)
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Add Edge")
+        layout = QVBoxLayout()
+        edge_label_src = QLabel("Edge:")
+        edge_textarea_src = QLineEdit()
+        edge_textarea_src.setPlaceholderText("Insert the edge like 1,2,3,4.\n")
+        edge_textarea_src.textChanged.connect(val_edge_input)
+        layout.addWidget(edge_label_src)
+        layout.addWidget(edge_textarea_src)
+        time_label = QLabel("Time:")
+        time_spinbox = QSpinBox()
+        time_spinbox.setValue(1)
+        time_spinbox.setMinimum(1)
+        time_spinbox.setSingleStep(1)
+        layout.addWidget(time_label)
+        layout.addWidget(time_spinbox)
+        if self.hypergraph.is_weighted():
+            weight_label = QLabel("Weight:")
+            weight_spinbox = QSpinBox()
+            weight_spinbox.setValue(1)
+            weight_spinbox.setMinimum(1)
+            weight_spinbox.setSingleStep(1)
+            layout.addWidget(weight_label)
+            layout.addWidget(weight_spinbox)
+        metadata_label = QLabel("Edge Metadata:")
+        metadata_textarea = QTextEdit()
+        metadata_textarea.setPlaceholderText("Insert the metadata (example class:CS, gender:M).\n")
+        layout.addWidget(metadata_label)
+        layout.addWidget(metadata_textarea)
+        generate.setEnabled(False)
+        generate.clicked.connect(dialog.accept)
+        layout.addWidget(generate)
+        dialog.setLayout(layout)
+        if dialog.exec() == QDialog.Accepted:
+            weight = 1
+            if self.hypergraph.is_weighted():
+                weight = int(weight_spinbox.value())
+                self.hypergraph.add_edge(str_to_tuple(edge_textarea_src.text()),int(time_spinbox.value()),weight, str_to_dict(metadata_textarea.toPlainText()))
+            else:
+                self.hypergraph.add_edge(str_to_tuple(edge_textarea_src.text()),int(time_spinbox.value()), metadata = str_to_dict(metadata_textarea.toPlainText()))
             self.update_hypergraph()
 
     def open_file(self):
@@ -435,3 +602,9 @@ def str_to_int_or_float(string):
       return float(string)
     except ValueError:
       return string
+
+def numerical_hypergraph(hypergraph: Hypergraph|DirectedHypergraph|TemporalHypergraph):
+    for node in hypergraph.get_nodes():
+        if str(node).isnumeric():
+            return True
+    return False
