@@ -5,8 +5,9 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from pyqt_vertical_tab_widget import VerticalTabWidget
 from qtpy import QtCore
 
-from hypergraphx import Hypergraph
-from hypergraphx.measures.s_centralities import s_betweenness, s_closeness, s_betweenness_nodes, s_closeness_nodes
+from hypergraphx import Hypergraph, TemporalHypergraph
+from hypergraphx.measures.s_centralities import s_betweenness, s_closeness, s_betweenness_nodes, s_closeness_nodes, \
+    s_betweenness_nodes_averaged, s_closenness_nodes_averaged, s_betweenness_averaged, s_closeness_averaged
 from hypergraphx.motifs import compute_motifs
 from hypergraphx.viz.plot_motifs import plot_motifs
 
@@ -99,7 +100,11 @@ class HypergraphStatsWidget(QMainWindow):
         figure = Figure()
         axes = figure.subplots(2,2)
         figure.subplots_adjust(wspace=0.5, hspace=0.5)
-        edge_s_betweenness = s_betweenness(self.hypergraph)
+        if isinstance(self.hypergraph, TemporalHypergraph):
+            edge_s_betweenness = s_betweenness_averaged(self.hypergraph)
+        else:
+            edge_s_betweenness = s_betweenness(self.hypergraph)
+
         keys_label = []
         keys = []
         idx = 1
@@ -112,7 +117,10 @@ class HypergraphStatsWidget(QMainWindow):
         axes[0, 0].set_title('Edges Betweenness Centrality')
         axes[0, 0].set_xticks(keys, keys_label)
 
-        edge_s_closeness = s_closeness(self.hypergraph)
+        if isinstance(self.hypergraph, TemporalHypergraph):
+            edge_s_closeness = s_closeness_averaged(self.hypergraph)
+        else:
+            edge_s_closeness = s_closeness(self.hypergraph)
         keys_label = []
         keys = []
         idx = 1
@@ -125,7 +133,10 @@ class HypergraphStatsWidget(QMainWindow):
         axes[0, 1].set_title('Edges Closeness Centrality')
         axes[0, 1].set_xticks(keys, keys_label)
 
-        node_s_betweenness = s_betweenness_nodes(self.hypergraph)
+        if isinstance(self.hypergraph, TemporalHypergraph):
+            node_s_betweenness = s_betweenness_nodes_averaged(self.hypergraph)
+        else:
+            node_s_betweenness = s_betweenness_nodes(self.hypergraph)
         keys_label = []
         keys = []
         idx = 1
@@ -138,7 +149,10 @@ class HypergraphStatsWidget(QMainWindow):
         axes[1, 0].set_title('Nodes Betweenness Centrality')
         axes[1, 0].set_xticks(keys, keys_label)
 
-        node_s_closeness = s_closeness_nodes(self.hypergraph)
+        if isinstance(self.hypergraph, TemporalHypergraph):
+            node_s_closeness = s_closenness_nodes_averaged(self.hypergraph)
+        else:
+            node_s_closeness = s_closeness_nodes(self.hypergraph)
         keys_label = []
         keys = []
         idx = 1
