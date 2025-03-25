@@ -4,6 +4,27 @@ from hypergraphx import Hypergraph, DirectedHypergraph, TemporalHypergraph
 
 
 def examples_generator():
+    """
+    Generate example hypergraphs and actions associated with them.
+
+    This function creates and returns a list of `QExampleAction` instances, each
+    representing a specific type of hypergraph (e.g., normal, weighted, directed,
+    temporal, etc.). The hypergraphs constructed within this function include weighted
+    and unweighted, directed and undirected, as well as temporal variants.
+
+    Returns
+    -------
+    list of QExampleAction
+        A list of `QExampleAction` instances, with each action corresponding to a specific
+        type of hypergraph.
+
+    Hypergraph Types Included
+    -------------------------
+    - Normal Hypergraph
+    - Weighted Hypergraph
+    - Directed Hypergraph (Weighted and Unweighted)
+    - Temporal Hypergraph (Weighted and Unweighted)
+    """
     examples = dict()
     normal = Hypergraph([(1,2,3),(4,5,6),(6,7,8,9),(10,11,12,1,4),(4,1),(3,6)])
     examples["Normal"] = normal
@@ -61,9 +82,26 @@ def examples_generator():
     return actions
 
 class QExampleAction(QAction):
+    """
+        A QAction subclass that encapsulates an action with an associated hypergraph.
+
+        Parameters
+        ----------
+        name : str
+            The text label for the action.
+        hypergraph : object
+            A hypergraph object that is deep-copied and associated with the action.
+        parent : QObject, optional
+            The parent object for the action. Default is None.
+
+        Methods
+        -------
+        return_hypergraph()
+            Returns a deep copy of the associated hypergraph.
+    """
     def __init__(self, name,hypergraph, parent=None):
         super(QExampleAction, self).__init__(parent)
         self.setText(name)
         self.hypergraph = deepcopy(hypergraph)
     def return_hypergraph(self):
-        return deepcopy(self.hypergraph)
+        return self.hypergraph.copy()

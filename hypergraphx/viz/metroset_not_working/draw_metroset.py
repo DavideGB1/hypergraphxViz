@@ -6,11 +6,11 @@ from matplotlib import pyplot as plt
 from networkx import subgraph, kamada_kawai_layout
 from hypergraphx import Hypergraph
 
-from hypergraphx.viz.__chivers_rodgers import chivers_rodgers
+from hypergraphx.viz.metroset_not_working.__chivers_rodgers import chivers_rodgers
 from hypergraphx.viz.__graphic_options import GraphicOptions
 from hypergraphx.viz.__support import __filter_hypergraph, __calculate_incidence, __distance, __draw_line, __ignore_unused_args
 
-sys.path.append("..")
+sys.path.append("../..")
 import networkx as nx
 import math
 

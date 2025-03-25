@@ -10,6 +10,7 @@ from hypergraphx import Hypergraph, TemporalHypergraph
 from hypergraphx.measures.s_centralities import s_betweenness, s_closeness, s_betweenness_nodes, s_closeness_nodes, \
     s_betweenness_nodes_averaged, s_closenness_nodes_averaged, s_betweenness_averaged, s_closeness_averaged
 from hypergraphx.motifs import compute_motifs
+from hypergraphx.viz.interactive_view.support import clear_layout
 from hypergraphx.viz.plot_motifs import plot_motifs
 
 
@@ -21,6 +22,7 @@ class HypergraphStatsWidget(QMainWindow):
         self.vertical_tab = VerticalTabWidget()
         self.hypergraph = hypergraph
         self.update_hypergraph(self.hypergraph)
+
     def update_hypergraph(self, hypergraph):
         self.hypergraph = hypergraph
         self.vertical_tab = VerticalTabWidget()
@@ -40,6 +42,7 @@ class HypergraphStatsWidget(QMainWindow):
             self.vertical_tab.addTab(weight_tab, "Weights")
 
         self.setCentralWidget(self.vertical_tab)
+
     def __create_widgets(self,figure):
         canvas = FigureCanvas(figure)
         layout = QVBoxLayout()
@@ -50,51 +53,95 @@ class HypergraphStatsWidget(QMainWindow):
         widget.setLayout(layout)
         return widget
 
+    def __create_bar_chart(self,ax, data, x_label, y_label, title, y_ticks_increment=1):
+        ax.bar(data.keys(), data.values())
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
+        ax.set_title(title)
+        ax.set_xticks(list(data.keys()))
+        max_value = max(data.values())
+        ax.set_yticks(range(1, max_value + y_ticks_increment))
+        ax.set_ylim(0, max_value + y_ticks_increment)
+
     def weight_widget(self):
-        figure = Figure()
-        ax = figure.subplots(1)
+        """
+        Generates and displays a weight distribution bar chart widget.
+
+        This function processes the weights of a hypergraph, calculates their distribution,
+        and displays the results as a bar chart. The widgets created from this process
+        are returned to be incorporated into a graphical user interface.
+
+        Parameters
+        ----------
+        self : object
+            The current instance of the class, which should contain a `hypergraph` attribute with
+            a `get_weights()` method to retrieve the list of weights.
+
+        Returns
+        -------
+        object
+            A widget object displaying a bar chart of the weight distribution, generated from the
+            processed data.
+        """
+        def calculate_weight_distribution(weights):
+            weight_distribution = {}
+            value_list = []
+            for weight in weights:
+                if weight not in weight_distribution:
+                    weight_distribution[weight] = 0
+                    value_list.append(len(value_list))
+                weight_distribution[weight] += 1
+            return weight_distribution, value_list
+
+        # Extracting weights and calculating distribution
         weights = self.hypergraph.get_weights()
-        distribution = dict()
-        value_list = []
-        idx = 0
-        for weight in weights:
-            if weight not in distribution.keys():
-                distribution[weight] = 0
-                value_list.append(idx)
-                idx += 1
-            distribution[weight] += 1
-        ax.bar(value_list, distribution.values())
+        weight_distribution, value_list = calculate_weight_distribution(weights)
+
+        # Creating the plot
+        fig = Figure()
+        ax = fig.subplots(1)
+        ax.bar(value_list, weight_distribution.values())
         ax.set_xlabel('Weights')
         ax.set_title('Weights Distribution')
-        ax.set_xticks(value_list,list(distribution.keys()))
-        ax.set_ylim(0, max(distribution.values()) + 1)
-        ax.set_yticks(range(1, max(distribution.values()) + 1))
-        figure.subplots_adjust(wspace=1, hspace=1)
-        return self.__create_widgets(figure)
+        ax.set_xticks(value_list, list(weight_distribution.keys()))
+        ax.set_ylim(0, max(weight_distribution.values()) + 1)
+        ax.set_yticks(range(1, max(weight_distribution.values()) + 1))
+        fig.subplots_adjust(wspace=1, hspace=1)
+
+        return self.__create_widgets(fig)
 
     def degree_widget(self):
+        """
+        Generates degree and size distribution widgets for the hypergraph.
+
+        This method creates a widget displaying two bar charts:
+        1. Degree Distribution: Represents the distribution of degrees in the hypergraph.
+        2. Size Distribution: Represents the distribution of edge sizes in the hypergraph.
+
+        The method processes the degree distribution of the hypergraph using the degree_distribution function
+        and generates corresponding bar charts. Additionally, it calculates the count of edges based on their
+        size and plots this data in a second bar chart.
+
+        Returns
+        -------
+        Widget
+            A widget displaying the generated bar charts.
+
+        """
         figure = Figure()
         axes = figure.subplots(2)
         degree_distribution = self.hypergraph.degree_distribution()
-        axes[0].bar(degree_distribution.keys(), degree_distribution.values())
-        axes[0].set_xlabel('Degrees')
-        axes[0].set_ylabel('Values')
-        axes[0].set_title('Degree Distribution')
-        axes[0].set_xticks(list(degree_distribution.keys()))
-        axes[0].set_ylim(0, max(degree_distribution.values()) + 2)
-        axes[0].set_yticks(range(1, max(degree_distribution.values()) + 1))
-
+        self.__create_bar_chart(ax=axes[0], data = degree_distribution, x_label="Degrees", y_label = "Values",
+                                title = "Degree Distribution", y_ticks_increment=2)
         sizes = dict()
         for edge in self.hypergraph.get_edges():
             if len(edge) not in sizes.keys():
                 sizes[len(edge)] = 0
             sizes[len(edge)] += 1
-        axes[1].bar(sizes.keys(), sizes.values())
-        axes[1].set_xlabel('Degrees')
-        axes[1].set_ylabel('Values')
-        axes[1].set_title('Size Distribution')
-        axes[1].set_xticks(list(sizes.keys()))
-        axes[1].set_yticks(range(1, max(sizes.values()) + 2))
+
+        self.__create_bar_chart(ax=axes[1], data = sizes, x_label="Degrees", y_label = "Values",
+                                title = "Size Distribution", y_ticks_increment=2)
+
         figure.subplots_adjust(wspace=1, hspace=0.5)
 
         return self.__create_widgets(figure)
@@ -119,6 +166,7 @@ class HypergraphStatsWidget(QMainWindow):
         axes[0, 0].set_xlabel('Edges')
         axes[0, 0].set_title('Edges Betweenness Centrality')
         axes[0, 0].set_xticks(keys, keys_label)
+
 
         if isinstance(self.hypergraph, TemporalHypergraph):
             edge_s_closeness = s_closeness_averaged(self.hypergraph)
@@ -220,6 +268,7 @@ class MotifsWidget(QWidget):
         clear_layout(self.layout)
         plot_motifs(list,save_name = None,ax = self.ax)
         canvas = FigureCanvas(self.figure)
+        self.ax.set_title('Motifs')
         self.layout.addWidget(canvas)
         self.setLayout(self.layout)
         self.update()
@@ -238,16 +287,3 @@ class MotifsWidget(QWidget):
         self.thread = MotifsWorker(self.hypergraph)
         self.thread.progress.connect(self.draw_motifs)
         self.thread.start()
-
-def clear_layout(layout: QLayout):
-    """
-    Function to clear a QLayout
-    Parameters
-    ----------
-    layout: QLayout
-    """
-    while layout.count():
-        item = layout.takeAt(0)
-        widget = item.widget()
-        if widget:
-            widget.deleteLater()
