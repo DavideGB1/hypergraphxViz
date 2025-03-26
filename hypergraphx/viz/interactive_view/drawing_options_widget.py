@@ -35,16 +35,16 @@ class DrawingOptionsDockWidget(QDockWidget):
 
         drawing_label = QLabel("Drawing Algorithm:")
         self.vbox.addWidget(drawing_label)
-        self.create_drawing_combobox()
+        self.__create_drawing_combobox()
         if self.hypergraph_type == "normal":
             community_label = QLabel("Community Detection Algorithm:")
             self.vbox.addWidget(community_label)
-            self.create_community_detection_combobox()
+            self.__create_community_detection_combobox()
         centrality_label = QLabel("Centrality Calculation Method:")
         self.vbox.addWidget(centrality_label)
-        self.create_centrality_combobox()
+        self.__create_centrality_combobox()
         if self.weighted:
-            self.weighted_options()
+            self.__weighted_options()
         self.redraw_button = QPushButton("Redraw")
         self.redraw_button.clicked.connect(self.update)
         self.vbox.addWidget(self.redraw_button)
@@ -80,8 +80,9 @@ class DrawingOptionsDockWidget(QDockWidget):
         self.widget.setLayout(self.vbox)
         self.setWidget(self.widget)
         self.setFeatures(QDockWidget.NoDockWidgetFeatures)
-        self.changes_drawing_algorithm()
-    def extra_options(self) -> None:
+        self.__changes_drawing_algorithm()
+        
+    def __extra_options(self) -> None:
         """
         Generate the extra options list for the visualization functions
         """
@@ -104,8 +105,8 @@ class DrawingOptionsDockWidget(QDockWidget):
         if self.hypergraph_type == "directed":
             self.extra_attributes["in_edge_color"] = "green"
             self.extra_attributes["out_edge_color"] = "red"
-    #Chiamare da main view
-    def weighted_options(self):
+            
+    def __weighted_options(self):
         self.heaviest_edges_spin_box = QDoubleSpinBox(self)
         self.heaviest_edges_spin_box.setDecimals(0)
         self.heaviest_edges_spin_box.setRange(0, 100)
@@ -114,7 +115,7 @@ class DrawingOptionsDockWidget(QDockWidget):
         self.heaviest_edges_spin_box_label.setText("Show {value}% Heaviest Edges".format(value=self.heaviest_edges_spin_box.value()))
         self.heaviest_edges_spin_box_label.setAlignment(Qt.AlignTop)
         self.heaviest_edges_spin_box.setAlignment(Qt.AlignTop)
-        self.heaviest_edges_spin_box.valueChanged.connect(self.send_new_heaviest_edges)
+        self.heaviest_edges_spin_box.valueChanged.connect(self.__send_new_heaviest_edges)
         self.vbox.addWidget(self.heaviest_edges_spin_box_label)
         self.vbox.addWidget(self.heaviest_edges_spin_box)
         self.combobox_weight_influence_label = QLabel("Weight-Distance Relationship",self)
@@ -124,11 +125,12 @@ class DrawingOptionsDockWidget(QDockWidget):
         self.combobox_weight_influence.currentTextChanged.connect(self.update)
         self.vbox.addWidget(self.combobox_weight_influence)
 
-    def send_new_heaviest_edges(self):
+    def __send_new_heaviest_edges(self):
         self.heaviest_edges_spin_box_label.setText("Show {value}% Heaviest Edges".format(value=self.heaviest_edges_spin_box.value()))
         self.update()
+        
     @staticmethod
-    def add_algorithm_options_button(widget, list, func):
+    def __add_algorithm_options_button(widget, list, func):
         list.clear()
         for x in widget.widget_list:
             myQListWidgetItem = QListWidgetItem(list)
@@ -136,23 +138,42 @@ class DrawingOptionsDockWidget(QDockWidget):
             list.addItem(myQListWidgetItem)
             list.setItemWidget(myQListWidgetItem, x)
         widget.modified_options.connect(func)
-    def create_centrality_combobox(self):
+        
+    def __create_centrality_combobox(self):
         self.centrality_combobox = QComboBox()
         if self.hypergraph_type == "normal":
             self.centrality_combobox.addItems(["No Centrality", "Degree Centrality", "Betweenness Centrality", "Adjacency Factor (t=1)", "Adjacency Factor (t=2)"])
         else:
             self.centrality_combobox.addItems(["No Centrality", "Degree Centrality", "Betweenness Centrality"])
-        self.centrality_combobox.currentTextChanged.connect(self.update_centrality)
+        self.centrality_combobox.currentTextChanged.connect(self.__update_centrality)
         self.vbox.addWidget(self.centrality_combobox)
-    def update_centrality(self):
+        
+    def __update_centrality(self):
         self.use_last = True
         self.update()
-    def create_community_detection_combobox(self):
+        
+    def __create_community_detection_combobox(self):
         self.community_combobox = QComboBox()
         self.community_combobox.addItems(["None", "Hypergraph Spectral Clustering","Hypergraph-MT", "Hy-MMSBM"])
-        self.community_combobox.currentTextChanged.connect(self.change_community_detection_algorithm)
+        self.community_combobox.currentTextChanged.connect(self.__change_community_detection_algorithm)
         self.vbox.addWidget(self.community_combobox)
-    def get_community_options(self):
+        
+    def __get_community_options(self):
+        """
+        Retrieves the community options widget based on the current text selected in the community combobox.
+        Defines options for community detection based on the user selection in the combobox using pattern matching.
+
+        Returns
+        -------
+        None or QWidget
+            Returns `None` if no specific option is chosen, or the corresponding options widget for the chosen method.
+
+        Notes
+        -----
+        - "Hypergraph Spectral Clustering": Returns an instance of `SpectralClusteringOptionsWidget`.
+        - "Hypergraph-MT": Returns an instance of `MTOptionsWidget`.
+        - "Hy-MMSBM": Returns an instance of `MMSBMOptionsWidget`.
+        """
         match self.community_combobox.currentText():
             case "None":
                 return None
@@ -162,32 +183,58 @@ class DrawingOptionsDockWidget(QDockWidget):
                 return MTOptionsWidget(self.n_nodes)
             case "Hy-MMSBM":
                 return MMSBMOptionsWidget(self.n_nodes)
-    def change_community_detection_algorithm(self):
+        
+    def __change_community_detection_algorithm(self):
+        """
+        Changes the community detection algorithm settings based on the user's selection 
+        from a combobox and dynamically updates the GUI.
+        """
         if self.community_combobox.currentText() == "None":
             self.tab.setTabVisible(self.tab.indexOf(self.community_options_tab), False)
         else:
             self.community_options_dict = CommunityOptionsDict()
-            self.community_algorithm_option_gui = self.get_community_options()
-            self.add_algorithm_options_button(self.community_algorithm_option_gui, self.community_options_list,
-                                              self.update_community_options)
+            self.community_algorithm_option_gui = self.__get_community_options()
+            self.__add_algorithm_options_button(self.community_algorithm_option_gui, self.community_options_list,
+                                              self.__update_community_options)
             self.tab.setTabVisible(self.tab.indexOf(self.community_options_tab), True)
         self.update()
-    def update_community_options(self, dictionary):
+        
+    def __update_community_options(self, dictionary):
+        """
+        Updates the community options with the provided dictionary and triggers an update.
+
+        Parameters
+        ----------
+        dictionary : dict
+            A dictionary containing new or updated community options to be merged with the existing options.
+        """
         self.community_options_dict.update(dictionary)
         self.update()
-    def create_drawing_combobox(self):
+        
+    def __create_drawing_combobox(self):
+        """
+        Creates and initializes a QComboBox widget for selecting drawing algorithms.
+        """
         self.drawing_combobox = QComboBox()
-        self.update_hypergraph_drawing_options()
-        self.drawing_combobox.currentTextChanged.connect(self.changes_drawing_algorithm)
+        self.__update_hypergraph_drawing_options()
+        self.drawing_combobox.currentTextChanged.connect(self.__changes_drawing_algorithm)
         self.vbox.addWidget(self.drawing_combobox)
-    def changes_drawing_algorithm(self):
-        self.get_correct_options()
-        self.extra_options()
-        graphic_options = self.get_graphic_options()
+        
+    def __changes_drawing_algorithm(self):
+        """
+        Updates the drawing algorithm options and configurations based on the selected parameters.
+        This method updates the graphic options and drawing options widgets,
+        adds corresponding buttons for updating these options, and adjusts the
+        visibility of the weight influence combobox based on the current drawing type.
+        It also ensures the overall update of the interface after adjusting options.
+        """
+        self.__get_correct_options()
+        self.__extra_options()
+        graphic_options = self.__get_graphic_options()
         self.graphic_options_widget = GraphicOptionsWidget(self.graphic_options, self.extra_attributes, graphic_options)
-        self.add_algorithm_options_button(self.graphic_options_widget, self.graphic_options_list,
-                                          self.update_graphic_options)
-        self.add_algorithm_options_button(self.drawing_options, self.drawing_options_list, self.update_drawing_options)
+        self.__add_algorithm_options_button(self.graphic_options_widget, self.graphic_options_list,
+                                          self.__update_graphic_options)
+        self.__add_algorithm_options_button(self.drawing_options, self.drawing_options_list, self.__update_drawing_options)
         self.algorithm_options_dict = self.drawing_options.get_options()
         if self.heaviest_edges_spin_box_label is not None:
             if self.drawing_combobox.currentText() in ["Sets", "Extra-Node"]:
@@ -197,7 +244,19 @@ class DrawingOptionsDockWidget(QDockWidget):
                 self.combobox_weight_influence.hide()
                 self.combobox_weight_influence_label.hide()
         self.update()
-    def get_graphic_options(self):
+        
+    def __get_graphic_options(self):
+        """
+        Gets the graphic options based on the current selection in the drawing_combobox.
+        The method determines which graphical options to retrieve by matching the text 
+        currently selected in the drawing_combobox. It provides appropriate configuration 
+        options for different visualization type.
+
+        Returns
+        -------
+        dict or list
+            The configuration options for the selected graphic visualization type.
+        """
         match self.drawing_combobox.currentText():
             case "Sets":
                 return get_Sets_options(self.weighted, self.hypergraph_type == "directed")
@@ -211,7 +270,13 @@ class DrawingOptionsDockWidget(QDockWidget):
                 return get_Bipartite_options(self.weighted, self.hypergraph_type == "directed")
             case "Clique":
                 return get_Clique_options()
-    def get_correct_options(self):
+        
+    def __get_correct_options(self):
+        """
+        Configures and sets the appropriate drawing options widget based on the current selection from the drawing combobox.
+        The method checks the currently selected text in the `drawing_combobox` and assigns a corresponding widget instance to `drawing_options`.
+        This enables configuration or customization of specific drawing or visualization settings for different visual representation styles.
+        """
         match self.drawing_combobox.currentText():
             case "Sets":
                 self.drawing_options = SetOptionsWidget()
@@ -225,18 +290,41 @@ class DrawingOptionsDockWidget(QDockWidget):
                 self.drawing_options = BipartiteOptionsWidget()
             case "Clique":
                 self.drawing_options = CliqueOptionsWidget()
-    def update_graphic_options(self, new_options):
+            
+    def __update_graphic_options(self, new_options):
+        """
+        Updates the graphic options for the instance.
+
+        Parameters
+        ----------
+        new_options : tuple
+            A tuple containing new graphic options and additional attributes to be set for the object.
+        """
         self.graphic_options, self.extra_attributes = new_options
         self.use_last = True
         self.update()
-    def update_drawing_options(self, dictionary):
+
+    def __update_drawing_options(self, dictionary):
+        """
+        Updates the drawing options with new parameters from the given dictionary.
+
+        Parameters
+        ----------
+        dictionary : dict
+            A dictionary containing drawing options. The dictionary may include
+            the key "use_last"""
         self.algorithm_options_dict = dictionary
         try:
             self.use_last = dictionary["use_last"]
         except KeyError:
             self.use_last = True
         self.update()
-    def update_hypergraph_drawing_options(self):
+        
+    def __update_hypergraph_drawing_options(self):
+        """
+        Updates the options available in the drawing combobox based on the type of hypergraph 
+        and other associated properties.
+        """
         self.drawing_combobox.clear()
         if self.hypergraph_type == "normal":
             self.drawing_combobox.addItems(["Sets", "PAOH","Radial", "Extra-Node","Bipartite"])
@@ -252,7 +340,8 @@ class DrawingOptionsDockWidget(QDockWidget):
 
     def update_hypergraph_type(self, hypergraph_type):
         self.hypergraph_type = hypergraph_type
-        self.update_hypergraph_drawing_options()
+        self.__update_hypergraph_drawing_options()
+        
     def update(self):
         if self.heaviest_edges_spin_box_label is not None:
             heaviest_value = self.heaviest_edges_spin_box.value()/100

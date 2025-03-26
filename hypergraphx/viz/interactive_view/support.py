@@ -119,4 +119,5 @@ def numerical_hypergraph(hypergraph: Hypergraph|DirectedHypergraph|TemporalHyper
     for node in hypergraph.get_nodes():
         if str(node).isnumeric():
             return True
+
     return False

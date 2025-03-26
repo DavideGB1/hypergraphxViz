@@ -7,7 +7,7 @@ import sys
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QVBoxLayout, QWidget, QHBoxLayout, QLabel, \
-    QDoubleSpinBox, QTabWidget, QLayout, QMainWindow, QStackedLayout
+    QDoubleSpinBox, QTabWidget, QMainWindow, QStackedLayout
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
