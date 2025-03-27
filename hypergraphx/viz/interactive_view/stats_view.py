@@ -13,6 +13,21 @@ from hypergraphx.motifs import compute_motifs
 from hypergraphx.viz.interactive_view.support import clear_layout
 from hypergraphx.viz.plot_motifs import plot_motifs
 
+def draw_bar(ax, values, label, title):
+    ax.bar(values[2], values[0].values())
+    ax.set_xlabel(label)
+    ax.set_title(title)
+    ax.set_xticks(values[2], values[1])
+
+def generate_key(dictionary):
+    keys_label = []
+    keys = []
+    idx = 1
+    for edge in dictionary.keys():
+        keys.append(idx)
+        idx += 1
+        keys_label.append(str(edge))
+    return keys_label, keys
 
 class HypergraphStatsWidget(QMainWindow):
     updated_hypergraph = pyqtSignal(dict)
@@ -28,14 +43,14 @@ class HypergraphStatsWidget(QMainWindow):
         self.vertical_tab = VerticalTabWidget()
         self.hypergraph = hypergraph
         degree_tab = self.degree_widget()
-        centrality_tab = self.centrality_widget()
+        centrality_tab = CentralityWidget(self.hypergraph)
         self.vertical_tab.addTab(degree_tab, "Degree")
         self.vertical_tab.addTab(centrality_tab, "Centrality")
         if isinstance(hypergraph, Hypergraph):
             self.motifs_tab = MotifsWidget(self.hypergraph)
             self.vertical_tab.addTab(self.motifs_tab, "Motifs")
         if isinstance(hypergraph, Hypergraph):
-            adj_factor_widgtet = self.adjacency_widget()
+            adj_factor_widgtet = AdjWidget(self.hypergraph)
             self.vertical_tab.addTab(adj_factor_widgtet, "Adjacency")
         if self.hypergraph.is_weighted():
             weight_tab = self.weight_widget()
@@ -146,109 +161,8 @@ class HypergraphStatsWidget(QMainWindow):
 
         return self.__create_widgets(figure)
 
-    def centrality_widget(self):
-        figure = Figure()
-        axes = figure.subplots(2,2)
-        figure.subplots_adjust(wspace=0.5, hspace=0.5)
-        if isinstance(self.hypergraph, TemporalHypergraph):
-            edge_s_betweenness = s_betweenness_averaged(self.hypergraph)
-        else:
-            edge_s_betweenness = s_betweenness(self.hypergraph)
 
-        keys_label = []
-        keys = []
-        idx = 1
-        for edge in edge_s_betweenness.keys():
-            keys.append(idx)
-            idx += 1
-            keys_label.append(str(edge))
-        axes[0, 0].bar(keys, edge_s_betweenness.values())
-        axes[0, 0].set_xlabel('Edges')
-        axes[0, 0].set_title('Edges Betweenness Centrality')
-        axes[0, 0].set_xticks(keys, keys_label)
-
-
-        if isinstance(self.hypergraph, TemporalHypergraph):
-            edge_s_closeness = s_closeness_averaged(self.hypergraph)
-        else:
-            edge_s_closeness = s_closeness(self.hypergraph)
-        keys_label = []
-        keys = []
-        idx = 1
-        for edge in edge_s_closeness.keys():
-            keys.append(idx)
-            idx += 1
-            keys_label.append(str(edge))
-        axes[0, 1].bar(keys, edge_s_closeness.values())
-        axes[0, 1].set_xlabel('Edges')
-        axes[0, 1].set_title('Edges Closeness Centrality')
-        axes[0, 1].set_xticks(keys, keys_label)
-
-        if isinstance(self.hypergraph, TemporalHypergraph):
-            node_s_betweenness = s_betweenness_nodes_averaged(self.hypergraph)
-        else:
-            node_s_betweenness = s_betweenness_nodes(self.hypergraph)
-        keys_label = []
-        keys = []
-        idx = 1
-        for edge in node_s_betweenness.keys():
-            keys.append(idx)
-            idx += 1
-            keys_label.append(str(edge))
-        axes[1, 0].bar(keys, node_s_betweenness.values())
-        axes[1, 0].set_xlabel('Nodes')
-        axes[1, 0].set_title('Nodes Betweenness Centrality')
-        axes[1, 0].set_xticks(keys, keys_label)
-
-        if isinstance(self.hypergraph, TemporalHypergraph):
-            node_s_closeness = s_closenness_nodes_averaged(self.hypergraph)
-        else:
-            node_s_closeness = s_closeness_nodes(self.hypergraph)
-        keys_label = []
-        keys = []
-        idx = 1
-        for edge in node_s_closeness.keys():
-            keys.append(idx)
-            idx += 1
-            keys_label.append(str(edge))
-        axes[1, 1].bar(keys, node_s_closeness.values())
-        axes[1, 1].set_xlabel('Nodes')
-        axes[1, 1].set_title('Nodes Closeness Centrality')
-        axes[1, 1].set_xticks(keys, keys_label)
-
-        return self.__create_widgets(figure)
-
-    def adjacency_widget(self):
-        figure = Figure()
-        axes = figure.subplots(1,2)
-        adj_factor_t0 = self.hypergraph.adjacency_factor(0)
-        keys_label = []
-        keys = []
-        idx = 1
-        for edge in adj_factor_t0.keys():
-            keys.append(idx)
-            idx += 1
-            keys_label.append(str(edge))
-        axes[0].bar(keys, adj_factor_t0.values())
-        axes[0].set_xlabel('Nodes')
-        axes[0].set_title('Adjacency Factor (t=0)')
-        axes[0].set_xticks(keys, keys_label)
-
-        adj_factor_t1 = self.hypergraph.adjacency_factor(t=1)
-        keys_label = []
-        keys = []
-        idx = 1
-        for edge in adj_factor_t1.keys():
-            keys.append(idx)
-            idx += 1
-            keys_label.append(str(edge))
-        axes[1].bar(keys, adj_factor_t1.values())
-        axes[1].set_xlabel('Nodes')
-        axes[1].set_title('Adjacency Factor (t=1)')
-        axes[1].set_xticks(keys, keys_label)
-
-        return self.__create_widgets(figure)
-
+#Motifs
 class MotifsWorker(QtCore.QThread):
     progress = pyqtSignal(list)
     def __init__(self, hypergraph, parent=None):
@@ -269,6 +183,8 @@ class MotifsWidget(QWidget):
         plot_motifs(list,save_name = None,ax = self.ax)
         canvas = FigureCanvas(self.figure)
         self.ax.set_title('Motifs')
+        toolbar = NavigationToolbar(canvas, self)
+        self.layout.addWidget(toolbar)
         self.layout.addWidget(canvas)
         self.setLayout(self.layout)
         self.update()
@@ -286,4 +202,267 @@ class MotifsWidget(QWidget):
         self.hypergraph = hypergraph
         self.thread = MotifsWorker(self.hypergraph)
         self.thread.progress.connect(self.draw_motifs)
+        self.thread.start()
+
+#Adjacency
+class AdjWorker(QtCore.QThread):
+    progress = pyqtSignal(list)
+    def __init__(self, hypergraph, parent=None):
+        super(AdjWorker, self).__init__(parent)
+        self.hypergraph = hypergraph
+    def run(self):
+        adj_factor_t0 = self.hypergraph.adjacency_factor(0)
+        adj_factor_t0_keys_label, adj_factor_t0_label = generate_key(adj_factor_t0)
+        adj_factor_t1 = self.hypergraph.adjacency_factor(t=1)
+        adj_factor_t1_keys_label, adj_factor_t1_label = generate_key(adj_factor_t1)
+
+        self.progress.emit([
+            (adj_factor_t0,adj_factor_t0_keys_label, adj_factor_t0_label,),
+            (adj_factor_t1, adj_factor_t1_keys_label, adj_factor_t1_label)
+        ])
+
+class AdjWidget(QWidget):
+    def __init__(self, hypergraph,parent=None):
+        super(AdjWidget, self).__init__(parent)
+        self.hypergraph = hypergraph
+        self.progress_bar = None
+        self.figure = None
+        self.axes = None
+        self.thread = None
+        self.layout = QVBoxLayout()
+        self.update_hypergraph()
+    def draw_adj(self, list):
+        clear_layout(self.layout)
+        canvas = FigureCanvas(self.figure)
+
+        draw_bar(
+            ax=self.axes[0],
+            values=list[0],
+            label = "Nodes",
+            title="Adjacency Factor (t=0)"
+        )
+
+        draw_bar(
+            ax=self.axes[1],
+            values=list[1],
+            label="Nodes",
+            title="Adjacency Factor (t=1)"
+        )
+        
+        toolbar = NavigationToolbar(canvas, self)
+        self.layout.addWidget(toolbar)
+        self.layout.addWidget(canvas)
+        self.setLayout(self.layout)
+        self.update()
+
+    def update_hypergraph(self):
+        clear_layout(self.layout)
+        label = QLabel("Waiting...")
+        self.layout.addWidget(label)
+        self.progress_bar = QProgressBar(self)
+        self.progress_bar.setRange(0, 10)
+        self.layout.addWidget(self.progress_bar)
+        self.layout.setAlignment(Qt.AlignCenter)
+        self.setLayout(self.layout)
+        self.figure = Figure()
+        self.figure.subplots_adjust(wspace=0.5, hspace=1)
+        self.axes = self.figure.subplots(2,1)
+        self.thread = AdjWorker(self.hypergraph)
+        self.thread.progress.connect(self.draw_adj)
+        self.thread.start()
+
+#Centrality
+class CentralityWorker(QtCore.QThread):
+    progress = pyqtSignal(list)
+    def __init__(self, hypergraph, parent=None):
+        super(CentralityWorker, self).__init__(parent)
+        self.hypergraph = hypergraph
+    def run(self):
+        if isinstance(self.hypergraph, TemporalHypergraph):
+            edge_s_betweenness = s_betweenness_averaged(self.hypergraph)
+        else:
+            edge_s_betweenness = s_betweenness(self.hypergraph)
+        edge_s_betweenness_keys_label, edge_s_betweenness_keys = generate_key(edge_s_betweenness)
+        if isinstance(self.hypergraph, TemporalHypergraph):
+            edge_s_closeness = s_closeness_averaged(self.hypergraph)
+        else:
+            edge_s_closeness = s_closeness(self.hypergraph)
+        edge_s_closeness_keys_label, edge_s_closeness_keys = generate_key(edge_s_closeness)
+        if isinstance(self.hypergraph, TemporalHypergraph):
+            node_s_betweenness = s_betweenness_nodes_averaged(self.hypergraph)
+        else:
+            node_s_betweenness = s_betweenness_nodes(self.hypergraph)
+        node_s_betweenness_keys_label, node_s_betweenness_keys = generate_key(node_s_betweenness)
+        if isinstance(self.hypergraph, TemporalHypergraph):
+            node_s_closeness = s_closenness_nodes_averaged(self.hypergraph)
+        else:
+            node_s_closeness = s_closeness_nodes(self.hypergraph)
+        node_s_closeness_keys_label, node_s_closeness_keys = generate_key(node_s_closeness)
+
+        self.progress.emit([
+            (edge_s_betweenness, edge_s_betweenness_keys_label, edge_s_betweenness_keys),
+            (edge_s_closeness, edge_s_closeness_keys_label, edge_s_closeness_keys),
+            (node_s_betweenness, node_s_betweenness_keys_label, node_s_betweenness_keys),
+            (node_s_closeness, node_s_closeness_keys_label, node_s_closeness_keys)
+        ])
+
+class CentralityWidget(QWidget):
+    def __init__(self, hypergraph,parent=None):
+        super(CentralityWidget, self).__init__(parent)
+        self.hypergraph = hypergraph
+        self.progress_bar = None
+        self.figure = None
+        self.axes = None
+        self.thread = None
+        self.layout = QVBoxLayout()
+        self.update_hypergraph()
+    def draw_adj(self, list):
+        clear_layout(self.layout)
+        self.figure = Figure()
+        self.axes = self.figure.subplots(2, 2)
+        self.figure.subplots_adjust(wspace=2, hspace=2)
+        canvas = FigureCanvas(self.figure)
+
+        draw_bar(
+            ax=self.axes[0, 0],
+            values=list[0],
+            label='Edges',
+            title='Edges Betweenness Centrality')
+
+        draw_bar(
+            ax=self.axes[0, 1],
+            values=list[1],
+            label='Edges',
+            title='Edges Closeness Centrality')
+
+        draw_bar(
+            ax=self.axes[1, 0],
+            values=list[2],
+            label='Nodes',
+            title='Nodes Betweenness Centrality')
+
+        draw_bar(
+            ax=self.axes[1, 1],
+            values=list[3],
+            label='Nodes',
+            title='Nodes Closeness Centrality')
+
+        toolbar = NavigationToolbar(canvas, self)
+        self.layout.addWidget(toolbar)
+        self.layout.addWidget(canvas)
+        self.setLayout(self.layout)
+        self.update()
+
+    def update_hypergraph(self):
+        clear_layout(self.layout)
+        label = QLabel("Waiting...")
+        self.layout.addWidget(label)
+        self.progress_bar = QProgressBar(self)
+        self.progress_bar.setRange(0, 10)
+        self.layout.addWidget(self.progress_bar)
+        self.layout.setAlignment(Qt.AlignCenter)
+        self.setLayout(self.layout)
+        self.figure = Figure()
+        self.figure.subplots_adjust(wspace=0.5, hspace=1)
+        self.axes = self.figure.subplots(2,1)
+        self.thread = CentralityWorker(self.hypergraph)
+        self.thread.progress.connect(self.draw_adj)
+        self.thread.start()
+
+#Degree
+class DegreeWorker(QtCore.QThread):
+    progress = pyqtSignal(list)
+    def __init__(self, hypergraph, parent=None):
+        super(CentralityWorker, self).__init__(parent)
+        self.hypergraph = hypergraph
+    def run(self):
+        if isinstance(self.hypergraph, TemporalHypergraph):
+            edge_s_betweenness = s_betweenness_averaged(self.hypergraph)
+        else:
+            edge_s_betweenness = s_betweenness(self.hypergraph)
+        edge_s_betweenness_keys_label, edge_s_betweenness_keys = generate_key(edge_s_betweenness)
+        if isinstance(self.hypergraph, TemporalHypergraph):
+            edge_s_closeness = s_closeness_averaged(self.hypergraph)
+        else:
+            edge_s_closeness = s_closeness(self.hypergraph)
+        edge_s_closeness_keys_label, edge_s_closeness_keys = generate_key(edge_s_closeness)
+        if isinstance(self.hypergraph, TemporalHypergraph):
+            node_s_betweenness = s_betweenness_nodes_averaged(self.hypergraph)
+        else:
+            node_s_betweenness = s_betweenness_nodes(self.hypergraph)
+        node_s_betweenness_keys_label, node_s_betweenness_keys = generate_key(node_s_betweenness)
+        if isinstance(self.hypergraph, TemporalHypergraph):
+            node_s_closeness = s_closenness_nodes_averaged(self.hypergraph)
+        else:
+            node_s_closeness = s_closeness_nodes(self.hypergraph)
+        node_s_closeness_keys_label, node_s_closeness_keys = generate_key(node_s_closeness)
+
+        self.progress.emit([
+            (edge_s_betweenness, edge_s_betweenness_keys_label, edge_s_betweenness_keys),
+            (edge_s_closeness, edge_s_closeness_keys_label, edge_s_closeness_keys),
+            (node_s_betweenness, node_s_betweenness_keys_label, node_s_betweenness_keys),
+            (node_s_closeness, node_s_closeness_keys_label, node_s_closeness_keys)
+        ])
+
+class DegreeWidget(QWidget):
+    def __init__(self, hypergraph,parent=None):
+        super(CentralityWidget, self).__init__(parent)
+        self.hypergraph = hypergraph
+        self.progress_bar = None
+        self.figure = None
+        self.axes = None
+        self.thread = None
+        self.layout = QVBoxLayout()
+        self.update_hypergraph()
+    def draw_adj(self, list):
+        clear_layout(self.layout)
+        self.figure = Figure()
+        self.axes = self.figure.subplots(2, 2)
+        self.figure.subplots_adjust(wspace=2, hspace=2)
+        canvas = FigureCanvas(self.figure)
+
+        draw_bar(
+            ax=self.axes[0, 0],
+            values=list[0],
+            label='Edges',
+            title='Edges Betweenness Centrality')
+
+        draw_bar(
+            ax=self.axes[0, 1],
+            values=list[1],
+            label='Edges',
+            title='Edges Closeness Centrality')
+
+        draw_bar(
+            ax=self.axes[1, 0],
+            values=list[2],
+            label='Nodes',
+            title='Nodes Betweenness Centrality')
+
+        draw_bar(
+            ax=self.axes[1, 1],
+            values=list[3],
+            label='Nodes',
+            title='Nodes Closeness Centrality')
+
+        toolbar = NavigationToolbar(canvas, self)
+        self.layout.addWidget(toolbar)
+        self.layout.addWidget(canvas)
+        self.setLayout(self.layout)
+        self.update()
+
+    def update_hypergraph(self):
+        clear_layout(self.layout)
+        label = QLabel("Waiting...")
+        self.layout.addWidget(label)
+        self.progress_bar = QProgressBar(self)
+        self.progress_bar.setRange(0, 10)
+        self.layout.addWidget(self.progress_bar)
+        self.layout.setAlignment(Qt.AlignCenter)
+        self.setLayout(self.layout)
+        self.figure = Figure()
+        self.figure.subplots_adjust(wspace=0.5, hspace=1)
+        self.axes = self.figure.subplots(2,1)
+        self.thread = CentralityWorker(self.hypergraph)
+        self.thread.progress.connect(self.draw_adj)
         self.thread.start()
