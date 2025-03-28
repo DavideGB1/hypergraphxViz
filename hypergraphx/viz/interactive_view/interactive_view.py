@@ -1,6 +1,7 @@
 import copy
 import ctypes
 import faulthandler
+import multiprocessing
 import os
 import sys
 
@@ -308,7 +309,7 @@ class Window(QWidget):
         self.algorithm_options_dict = input["algorithm_options"]
         self.graphic_options = input["graphic_options"]
         self.extra_attributes = input["extra_attributes"]
-        self.plot()
+        #self.plot()
         self.change_focus()
 
     def new_slider_value(self, value):
@@ -321,7 +322,7 @@ class Window(QWidget):
             The new value to update the slider with.
         """
         self.slider_value = value
-        self.plot()
+        #self.plot()
 
     #Community
     def use_spectral_clustering(self):
@@ -510,7 +511,7 @@ class Window(QWidget):
             self.current_function = draw_extra_node
         else:
             self.current_function = draw_sets
-        self.plot()
+        #self.plot()
 
 def start_interactive_view(h: Hypergraph|TemporalHypergraph|DirectedHypergraph) -> None:
     """
@@ -519,11 +520,13 @@ def start_interactive_view(h: Hypergraph|TemporalHypergraph|DirectedHypergraph) 
     ----------
     h: Hypergraph or TemporalHypergraph or DirectedHypergraph
     """
-    app = QApplication(sys.argv)
-    faulthandler.enable()
-    main = Window(hypergraph=h)
-    main.show()
-    sys.exit(app.exec_())
+    if __name__ == '__main__':
+        multiprocessing.freeze_support()
+        app = QApplication(sys.argv)
+        faulthandler.enable()
+        main = Window(hypergraph=h)
+        main.show()
+        sys.exit(app.exec_())
 
 h = Hypergraph([("A","B","C"),('D','C')])
 start_interactive_view(h)
