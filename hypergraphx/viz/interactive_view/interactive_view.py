@@ -4,8 +4,9 @@ import faulthandler
 import multiprocessing
 import os
 import sys
+from copy import deepcopy
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QVBoxLayout, QWidget, QHBoxLayout, QLabel, \
     QDoubleSpinBox, QTabWidget, QMainWindow, QStackedLayout
@@ -33,6 +34,93 @@ from hypergraphx.viz.interactive_view.hypergraph_editing_view import ModifyHyper
 from hypergraphx.viz.interactive_view.stats_view import HypergraphStatsWidget
 
 
+def plot(draw_function, hypergraph, output, dictionary, graphic_options):
+    figure = plt.figure()
+    figure.clear()
+    ax = figure.add_subplot(111)
+
+    extra_attributes = dictionary["extra_attributes"]
+    # Try to get the extra attributes
+    try:
+        radius_scale_factor = extra_attributes["radius_scale_factor"]
+    except KeyError:
+        radius_scale_factor = 1.0
+    try:
+        font_spacing_factor = extra_attributes["font_spacing_factor"]
+    except KeyError:
+        font_spacing_factor = 1.5
+    try:
+        time_font_size = extra_attributes["time_font_size"]
+    except KeyError:
+        time_font_size = 18
+    try:
+        time_separation_line_color = extra_attributes["time_separation_line_color"]
+    except KeyError:
+        time_separation_line_color = "#000000"
+    try:
+        time_separation_line_width = extra_attributes["time_separation_line_width"]
+    except KeyError:
+        time_separation_line_width = 4
+    try:
+        rounding_radius_size = extra_attributes["rounding_radius_factor"]
+    except KeyError:
+        rounding_radius_size = 0.1
+    try:
+        polygon_expansion_factor = extra_attributes["polygon_expansion_factor"]
+    except KeyError:
+        polygon_expansion_factor = 1.8
+    try:
+        hyperedge_alpha = extra_attributes["hyperedge_alpha"]
+    except KeyError:
+        hyperedge_alpha = 0.8
+
+    if dictionary["centrality"] is not None:
+        graphic_options.add_centrality_factor_dict(dictionary["centrality"])
+    else:
+        graphic_options.add_centrality_factor_dict(None)
+    if dictionary["algorithm_options_dict"] is None:
+        dictionary["algorithm_options_dict"] = {}
+    # Plot and draw the hypergraph using it's function
+    position = draw_function(hypergraph, cardinality=dictionary["slider_value"],
+                                          x_heaviest= dictionary["heaviest_edges_value"], ax=ax,
+                                          time_font_size=time_font_size,
+                                          time_separation_line_color=time_separation_line_color,
+                                          k= dictionary["community_options_dict"]["number_communities"],
+                                          graphicOptions=copy.deepcopy(graphic_options),
+                                          radius_scale_factor=radius_scale_factor,
+                                          font_spacing_factor=font_spacing_factor,
+                                          time_separation_line_width=time_separation_line_width,
+                                          polygon_expansion_factor=polygon_expansion_factor,
+                                          weight_positioning= dictionary["weight_positioning"],
+                                          rounding_radius_size=rounding_radius_size, hyperedge_alpha=hyperedge_alpha,
+                                          pos=dictionary["last_pos"], u= dictionary["community_model"], **dictionary["algorithm_options_dict"])
+    output.put([position, deepcopy(figure)])
+
+class PlotWorker(QThread):
+    progress = pyqtSignal(list)
+
+    def __init__(self, draw_function, hypergraph, output_queue, input_dictionary, graphic_options, parent=None):
+        super(PlotWorker, self).__init__(parent)
+        self.output_queue = output_queue
+        self.hypergraph = hypergraph
+        self.draw_function = draw_function
+        self.input_dictionary = input_dictionary
+        self.graphic_options = graphic_options
+        self.process = None
+
+    def run(self):
+        self.process = multiprocessing.Process(target=plot,
+                                               args=(self.draw_function,
+                                                   self.hypergraph,
+                                                     self.output_queue,
+                                                    self.input_dictionary,
+                                                     self.graphic_options
+                                            ))
+        self.process.start()
+        self.process.join()
+        res = self.output_queue.get()
+        self.progress.emit(res)
+
 class Window(QWidget):
 
     # constructor
@@ -49,6 +137,8 @@ class Window(QWidget):
         self.heaviest_edges_value = 1.0
 
         #Set Default Values
+        self.output_queue = multiprocessing.Queue()
+        self.thread = None
         self.weight_positioning = 0
         self.community_algorithm_option_gui = None
         self.community_options_dict = CommunityOptionsDict()
@@ -80,6 +170,7 @@ class Window(QWidget):
         #Defines Canvas and Options Toolbar
         self.canvas = FigureCanvas(self.figure)
         self.toolbar = NavigationToolbar(self.canvas, self)
+
         self.canvas_hbox.addWidget(self.canvas, 80)
         self.community_model = None
         # Sliders Management
@@ -122,58 +213,32 @@ class Window(QWidget):
         """
         #Clears the plot
         self.change_focus()
-        self.figure.clear()
-        ax = self.figure.add_subplot(111)
-        #Try to get the extra attributes
-        try:
-            radius_scale_factor = self.extra_attributes["radius_scale_factor"]
-        except KeyError:
-            radius_scale_factor = 1.0
-        try:
-            font_spacing_factor = self.extra_attributes["font_spacing_factor"]
-        except KeyError:
-            font_spacing_factor = 1.5
-        try:
-            time_font_size = self.extra_attributes["time_font_size"]
-        except KeyError:
-            time_font_size = 18
-        try:
-            time_separation_line_color = self.extra_attributes["time_separation_line_color"]
-        except KeyError:
-            time_separation_line_color = "#000000"
-        try:
-            time_separation_line_width = self.extra_attributes["time_separation_line_width"]
-        except KeyError:
-            time_separation_line_width = 4
-        try:
-            rounding_radius_size = self.extra_attributes["rounding_radius_factor"]
-        except KeyError:
-            rounding_radius_size = 0.1
-        try:
-            polygon_expansion_factor = self.extra_attributes["polygon_expansion_factor"]
-        except KeyError:
-            polygon_expansion_factor = 1.8
-        try:
-             hyperedge_alpha = self.extra_attributes["hyperedge_alpha"]
-        except KeyError:
-            hyperedge_alpha = 0.8
+        dictionary = dict()
+        dictionary["slider_value"] = self.slider_value
+        dictionary["centrality"] = self.centrality
+        dictionary["algorithm_options_dict"] = self.algorithm_options_dict
+        dictionary["heaviest_edges_value"] = self.heaviest_edges_value
+        dictionary["community_options_dict"] = self.community_options_dict
+        dictionary["weight_positioning"] = self.weight_positioning
+        dictionary["extra_attributes"] = self.extra_attributes
         if self.use_last:
-            last_pos = self.last_pos
+            dictionary["last_pos"] = self.last_pos
         else:
-            last_pos = None
-        if self.centrality is not None:
-            self.graphic_options.add_centrality_factor_dict(self.centrality)
-        else:
-            self.graphic_options.add_centrality_factor_dict(None)
-        if self.algorithm_options_dict is None:
-            self.algorithm_options_dict = {}
-        #Plot and draw the hypergraph using it's function
-        self.last_pos = self.current_function(self.hypergraph, cardinality= self.slider_value, x_heaviest = self.heaviest_edges_value, ax=ax,
-                time_font_size = time_font_size, time_separation_line_color = time_separation_line_color,k=self.community_options_dict["number_communities"],
-                graphicOptions=copy.deepcopy(self.graphic_options), radius_scale_factor=radius_scale_factor, font_spacing_factor=font_spacing_factor,
-                time_separation_line_width = time_separation_line_width, polygon_expansion_factor = polygon_expansion_factor, weight_positioning = self.weight_positioning,
-                rounding_radius_size = rounding_radius_size, hyperedge_alpha = hyperedge_alpha,pos = last_pos, u = self.community_model, **self.algorithm_options_dict)
+            dictionary["last_pos"] = None
+        dictionary["community_model"] = self.community_model
+        dictionary["algorithm_options_dict"] = self.algorithm_options_dict
+        self.thread = PlotWorker(self.current_function, self.hypergraph, self.output_queue, dictionary,copy.deepcopy(self.graphic_options))
+        self.thread.progress.connect(self.drawn)
+        self.thread.start()
         self.use_last = False
+    def drawn(self, value_list):
+        print("MAMMATA")
+        self.last_pos = value_list[0]
+        self.figure = value_list[1]
+        self.canvas = FigureCanvas(self.figure)
+        self.toolbar = NavigationToolbar(self.canvas, self)
+        self.main_layout.addToolBar(Qt.TopToolBarArea, self.toolbar)
+        self.main_layout.setCentralWidget(self.canvas)
         self.canvas.draw()
         self.change_focus()
 
@@ -309,7 +374,7 @@ class Window(QWidget):
         self.algorithm_options_dict = input["algorithm_options"]
         self.graphic_options = input["graphic_options"]
         self.extra_attributes = input["extra_attributes"]
-        #self.plot()
+        self.plot()
         self.change_focus()
 
     def new_slider_value(self, value):
@@ -322,7 +387,7 @@ class Window(QWidget):
             The new value to update the slider with.
         """
         self.slider_value = value
-        #self.plot()
+        self.plot()
 
     #Community
     def use_spectral_clustering(self):
@@ -511,7 +576,7 @@ class Window(QWidget):
             self.current_function = draw_extra_node
         else:
             self.current_function = draw_sets
-        #self.plot()
+        self.plot()
 
 def start_interactive_view(h: Hypergraph|TemporalHypergraph|DirectedHypergraph) -> None:
     """
