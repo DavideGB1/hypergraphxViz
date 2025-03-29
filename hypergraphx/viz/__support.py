@@ -1,11 +1,16 @@
+import collections
 import inspect
+import itertools
 import math
 import colorcet as cc
 from math import trunc
 from typing import Tuple
 import matplotlib
+import networkx as nx
 import numpy as np
 import seaborn as sns
+from networkx.drawing.nx_pylab import FancyArrowFactory
+
 from hypergraphx import Hypergraph, DirectedHypergraph, TemporalHypergraph
 from matplotlib import pyplot as plt
 
@@ -315,3 +320,271 @@ def _get_node_community(mappingName2ID, node, u, col,threshold ):
         mappingName2ID[node], u, col, threshold=threshold
     )
     return wedge_sizes, wedge_colors
+
+import matplotlib as mpl
+class CurvedArrowText(mpl.text.Text):
+    """
+    Clone of CurvedArrowText. Needed in other to avoid a problem if multiprocessing
+    """
+    def __init__(
+        self,
+        arrow,
+        *args,
+        label_pos=0.5,
+        labels_horizontal=False,
+        ax=None,
+        **kwargs,
+    ):
+        # Bind to FancyArrowPatch
+        self.arrow = arrow
+        # how far along the text should be on the curve,
+        # 0 is at start, 1 is at end etc.
+        self.label_pos = label_pos
+        self.labels_horizontal = labels_horizontal
+        if ax is None:
+            ax = plt.gca()
+        self.ax = ax
+        self.x, self.y, self.angle = self._update_text_pos_angle(arrow)
+
+        # Create text object
+        super().__init__(self.x, self.y, *args, rotation=self.angle, **kwargs)
+        # Bind to axis
+        self.ax.add_artist(self)
+
+    def _get_arrow_path_disp(self, arrow):
+        """
+        This is part of FancyArrowPatch._get_path_in_displaycoord
+        It omits the second part of the method where path is converted
+            to polygon based on width
+        The transform is taken from ax, not the object, as the object
+            has not been added yet, and doesn't have transform
+        """
+        dpi_cor = arrow._dpi_cor
+        # trans_data = arrow.get_transform()
+        trans_data = self.ax.transData
+        if arrow._posA_posB is not None:
+            posA = arrow._convert_xy_units(arrow._posA_posB[0])
+            posB = arrow._convert_xy_units(arrow._posA_posB[1])
+            (posA, posB) = trans_data.transform((posA, posB))
+            _path = arrow.get_connectionstyle()(
+                posA,
+                posB,
+                patchA=arrow.patchA,
+                patchB=arrow.patchB,
+                shrinkA=arrow.shrinkA * dpi_cor,
+                shrinkB=arrow.shrinkB * dpi_cor,
+            )
+        else:
+            _path = trans_data.transform_path(arrow._path_original)
+        # Return is in display coordinates
+        return _path
+
+    def _update_text_pos_angle(self, arrow):
+        # Fractional label position
+        path_disp = self._get_arrow_path_disp(arrow)
+        (x1, y1), (cx, cy), (x2, y2) = path_disp.vertices
+        # Text position at a proportion t along the line in display coords
+        # default is 0.5 so text appears at the halfway point
+        t = self.label_pos
+        tt = 1 - t
+        x = tt**2 * x1 + 2 * t * tt * cx + t**2 * x2
+        y = tt**2 * y1 + 2 * t * tt * cy + t**2 * y2
+        if self.labels_horizontal:
+            # Horizontal text labels
+            angle = 0
+        else:
+            # Labels parallel to curve
+            change_x = 2 * tt * (cx - x1) + 2 * t * (x2 - cx)
+            change_y = 2 * tt * (cy - y1) + 2 * t * (y2 - cy)
+            angle = (np.arctan2(change_y, change_x) / (2 * np.pi)) * 360
+            # Text is "right way up"
+            if angle > 90:
+                angle -= 180
+            if angle < -90:
+                angle += 180
+        (x, y) = self.ax.transData.inverted().transform((x, y))
+        return x, y, angle
+
+    def draw(self, renderer):
+        # recalculate the text position and angle
+        self.x, self.y, self.angle = self._update_text_pos_angle(self.arrow)
+        self.set_position((self.x, self.y))
+        self.set_rotation(self.angle)
+        # redraw text
+        super().draw(renderer)
+
+
+def draw_networkx_edge_labels_clone(
+    G,
+    pos,
+    edge_labels=None,
+    label_pos=0.5,
+    font_size=10,
+    font_color="k",
+    font_family="sans-serif",
+    font_weight="normal",
+    alpha=None,
+    bbox=None,
+    horizontalalignment="center",
+    verticalalignment="center",
+    ax=None,
+    rotate=True,
+    clip_on=True,
+    node_size=300,
+    nodelist=None,
+    connectionstyle="arc3",
+    hide_ticks=True,
+):
+    """
+    Clone of draw_networkx_edge_labels_clone without the internal class CurvedArrowText. Needed in other to avoid a problem if multiprocessing
+    """
+
+    # use default box of white with white border
+    if bbox is None:
+        bbox = {"boxstyle": "round", "ec": (1.0, 1.0, 1.0), "fc": (1.0, 1.0, 1.0)}
+
+    if isinstance(connectionstyle, str):
+        connectionstyle = [connectionstyle]
+    elif np.iterable(connectionstyle):
+        connectionstyle = list(connectionstyle)
+    else:
+        raise nx.NetworkXError(
+            "draw_networkx_edges arg `connectionstyle` must be"
+            "string or iterable of strings"
+        )
+
+    if ax is None:
+        ax = plt.gca()
+
+    if edge_labels is None:
+        kwds = {"keys": True} if G.is_multigraph() else {}
+        edge_labels = {tuple(edge): d for *edge, d in G.edges(data=True, **kwds)}
+    # NOTHING TO PLOT
+    if not edge_labels:
+        return {}
+    edgelist, labels = zip(*edge_labels.items())
+
+    if nodelist is None:
+        nodelist = list(G.nodes())
+
+    # set edge positions
+    edge_pos = np.asarray([(pos[e[0]], pos[e[1]]) for e in edgelist])
+
+    if G.is_multigraph():
+        key_count = collections.defaultdict(lambda: itertools.count(0))
+        edge_indices = [next(key_count[tuple(e[:2])]) for e in edgelist]
+    else:
+        edge_indices = [0] * len(edgelist)
+
+    # Used to determine self loop mid-point
+    # Note, that this will not be accurate,
+    #   if not drawing edge_labels for all edges drawn
+    h = 0
+    if edge_labels:
+        miny = np.amin(np.ravel(edge_pos[:, :, 1]))
+        maxy = np.amax(np.ravel(edge_pos[:, :, 1]))
+        h = maxy - miny
+    selfloop_height = h if h != 0 else 0.005 * np.array(node_size).max()
+    fancy_arrow_factory = FancyArrowFactory(
+        edge_pos,
+        edgelist,
+        nodelist,
+        edge_indices,
+        node_size,
+        selfloop_height,
+        connectionstyle,
+        ax=ax,
+    )
+
+    individual_params = {}
+
+    def check_individual_params(p_value, p_name):
+        if isinstance(p_value, list):
+            if len(p_value) != len(edgelist):
+                raise ValueError(f"{p_name} must have the same length as edgelist.")
+            individual_params[p_name] = p_value.iter()
+
+    # Don't need to pass in an edge because these are lists, not dicts
+    def get_param_value(p_value, p_name):
+        if p_name in individual_params:
+            return next(individual_params[p_name])
+        return p_value
+
+    check_individual_params(font_size, "font_size")
+    check_individual_params(font_color, "font_color")
+    check_individual_params(font_weight, "font_weight")
+    check_individual_params(alpha, "alpha")
+    check_individual_params(horizontalalignment, "horizontalalignment")
+    check_individual_params(verticalalignment, "verticalalignment")
+    check_individual_params(rotate, "rotate")
+    check_individual_params(label_pos, "label_pos")
+
+    text_items = {}
+    for i, (edge, label) in enumerate(zip(edgelist, labels)):
+        if not isinstance(label, str):
+            label = str(label)  # this makes "1" and 1 labeled the same
+
+        n1, n2 = edge[:2]
+        arrow = fancy_arrow_factory(i)
+        if n1 == n2:
+            connectionstyle_obj = arrow.get_connectionstyle()
+            posA = ax.transData.transform(pos[n1])
+            path_disp = connectionstyle_obj(posA, posA)
+            path_data = ax.transData.inverted().transform_path(path_disp)
+            x, y = path_data.vertices[0]
+            text_items[edge] = ax.text(
+                x,
+                y,
+                label,
+                size=get_param_value(font_size, "font_size"),
+                color=get_param_value(font_color, "font_color"),
+                family=get_param_value(font_family, "font_family"),
+                weight=get_param_value(font_weight, "font_weight"),
+                alpha=get_param_value(alpha, "alpha"),
+                horizontalalignment=get_param_value(
+                    horizontalalignment, "horizontalalignment"
+                ),
+                verticalalignment=get_param_value(
+                    verticalalignment, "verticalalignment"
+                ),
+                rotation=0,
+                transform=ax.transData,
+                bbox=bbox,
+                zorder=1,
+                clip_on=clip_on,
+            )
+        else:
+            text_items[edge] = CurvedArrowText(
+                arrow,
+                label,
+                size=get_param_value(font_size, "font_size"),
+                color=get_param_value(font_color, "font_color"),
+                family=get_param_value(font_family, "font_family"),
+                weight=get_param_value(font_weight, "font_weight"),
+                alpha=get_param_value(alpha, "alpha"),
+                horizontalalignment=get_param_value(
+                    horizontalalignment, "horizontalalignment"
+                ),
+                verticalalignment=get_param_value(
+                    verticalalignment, "verticalalignment"
+                ),
+                transform=ax.transData,
+                bbox=bbox,
+                zorder=1,
+                clip_on=clip_on,
+                label_pos=get_param_value(label_pos, "label_pos"),
+                labels_horizontal=not get_param_value(rotate, "rotate"),
+                ax=ax,
+            )
+
+    if hide_ticks:
+        ax.tick_params(
+            axis="both",
+            which="both",
+            bottom=False,
+            left=False,
+            labelbottom=False,
+            labelleft=False,
+        )
+
+    return text_items

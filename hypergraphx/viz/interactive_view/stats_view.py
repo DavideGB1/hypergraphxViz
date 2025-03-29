@@ -1,4 +1,5 @@
 import multiprocessing
+import pickle
 
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QProgressBar, QLabel
@@ -12,6 +13,8 @@ from hypergraphx import Hypergraph, TemporalHypergraph
 from hypergraphx.measures.s_centralities import s_betweenness, s_closeness, s_betweenness_nodes, s_closeness_nodes, \
     s_betweenness_nodes_averaged, s_closenness_nodes_averaged, s_betweenness_averaged, s_closeness_averaged
 from hypergraphx.motifs import compute_motifs
+from hypergraphx.viz.interactive_view import pool_singleton
+from hypergraphx.viz.interactive_view.pool_singleton import PoolSingleton
 from hypergraphx.viz.interactive_view.support import clear_layout
 from hypergraphx.viz.plot_motifs import plot_motifs
 
@@ -61,38 +64,35 @@ class HypergraphStatsWidget(QMainWindow):
 
         self.setCentralWidget(self.vertical_tab)
 
-
-#Motifs
-def motifs_calculations(hypergraph, output):
+# Motifs
+def motifs_calculations(hypergraph):
     motifs_3 = compute_motifs(hypergraph, order=3)
     motifs3_profile = [i[1] for i in motifs_3['norm_delta']]
-    output.put(motifs3_profile)
+    return motifs3_profile # Restituisce i risultati
 
 class MotifsWorker(QtCore.QThread):
     progress = pyqtSignal(list)
-    def __init__(self, hypergraph, output_queue, parent=None):
+    def __init__(self, hypergraph, pool, parent=None): # Aggiungi pool
         super(MotifsWorker, self).__init__(parent)
-        self.output_queue = output_queue
         self.hypergraph = hypergraph
-        self.process = None
+        self.pool = pool
     def run(self):
-        self.process = multiprocessing.Process(target=motifs_calculations,
-                                          args=(self.hypergraph,
-                                                self.output_queue))
-        self.process.start()
-        self.process.join()
-        motifs3_profile = self.output_queue.get()
+        motifs3_profile = self.pool.apply(motifs_calculations, args=(self.hypergraph,)) # Usa apply
         self.progress.emit(motifs3_profile)
 
 class MotifsWidget(QWidget):
     def __init__(self, hypergraph,parent=None):
         super(MotifsWidget, self).__init__(parent)
         self.layout = QVBoxLayout()
-        self.output_queue = multiprocessing.Queue()
+        self.figure = None
+        self.ax = None
+        self.thread = None
         self.update_hypergraph(hypergraph)
+        self.pool_singleton = PoolSingleton() # Istanza del singleton
+
     def draw_motifs(self, list):
         clear_layout(self.layout)
-        plot_motifs(list,save_name = None,ax = self.ax)
+        plot_motifs(list, save_name=None, ax=self.ax)
         canvas = FigureCanvas(self.figure)
         self.ax.set_title('Motifs')
         toolbar = NavigationToolbar(canvas, self)
@@ -100,6 +100,7 @@ class MotifsWidget(QWidget):
         self.layout.addWidget(canvas)
         self.setLayout(self.layout)
         self.update()
+
     def update_hypergraph(self, hypergraph):
         clear_layout(self.layout)
         label = QLabel("Waiting...")
@@ -110,52 +111,46 @@ class MotifsWidget(QWidget):
         self.layout.setAlignment(Qt.AlignCenter)
         self.setLayout(self.layout)
         self.figure = Figure()
-        self.ax = self.figure.subplots(1,1)
+        self.ax = self.figure.subplots(1, 1)
         self.hypergraph = hypergraph
-        self.thread = MotifsWorker(self.hypergraph, self.output_queue)
+        pool = PoolSingleton()
+        self.thread = MotifsWorker(self.hypergraph, pool.get_pool())
         self.thread.progress.connect(self.draw_motifs)
         self.thread.start()
 
-#Adjacency
-def adjacency_calculations(hypergraph, output):
-    adj_factor_t0 = hypergraph.adjacency_factor(0)
-    adj_factor_t0_keys_label, adj_factor_t0_label = generate_key(adj_factor_t0)
-    adj_factor_t1 = hypergraph.adjacency_factor(t=1)
-    adj_factor_t1_keys_label, adj_factor_t1_label = generate_key(adj_factor_t1)
-    output.put((adj_factor_t0, adj_factor_t0_keys_label, adj_factor_t0_label))
-    output.put((adj_factor_t1, adj_factor_t1_keys_label, adj_factor_t1_label))
+
+def adjacency_calculations_part(hypergraph, t):
+    adj_factor = hypergraph.adjacency_factor(t)
+    adj_factor_keys_label, adj_factor_label = generate_key(adj_factor)
+    return adj_factor, adj_factor_keys_label, adj_factor_label
+
+def adjacency_calculations_pool(hypergraph, pool):
+    results = pool.starmap(adjacency_calculations_part, [(hypergraph, t) for t in [0, 1]])
+    return results
 
 class AdjWorker(QtCore.QThread):
     progress = pyqtSignal(list)
-    def __init__(self, hypergraph, output_queue, parent=None):
+
+    def __init__(self, hypergraph, pool, parent=None):
         super(AdjWorker, self).__init__(parent)
-        self.output_queue = output_queue
         self.hypergraph = hypergraph
-        self.process = None
+        self.pool = pool
 
     def run(self):
-        self.process = multiprocessing.Process(target=adjacency_calculations,
-                                               args=(self.hypergraph,
-                                                     self.output_queue))
-        self.process.start()
-        self.process.join()
-        res = []
-        while not self.output_queue.empty():
-            res.append(self.output_queue.get())
-
-        self.progress.emit(res)
+        results = adjacency_calculations_pool(self.hypergraph, self.pool)
+        self.progress.emit(results)
 
 class AdjWidget(QWidget):
-    def __init__(self, hypergraph,parent=None):
+    def __init__(self, hypergraph, parent=None):
         super(AdjWidget, self).__init__(parent)
         self.hypergraph = hypergraph
         self.progress_bar = None
         self.figure = None
         self.axes = None
         self.thread = None
-        self.output_queue = multiprocessing.Queue()
         self.layout = QVBoxLayout()
         self.update_hypergraph()
+
     def draw_adj(self, list):
         clear_layout(self.layout)
         canvas = FigureCanvas(self.figure)
@@ -163,7 +158,7 @@ class AdjWidget(QWidget):
         draw_bar(
             ax=self.axes[0],
             values=list[0],
-            label = "Nodes",
+            label="Nodes",
             title="Adjacency Factor (t=0)"
         )
 
@@ -173,7 +168,7 @@ class AdjWidget(QWidget):
             label="Nodes",
             title="Adjacency Factor (t=1)"
         )
-        
+
         toolbar = NavigationToolbar(canvas, self)
         self.layout.addWidget(toolbar)
         self.layout.addWidget(canvas)
@@ -190,70 +185,53 @@ class AdjWidget(QWidget):
         self.layout.setAlignment(Qt.AlignCenter)
         self.setLayout(self.layout)
         self.figure = Figure()
-        self.figure.subplots_adjust(wspace=0.5, hspace=1)
-        self.axes = self.figure.subplots(2,1)
-        self.thread = AdjWorker(self.hypergraph, self.output_queue)
+        self.figure.subplots(2, 1)
+        self.axes = self.figure.subplots(2, 1)
+        pool = PoolSingleton()
+        self.thread = AdjWorker(self.hypergraph, pool.get_pool()) # Usa il pool del singleton
         self.thread.progress.connect(self.draw_adj)
         self.thread.start()
 
-#Centrality
-def calculate_centrality(hypergraph, output):
-    if isinstance(hypergraph, TemporalHypergraph):
-        edge_s_betweenness = s_betweenness_averaged(hypergraph)
-    else:
-        edge_s_betweenness = s_betweenness(hypergraph)
-    edge_s_betweenness_keys_label, edge_s_betweenness_keys = generate_key(edge_s_betweenness)
-    output.put((edge_s_betweenness, edge_s_betweenness_keys_label, edge_s_betweenness_keys))
-    if isinstance(hypergraph, TemporalHypergraph):
-        edge_s_closeness = s_closeness_averaged(hypergraph)
-    else:
-        edge_s_closeness = s_closeness(hypergraph)
-    edge_s_closeness_keys_label, edge_s_closeness_keys = generate_key(edge_s_closeness)
-    output.put((edge_s_closeness, edge_s_closeness_keys_label, edge_s_closeness_keys))
-    if isinstance(hypergraph, TemporalHypergraph):
-        node_s_betweenness = s_betweenness_nodes_averaged(hypergraph)
-    else:
-        node_s_betweenness = s_betweenness_nodes(hypergraph)
-    node_s_betweenness_keys_label, node_s_betweenness_keys = generate_key(node_s_betweenness)
-    output.put((node_s_betweenness, node_s_betweenness_keys_label, node_s_betweenness_keys))
-    if isinstance(hypergraph, TemporalHypergraph):
-        node_s_closeness = s_closenness_nodes_averaged(hypergraph)
-    else:
-        node_s_closeness = s_closeness_nodes(hypergraph)
-    node_s_closeness_keys_label, node_s_closeness_keys = generate_key(node_s_closeness)
-    output.put((node_s_closeness, node_s_closeness_keys_label, node_s_closeness_keys))
+def calculate_centrality_part(hypergraph, function):
+    result = function(hypergraph)
+    keys_label, keys = generate_key(result)
+    return result, keys_label, keys
 
-class CentralityWorker(QtCore.QThread):
+def calculate_centrality_pool(hypergraph, pool):
+    functions = [
+        s_betweenness_averaged if isinstance(hypergraph, TemporalHypergraph) else s_betweenness,
+        s_closeness_averaged if isinstance(hypergraph, TemporalHypergraph) else s_closeness,
+        s_betweenness_nodes_averaged if isinstance(hypergraph, TemporalHypergraph) else s_betweenness_nodes,
+        s_closenness_nodes_averaged if isinstance(hypergraph, TemporalHypergraph) else s_closeness_nodes,
+    ]
+
+    results = pool.starmap(calculate_centrality_part, [(hypergraph, func) for func in functions])
+    return results
+
+class CentralityWorkerPool(QtCore.QThread):
     progress = pyqtSignal(list)
-    def __init__(self, hypergraph, output_queue, parent=None):
-        super(CentralityWorker, self).__init__(parent)
-        self.hypergraph = hypergraph
-        self.output_queue = output_queue
-        self.process = None
-    def run(self):
-        self.process = multiprocessing.Process(target=calculate_centrality,
-                                               args=(self.hypergraph,
-                                                     self.output_queue))
-        self.process.start()
-        self.process.join()
-        res = []
-        while not self.output_queue.empty():
-            res.append(self.output_queue.get())
 
-        self.progress.emit(res)
+    def __init__(self, hypergraph, pool, parent=None):
+        super(CentralityWorkerPool, self).__init__(parent)
+        self.hypergraph = hypergraph
+        self.pool = pool
+
+    def run(self):
+        results = calculate_centrality_pool(self.hypergraph, self.pool)
+        self.progress.emit(results)
 
 class CentralityWidget(QWidget):
-    def __init__(self, hypergraph,parent=None):
+    def __init__(self, hypergraph, parent=None):
         super(CentralityWidget, self).__init__(parent)
         self.hypergraph = hypergraph
-        self.output_queue = multiprocessing.Queue()
         self.progress_bar = None
         self.figure = None
         self.axes = None
         self.thread = None
         self.layout = QVBoxLayout()
         self.update_hypergraph()
-    def draw_adj(self, list):
+
+    def draw_adj(self, values_list):
         clear_layout(self.layout)
         self.figure = Figure()
         self.axes = self.figure.subplots(2, 2)
@@ -262,25 +240,25 @@ class CentralityWidget(QWidget):
 
         draw_bar(
             ax=self.axes[0, 0],
-            values=list[0],
+            values=values_list[0],
             label='Edges',
             title='Edges Betweenness Centrality')
 
         draw_bar(
             ax=self.axes[0, 1],
-            values=list[1],
+            values=values_list[1],
             label='Edges',
             title='Edges Closeness Centrality')
 
         draw_bar(
             ax=self.axes[1, 0],
-            values=list[2],
+            values=values_list[2],
             label='Nodes',
             title='Nodes Betweenness Centrality')
 
         draw_bar(
             ax=self.axes[1, 1],
-            values=list[3],
+            values=values_list[3],
             label='Nodes',
             title='Nodes Closeness Centrality')
 
@@ -301,51 +279,43 @@ class CentralityWidget(QWidget):
         self.setLayout(self.layout)
         self.figure = Figure()
         self.figure.subplots_adjust(wspace=0.5, hspace=1)
-        self.axes = self.figure.subplots(2,1)
-        self.thread = CentralityWorker(self.hypergraph, self.output_queue)
+        self.axes = self.figure.subplots(2, 1)
+        pool = PoolSingleton()
+        self.thread = CentralityWorkerPool(self.hypergraph, pool.get_pool())
         self.thread.progress.connect(self.draw_adj)
         self.thread.start()
 
-#Degree
-def degree_calculations(hypergraph, output):
+# Degree
+def degree_calculations(hypergraph):
     degree_distribution = hypergraph.degree_distribution()
-    output.put(degree_distribution)
     sizes = dict()
     for edge in hypergraph.get_edges():
         if len(edge) not in sizes.keys():
             sizes[len(edge)] = 0
         sizes[len(edge)] += 1
-    output.put(sizes)
-
+    return [degree_distribution, sizes] # Restituisce i risultati
 
 class DegreeWorker(QtCore.QThread):
     progress = pyqtSignal(list)
-    def __init__(self, hypergraph, output_queue, parent=None):
+    def __init__(self, hypergraph, pool, parent=None): # Aggiungi pool
         super(DegreeWorker, self).__init__(parent)
         self.hypergraph = hypergraph
-        self.output_queue = output_queue
-        self.process = None
-
+        self.pool = pool
     def run(self):
-        self.process = multiprocessing.Process(target=degree_calculations,
-                                               args=(self.hypergraph,
-                                                     self.output_queue))
-        self.process.start()
-        self.process.join()
-
-        self.progress.emit([self.output_queue.get(), self.output_queue.get()])
+        results = self.pool.apply(degree_calculations, args=(self.hypergraph,)) # Usa apply
+        self.progress.emit(results)
 
 class DegreeWidget(QWidget):
     def __init__(self, hypergraph,parent=None):
         super(DegreeWidget, self).__init__(parent)
         self.hypergraph = hypergraph
         self.progress_bar = None
-        self.output_queue = multiprocessing.Queue()
         self.figure = None
         self.axes = None
         self.thread = None
         self.layout = QVBoxLayout()
         self.update_hypergraph()
+        self.pool_singleton = PoolSingleton() # Istanza del singleton
 
     def draw_adj(self, value_list):
         clear_layout(self.layout)
@@ -385,14 +355,13 @@ class DegreeWidget(QWidget):
         self.figure = Figure()
         self.figure.subplots_adjust(wspace=0.5, hspace=1)
         self.axes = self.figure.subplots(2,1)
-        self.thread = DegreeWorker(self.hypergraph, self.output_queue)
+        pool = PoolSingleton()
+        self.thread = DegreeWorker(self.hypergraph, pool.get_pool())
         self.thread.progress.connect(self.draw_adj)
         self.thread.start()
 
-
-
-#Weight
-def calculate_weight_distribution(hypergraph, output):
+# Weight
+def calculate_weight_distribution(hypergraph):
     weight_distribution = {}
     value_list = []
     for weight in hypergraph.get_weights():
@@ -400,34 +369,30 @@ def calculate_weight_distribution(hypergraph, output):
             weight_distribution[weight] = 0
             value_list.append(len(value_list))
         weight_distribution[weight] += 1
-    output.put((weight_distribution, value_list))
+    return [weight_distribution, value_list] # Restituisce i risultati
 
 class WeightWorker(QtCore.QThread):
     progress = pyqtSignal(list)
-    def __init__(self, hypergraph, output_queue, parent=None):
+    def __init__(self, hypergraph, pool, parent=None): # Aggiungi pool
         super(WeightWorker, self).__init__(parent)
         self.hypergraph = hypergraph
-        self.output_queue = output_queue
-        self.process = None
+        self.pool = pool
     def run(self):
-        self.process = multiprocessing.Process(target=calculate_weight_distribution,
-                                               args=(self.hypergraph,
-                                                     self.output_queue))
-        self.process.start()
-        self.process.join()
-        self.progress.emit([(self.output_queue.get(), self.output_queue.get())])
+        results = self.pool.apply(calculate_weight_distribution, args=(self.hypergraph,)) # Usa apply
+        self.progress.emit([results])
 
 class WeightWidget(QWidget):
     def __init__(self, hypergraph,parent=None):
         super(WeightWidget, self).__init__(parent)
         self.hypergraph = hypergraph
-        self.output_queue = multiprocessing.Queue()
         self.progress_bar = None
         self.figure = None
         self.axes = None
         self.thread = None
         self.layout = QVBoxLayout()
         self.update_hypergraph()
+        self.pool_singleton = PoolSingleton() # Istanza del singleton
+
     def draw_adj(self, value_list):
         clear_layout(self.layout)
         self.figure = Figure()
@@ -460,6 +425,7 @@ class WeightWidget(QWidget):
         self.figure = Figure()
         self.figure.subplots_adjust(wspace=0.5, hspace=1)
         self.axes = self.figure.subplots(2,1)
-        self.thread = WeightWorker(self.hypergraph, self.output_queue)
+        pool = PoolSingleton()
+        self.thread = WeightWorker(self.hypergraph, pool.get_pool())
         self.thread.progress.connect(self.draw_adj)
         self.thread.start()

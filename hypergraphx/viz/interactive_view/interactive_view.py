@@ -3,6 +3,7 @@ import ctypes
 import faulthandler
 import multiprocessing
 import os
+import pickle
 import sys
 from copy import deepcopy
 
@@ -31,15 +32,27 @@ from hypergraphx.viz.interactive_view.community_options.__community_option_menu 
 from hypergraphx.viz.interactive_view.custom_widgets import WaitingScreen, SliderDockWidget
 from hypergraphx.viz.interactive_view.drawing_options_widget import DrawingOptionsDockWidget
 from hypergraphx.viz.interactive_view.hypergraph_editing_view import ModifyHypergraphMenu
+from hypergraphx.viz.interactive_view.pool_singleton import PoolSingleton
 from hypergraphx.viz.interactive_view.stats_view import HypergraphStatsWidget
 
-
-def plot(draw_function, hypergraph, output, dictionary, graphic_options):
+def ssfasafsf(draw_function, hypergraph, dictionary):
+    print("started Working")
     figure = plt.figure()
     figure.clear()
     ax = figure.add_subplot(111)
-
     extra_attributes = dictionary["extra_attributes"]
+    if draw_function == "Sets":
+        function = draw_sets
+    elif draw_function == "PAOH":
+        function = draw_PAOH
+    elif draw_function == "Radial":
+        function = draw_radial_layout
+    elif draw_function == "Extra-Node":
+        function = draw_extra_node
+    elif draw_function == "Bipartite":
+        function = draw_bipartite
+    elif draw_function == "Clique":
+        function = draw_clique
     # Try to get the extra attributes
     try:
         radius_scale_factor = extra_attributes["radius_scale_factor"]
@@ -75,18 +88,18 @@ def plot(draw_function, hypergraph, output, dictionary, graphic_options):
         hyperedge_alpha = 0.8
 
     if dictionary["centrality"] is not None:
-        graphic_options.add_centrality_factor_dict(dictionary["centrality"])
+        dictionary["graphic_options"].add_centrality_factor_dict(dictionary["centrality"])
     else:
-        graphic_options.add_centrality_factor_dict(None)
+        dictionary["graphic_options"].add_centrality_factor_dict(None)
     if dictionary["algorithm_options_dict"] is None:
         dictionary["algorithm_options_dict"] = {}
     # Plot and draw the hypergraph using it's function
-    position = draw_function(hypergraph, cardinality=dictionary["slider_value"],
+    position = function(hypergraph, cardinality=dictionary["slider_value"],
                                           x_heaviest= dictionary["heaviest_edges_value"], ax=ax,
                                           time_font_size=time_font_size,
                                           time_separation_line_color=time_separation_line_color,
                                           k= dictionary["community_options_dict"]["number_communities"],
-                                          graphicOptions=copy.deepcopy(graphic_options),
+                                          graphicOptions=copy.deepcopy(dictionary["graphic_options"]),
                                           radius_scale_factor=radius_scale_factor,
                                           font_spacing_factor=font_spacing_factor,
                                           time_separation_line_width=time_separation_line_width,
@@ -94,33 +107,102 @@ def plot(draw_function, hypergraph, output, dictionary, graphic_options):
                                           weight_positioning= dictionary["weight_positioning"],
                                           rounding_radius_size=rounding_radius_size, hyperedge_alpha=hyperedge_alpha,
                                           pos=dictionary["last_pos"], u= dictionary["community_model"], **dictionary["algorithm_options_dict"])
-    output.put([position, deepcopy(figure)])
+    print("Created Figure and returning")
+    return [position, deepcopy(figure)]
+
+def run_community_detection(hypergraph, algorithm, community_options):
+    """
+    Worker function to perform community detection in a separate process.
+
+    Args:
+        hypergraph: The Hypergraph object.
+        algorithm: The name of the community detection algorithm
+                   ('HySC', 'HypergraphMT', 'Hy-MMSBM', or 'None').
+        community_options: Dictionary of options for the algorithm.
+
+    Returns:
+        The community model (e.g., membership matrix) or None.
+    """
+    if algorithm == "Hypergraph Spectral Clustering":
+        model = HySC(
+            seed=community_options["seed"],
+            n_realizations=community_options["realizations"]
+        )
+        community_model = model.fit(
+            hypergraph,
+            K=community_options["number_communities"],
+            weighted_L=False
+        )
+    elif algorithm == "Hypergraph-MT":
+        model = HypergraphMT(
+            n_realizations=community_options["realizations"],
+            max_iter=community_options["max_iterations"],
+            check_convergence_every=community_options["check_convergence_every"],
+            verbose=False
+        )
+        u, _, _ = model.fit(
+            hypergraph,
+            K=community_options["number_communities"],
+            seed=community_options["seed"],
+            normalizeU=community_options["normalizeU"],
+            baseline_r0=community_options["baseline_r0"],
+        )
+        community_model = normalize_array(u, axis=1)
+    elif algorithm == "Hy-MMSBM":
+        best_model = None
+        best_loglik = float("-inf")
+        for j in range(community_options["realizations"]):
+            model = HyMMSBM(
+                K=community_options["number_communities"],
+                assortative=community_options["assortative"]
+            )
+            model.fit(
+                hypergraph,
+                n_iter=community_options["max_iterations"],
+            )
+
+            log_lik = model.log_likelihood(hypergraph)
+            if log_lik > best_loglik:
+                best_model = model
+                best_loglik = log_lik
+
+        community_model = normalize_array(best_model.u, axis=1)
+    elif algorithm == "None":
+        community_model = None
+    else:
+        raise ValueError(f"Unknown community detection algorithm: {algorithm}")
+    return community_model
+
+class CommunityDetectionWorker(QThread):
+    finished = pyqtSignal(object)
+
+    def __init__(self, hypergraph, algorithm, community_options, pool, parent=None):
+        super(CommunityDetectionWorker, self).__init__(parent)
+        self.hypergraph = hypergraph
+        self.algorithm = algorithm
+        self.pool = pool
+        self.community_options = community_options
+
+    def run(self):
+        community_model = self.pool.apply(
+            self.hypergraph, self.algorithm, self.community_options
+        )
+        self.finished.emit(community_model)
 
 class PlotWorker(QThread):
     progress = pyqtSignal(list)
 
-    def __init__(self, draw_function, hypergraph, output_queue, input_dictionary, graphic_options, parent=None):
+    def __init__(self, draw_function, hypergraph, input_dictionary, pool, parent=None):
         super(PlotWorker, self).__init__(parent)
-        self.output_queue = output_queue
         self.hypergraph = hypergraph
         self.draw_function = draw_function
         self.input_dictionary = input_dictionary
-        self.graphic_options = graphic_options
-        self.process = None
+        self.pool = pool
 
     def run(self):
-        self.process = multiprocessing.Process(target=plot,
-                                               args=(self.draw_function,
-                                                   self.hypergraph,
-                                                     self.output_queue,
-                                                    self.input_dictionary,
-                                                     self.graphic_options
-                                            ))
-        self.process.start()
-        self.process.join()
-        res = self.output_queue.get()
-        self.progress.emit(res)
-
+        print("Thread Inizia")
+        results = self.pool.apply(ssfasafsf, args=(self.draw_function, self.hypergraph, self.input_dictionary))
+        self.progress.emit(results)
 class Window(QWidget):
 
     # constructor
@@ -135,7 +217,7 @@ class Window(QWidget):
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
         self.heaviest_edges_value = 1.0
-
+        self.thread_community = None
         #Set Default Values
         self.output_queue = multiprocessing.Queue()
         self.thread = None
@@ -153,7 +235,7 @@ class Window(QWidget):
         self.spin_box_label = QLabel()
         self.spin_box = QDoubleSpinBox()
         self.vbox = QVBoxLayout()
-        self.current_function = draw_PAOH
+        self.current_function = "PAOH"
         self.extra_attributes = dict()
         self.graphic_options = GraphicOptions()
         self.graphic_options_widget = GraphicOptionsWidget(self.graphic_options, self.extra_attributes)
@@ -200,11 +282,12 @@ class Window(QWidget):
         azdd = QVBoxLayout()
         azdd.addWidget(self.central_tab)
         self.setLayout(azdd)
-        self.use_default()
         self.stacked.addWidget(WaitingScreen())
         self.drawing_options_widget = DrawingOptionsDockWidget(n_nodes = self.hypergraph.num_nodes())
         self.drawing_options_widget.update_value.connect(self.get_new_drawing_options)
         self.main_layout.addDockWidget(Qt.RightDockWidgetArea, self.drawing_options_widget)
+        self.use_default()
+
 
     #Drawing
     def plot(self):
@@ -212,7 +295,6 @@ class Window(QWidget):
         Plot the hypergraph on screen using the assigner draw function.
         """
         #Clears the plot
-        self.change_focus()
         dictionary = dict()
         dictionary["slider_value"] = self.slider_value
         dictionary["centrality"] = self.centrality
@@ -227,20 +309,27 @@ class Window(QWidget):
             dictionary["last_pos"] = None
         dictionary["community_model"] = self.community_model
         dictionary["algorithm_options_dict"] = self.algorithm_options_dict
-        self.thread = PlotWorker(self.current_function, self.hypergraph, self.output_queue, dictionary,copy.deepcopy(self.graphic_options))
-        self.thread.progress.connect(self.drawn)
-        self.thread.start()
+        dictionary["graphic_options"] = self.graphic_options
+        if self.thread is None:
+            self.change_focus()
+            pool = PoolSingleton()
+            self.thread = PlotWorker(self.current_function, self.hypergraph, dictionary, pool.get_pool())
+            self.thread.progress.connect(self.drawn)
+            self.thread.start()
         self.use_last = False
+
     def drawn(self, value_list):
-        print("MAMMATA")
+        print("Got the figure")
         self.last_pos = value_list[0]
         self.figure = value_list[1]
         self.canvas = FigureCanvas(self.figure)
+        self.main_layout.removeToolBar(self.toolbar)
         self.toolbar = NavigationToolbar(self.canvas, self)
         self.main_layout.addToolBar(Qt.TopToolBarArea, self.toolbar)
         self.main_layout.setCentralWidget(self.canvas)
         self.canvas.draw()
         self.change_focus()
+        self.thread = None
 
     def change_focus(self):
         """
@@ -251,6 +340,7 @@ class Window(QWidget):
         otherwise, it changes to 0. After changing the index, the
         `repaint()` method is called to refresh the widget.
         """
+        print("Cambio Stack")
         if self.stacked.currentIndex() == 0:
             self.stacked.setCurrentIndex(1)
         else:
@@ -269,15 +359,16 @@ class Window(QWidget):
         hypergraph : Hypergraph, DirectedHypergraph, or TemporalHypergraph, optional
             A new hypergraph instance to update the current hypergraph.
         """
+        print("got new hypergraph")
         self.community_model = None
         self.main_layout.removeDockWidget(self.drawing_options_widget)
         self.drawing_options_widget.deleteLater()
         self.drawing_options_widget = None
-        self.change_focus()
         if example is not None:
             self.hypergraph = example["hypergraph"]
         if hypergraph is not None:
             self.hypergraph = hypergraph
+        self.slider_value = (2, self.hypergraph.max_size())
         if isinstance(self.hypergraph, Hypergraph):
             self.drawing_options_widget = DrawingOptionsDockWidget(weighted= self.hypergraph.is_weighted(),hypergraph_type="normal",n_nodes=self.hypergraph.num_nodes())
         elif isinstance(self.hypergraph, DirectedHypergraph):
@@ -287,10 +378,10 @@ class Window(QWidget):
         self.drawing_options_widget.update_value.connect(self.get_new_drawing_options)
         self.main_layout.addDockWidget(Qt.RightDockWidgetArea, self.drawing_options_widget)
         self.drawing_options_widget.update()
-        self.change_focus()
-        self.use_default()
         self.slider.update_max(self.hypergraph.max_size())
+        self.use_default()
         self.stats_tab.update_hypergraph(self.hypergraph)
+        print("Done")
 
     def get_new_drawing_options(self, input):
         """
@@ -316,20 +407,8 @@ class Window(QWidget):
         This function involves normalization of centrality measures in applicable cases.
         The function updates graphical rendering and custom attributes before finalizing with `plot()`.
         """
-        self.change_focus()
         self.heaviest_edges_value = input["%_heaviest_edges"]
-        if input["drawing_options"] == "Sets":
-            self.current_function = draw_sets
-        elif input["drawing_options"] == "PAOH":
-            self.current_function = draw_PAOH
-        elif input["drawing_options"] == "Radial":
-            self.current_function = draw_radial_layout
-        elif input["drawing_options"] == "Extra-Node":
-            self.current_function = draw_extra_node
-        elif input["drawing_options"] == "Bipartite":
-            self.current_function = draw_bipartite
-        elif input["drawing_options"] == "Clique":
-            self.current_function = draw_clique
+        self.current_function = input["drawing_options"]
         if input["centrality"] == "No Centrality":
             self.centrality = None
         elif input["centrality"] == "Degree Centrality":
@@ -356,14 +435,13 @@ class Window(QWidget):
         else:
             self.use_last = False
         if not self.use_last:
-            if input["community_detection_algorithm"] == "None":
-                self.no_community()
-            elif input["community_detection_algorithm"] == "Hypergraph Spectral Clustering":
-                self.use_spectral_clustering()
-            elif input["community_detection_algorithm"] == "Hypergraph-MT":
-                self.use_MT()
-            elif input["community_detection_algorithm"] == "Hy-MMSBM":
-                self.use_MMSBM()
+            algorithm = input["community_detection_algorithm"]
+            community_options = self.community_options_dict.copy()  # Important: Copy the dict!
+            pool = PoolSingleton()
+            self.community_model = pool.get_pool().apply(
+                run_community_detection,
+                args=(self.hypergraph, algorithm, community_options)
+            )
         match input["weight_influence"]:
             case "No Relationship":
                 self.weight_positioning = 0
@@ -375,7 +453,6 @@ class Window(QWidget):
         self.graphic_options = input["graphic_options"]
         self.extra_attributes = input["extra_attributes"]
         self.plot()
-        self.change_focus()
 
     def new_slider_value(self, value):
         """
@@ -571,11 +648,11 @@ class Window(QWidget):
         - For other types of `hypergraph`, the drawing function defaults to `draw_sets`.
         """
         if isinstance(self.hypergraph, TemporalHypergraph):
-            self.current_function = draw_PAOH
+            self.current_function = "PAOH"
         elif isinstance(self.hypergraph, DirectedHypergraph):
-            self.current_function = draw_extra_node
+            self.current_function = "Extra-Node"
         else:
-            self.current_function = draw_sets
+            self.current_function = "Sets"
         self.plot()
 
 def start_interactive_view(h: Hypergraph|TemporalHypergraph|DirectedHypergraph) -> None:
@@ -593,5 +670,5 @@ def start_interactive_view(h: Hypergraph|TemporalHypergraph|DirectedHypergraph) 
         main.show()
         sys.exit(app.exec_())
 
-h = Hypergraph([("A","B","C"),('D','C')])
+h = Hypergraph([("A", "B", "C"), ('D', 'C')])
 start_interactive_view(h)
