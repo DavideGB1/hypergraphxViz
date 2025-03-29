@@ -2,7 +2,7 @@ from typing import Optional
 
 import matplotlib.pyplot as plt
 import networkx as nx
-from networkx import is_planar, planar_layout
+from networkx import is_planar, planar_layout, DiGraph
 
 from hypergraphx.viz.__support import __filter_hypergraph, __ignore_unused_args, _get_community_info, _get_node_community, \
     _draw_node_community
@@ -287,6 +287,11 @@ def draw_extra_node(
                     pass
                 case 2:
                     g[edge[0]][edge[1]]['weight'] = 1 / weight
+    clone_g = None
+    if isinstance(g, DiGraph):
+        clone_g = g
+        g = g.to_undirected()
+
     if pos is None:
         if is_planar(g) and respect_planarity:
             pos = planar_layout(g)
@@ -300,7 +305,8 @@ def draw_extra_node(
             else:
                 pos = nx.spring_layout(G=g, iterations=iterations, weight="weight")
 
-
+    if clone_g is not None:
+        g = clone_g
     # Ensure that all the nodes have the graphical attributes specified
     graphicOptions.check_if_options_are_valid(g)
 
