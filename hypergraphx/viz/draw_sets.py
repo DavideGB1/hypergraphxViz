@@ -13,7 +13,7 @@ from hypergraphx.readwrite import load_hypergraph
 from hypergraphx.representations.projections import clique_projection
 from hypergraphx.viz.__graphic_options import GraphicOptions
 from hypergraphx.viz.__support import __ignore_unused_args, __filter_hypergraph, _get_node_community, \
-    _draw_node_community, _get_community_info
+    _draw_node_community, _get_community_info, draw_networkx_edge_labels_clone
 
 
 def _draw_hyperedge_set(
@@ -336,10 +336,11 @@ def draw_sets(
     if hypergraph.is_weighted():
         labels = nx.get_edge_attributes(G, 'original_weight')
         pos_higher = {}
-        y_off = 0.1
+        y_off = 0.075
         for k, v in pos.items():
             pos_higher[k] = (v[0], v[1] + y_off)
-        nx.draw_networkx_edge_labels(G, pos_higher, edge_labels=labels, bbox={'alpha': 0, 'pad': 1}, verticalalignment="top")
+        draw_networkx_edge_labels_clone(G, pos_higher, edge_labels=labels, bbox={'alpha': 0, 'pad': 1}, verticalalignment="top")
+
     # Draw the Nodes
     if u is not None:
         mapping, col = _get_community_info(hypergraph,k)
