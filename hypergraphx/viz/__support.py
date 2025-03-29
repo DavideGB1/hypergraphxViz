@@ -238,7 +238,7 @@ def __support_to_normal_hypergraph(
     edge_directed_mapping: dict
     """
     orginal_edges = directe_hg.get_edges()
-    new_hypergraph = Hypergraph()
+    new_hypergraph = Hypergraph(weighted=directe_hg.is_weighted())
     edge_directed_mapping = dict()
     for edge in orginal_edges:
         compressed_edge = []
@@ -249,6 +249,7 @@ def __support_to_normal_hypergraph(
         edge_directed_mapping[tuple(sorted(compressed_edge))] = edge
         if tuple(sorted(compressed_edge)) not in new_hypergraph.get_edges():
             new_hypergraph.add_edge(compressed_edge)
+            new_hypergraph.set_weight(compressed_edge, directe_hg.get_weight(edge))
         else:
             new_hypergraph.set_edge_metadata(compressed_edge, "I/O")
     return new_hypergraph, edge_directed_mapping
