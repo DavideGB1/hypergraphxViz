@@ -304,11 +304,9 @@ class HypergraphTable(QTableWidget):
         self.update_table(self.hypergraph)
         self.update_status.emit({})
 
-    #TODO: Fix it
     def __modify_metadata(self, item):
         text = item.text()
         val = str_to_dict(text)
-        txt = ""
         if val == {}:
             txt = self.old_values[item.row(), item.column()]
         else:

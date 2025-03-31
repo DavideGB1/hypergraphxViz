@@ -1,9 +1,9 @@
 import random
 
-from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtCore import pyqtSignal, Qt, QTimer
 from PyQt5.QtGui import QColor, QPixmap, QIcon, QFont
 from PyQt5.QtWidgets import QWidget, QCheckBox, QLabel, QDoubleSpinBox, QHBoxLayout, QPushButton, QColorDialog, \
-    QComboBox, QVBoxLayout, QDockWidget, QSlider
+    QComboBox, QVBoxLayout, QDockWidget, QSlider, QProgressBar
 from superqt import QRangeSlider
 
 from hypergraphx.viz.interactive_view.graphic_enum import GraphicOptionsName
@@ -301,29 +301,6 @@ class RandomSeedButton(QWidget):
 
         self.button.clicked.connect(new_seed)
 
-class WaitingScreen(QWidget):
-    """
-        A QWidget subclass that displays a waiting screen with a centered label.
-
-        The WaitingScreen class creates a simple full-screen placeholder that
-        displays a message indicating ongoing calculations. This can be utilized
-        to provide feedback during time-consuming operations.
-
-        Methods
-        -------
-        __init__(parent=None):
-            Constructs the WaitingScreen with a centered QLabel and a default message.
-    """
-    def __init__(self, parent=None):
-        super(WaitingScreen, self).__init__()
-        self.layout = QVBoxLayout()
-        #self.icon = QIcon()
-        #self.layout.addWidget(self.icon)
-        self.layout.setAlignment(Qt.AlignCenter)
-        self.label = QLabel("Calculation in progress...")
-        self.label.setFont(QFont("Arial", 20))
-        self.layout.addWidget(self.label)
-        self.setLayout(self.layout)
 
 class SliderDockWidget(QDockWidget):
     """
@@ -443,3 +420,20 @@ class SliderDockWidget(QDockWidget):
             self.slider.setValue((2, self.max_edge))
         else:
             self.slider.setValue(2)
+
+class LoadingScreen(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.layout = QVBoxLayout()
+        label = QLabel("Loading...")
+        progress_bar = QProgressBar()
+        progress_bar.setMinimum(0)
+        progress_bar.setMaximum(0)
+        progress_bar.setValue(0)
+        self.layout.addStretch()
+        self.layout.addWidget(label)
+        self.layout.addWidget(progress_bar)
+        self.layout.addStretch()
+        self.setLayout(self.layout)
+
+

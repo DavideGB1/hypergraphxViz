@@ -16,7 +16,6 @@ def clear_layout(layout: QLayout):
         if widget:
             widget.deleteLater()
 
-
 def str_to_dict(string: str):
     """
     Converts a colon-separated string into a dictionary where each key-value pair is split by commas.

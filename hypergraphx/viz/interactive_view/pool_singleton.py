@@ -2,6 +2,9 @@ import multiprocessing
 
 
 class PoolSingleton:
+    """
+    A singleton class that manages a single instance of a multiprocessing pool.
+    """
     _instance = None
     _pool = None
 

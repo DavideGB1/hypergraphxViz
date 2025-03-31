@@ -1,7 +1,6 @@
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QCheckBox
-from hypergraphx.viz.interactive_view.custom_widgets import LabelButton, IterationsSelector, ComboBoxCustomWindget, \
-    SpinboxCustomWindget
+from hypergraphx.viz.interactive_view.custom_widgets import LabelButton, IterationsSelector, SpinboxCustomWindget
 
 
 class PAOHOptionsWidget(QWidget):

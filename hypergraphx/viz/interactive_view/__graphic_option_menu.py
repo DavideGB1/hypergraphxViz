@@ -1,6 +1,5 @@
-from copy import deepcopy
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QCheckBox
+from PyQt5.QtWidgets import QWidget, QCheckBox
 from hypergraphx.viz.__graphic_options import GraphicOptions
 from hypergraphx.viz.interactive_view.community_options.__community_option_menu import SpinboxCustomWindget
 from hypergraphx.viz.interactive_view.custom_widgets import ComboBoxCustomWindget, ColorPickerCustomWidget
@@ -237,7 +236,7 @@ class GraphicOptionsWidget(QWidget):
         self.balance_node_label_sizes = True
         self.balance_n_l_size = QCheckBox("Balance Node and Label Sizes")
         self.balance_n_l_size.setChecked(True)
-        self.graphic_options = deepcopy(graphic_options)
+        self.graphic_options = graphic_options.copy()
         self.extra_attributes = dict()
         self.extra_attributes = extra_attributes
         self.widget_list = list()

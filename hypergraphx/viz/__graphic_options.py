@@ -1,3 +1,4 @@
+import copy
 from typing import Optional
 from networkx import Graph, DiGraph
 from hypergraphx import Hypergraph, TemporalHypergraph, DirectedHypergraph
@@ -267,3 +268,6 @@ class GraphicOptions:
 
     def add_centrality_factor_dict(self, centrality: dict):
         self.centrality = centrality
+
+    def copy(self):
+        return copy.deepcopy(self)
