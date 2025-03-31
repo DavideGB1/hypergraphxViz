@@ -423,8 +423,14 @@ class ModifyHypergraphMenu(QMainWindow):
                 pass
 
     def update_hypergraph(self):
-        self.edges_tab.update_table(self.hypergraph)
-        self.nodes_tab.update_table(self.hypergraph)
+        self.vertical_tab.removeTab(0)
+        self.vertical_tab.removeTab(0)
+        self.nodes_tab = HypergraphTable(self.hypergraph)
+        self.edges_tab = HypergraphTable(self.hypergraph, False)
+        self.edges_tab.update_status.connect(self.changed_weights)
+        self.vertical_tab.addTab(self.nodes_tab, "Nodes")
+        self.vertical_tab.addTab(self.edges_tab, "Edges")
+
         self.updated_hypergraph.emit({ "hypergraph": self.hypergraph})
 
     def changed_weights(self):

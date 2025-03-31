@@ -3,7 +3,6 @@ import ctypes
 import faulthandler
 import multiprocessing
 import os
-import pickle
 import sys
 from copy import deepcopy
 
@@ -173,35 +172,29 @@ def run_community_detection(hypergraph, algorithm, community_options):
         raise ValueError(f"Unknown community detection algorithm: {algorithm}")
     return community_model
 
-class CommunityDetectionWorker(QThread):
-    finished = pyqtSignal(object)
-
-    def __init__(self, hypergraph, algorithm, community_options, pool, parent=None):
-        super(CommunityDetectionWorker, self).__init__(parent)
-        self.hypergraph = hypergraph
-        self.algorithm = algorithm
-        self.pool = pool
-        self.community_options = community_options
-
-    def run(self):
-        community_model = self.pool.apply(
-            self.hypergraph, self.algorithm, self.community_options
-        )
-        self.finished.emit(community_model)
-
 class PlotWorker(QThread):
     progress = pyqtSignal(list)
 
-    def __init__(self, draw_function, hypergraph, input_dictionary, pool, parent=None):
+    def __init__(self, draw_function, hypergraph, input_dictionary, pool, model, community_algorithm, community_options, use_last, parent=None):
         super(PlotWorker, self).__init__(parent)
         self.hypergraph = hypergraph
         self.draw_function = draw_function
         self.input_dictionary = input_dictionary
         self.pool = pool
+        self.model = model
+        self.use_last = use_last
+        self.community_algorithm = community_algorithm
+        self.community_options = community_options
 
     def run(self):
         print("Thread Inizia")
+        if not self.use_last:
+            self.model = self.pool.apply(run_community_detection, args=(self.hypergraph, self.community_algorithm, self.community_options))
+            self.input_dictionary["community_model"] = self.model
+        else:
+            self.model = self.input_dictionary["community_model"]
         results = self.pool.apply(ssfasafsf, args=(self.draw_function, self.hypergraph, self.input_dictionary))
+        results.append(self.model)
         self.progress.emit(results)
 class Window(QWidget):
 
@@ -209,13 +202,13 @@ class Window(QWidget):
     def __init__(self,hypergraph: Hypergraph|TemporalHypergraph|DirectedHypergraph, parent=None):
         super(Window, self).__init__(parent)
         self.setWindowTitle("HypergraphX Visualizer")
-
+        pool = PoolSingleton()
         scriptDir = os.path.dirname(os.path.realpath(__file__))
         self.setWindowIcon(QIcon(scriptDir + os.path.sep+ 'logo_cropped.png'))
         if "win" in sys.platform:
             myappid = 'mycompany.myproduct.subproduct.version'  # arbitrary string
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-
+        self.community_algorithm = "None"
         self.heaviest_edges_value = 1.0
         self.thread_community = None
         #Set Default Values
@@ -313,7 +306,7 @@ class Window(QWidget):
         if self.thread is None:
             self.change_focus()
             pool = PoolSingleton()
-            self.thread = PlotWorker(self.current_function, self.hypergraph, dictionary, pool.get_pool())
+            self.thread = PlotWorker(self.current_function, self.hypergraph, dictionary, pool.get_pool(), self.community_model, self.community_algorithm, self.community_options_dict, self.use_last)
             self.thread.progress.connect(self.drawn)
             self.thread.start()
         self.use_last = False
@@ -322,6 +315,7 @@ class Window(QWidget):
         print("Got the figure")
         self.last_pos = value_list[0]
         self.figure = value_list[1]
+        self.community_model = value_list[2]
         self.canvas = FigureCanvas(self.figure)
         self.main_layout.removeToolBar(self.toolbar)
         self.toolbar = NavigationToolbar(self.canvas, self)
@@ -434,14 +428,7 @@ class Window(QWidget):
             self.use_last = True
         else:
             self.use_last = False
-        if not self.use_last:
-            algorithm = input["community_detection_algorithm"]
-            community_options = self.community_options_dict.copy()  # Important: Copy the dict!
-            pool = PoolSingleton()
-            self.community_model = pool.get_pool().apply(
-                run_community_detection,
-                args=(self.hypergraph, algorithm, community_options)
-            )
+        self.community_algorithm = input["community_detection_algorithm"]
         match input["weight_influence"]:
             case "No Relationship":
                 self.weight_positioning = 0

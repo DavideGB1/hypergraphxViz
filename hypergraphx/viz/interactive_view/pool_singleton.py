@@ -12,7 +12,7 @@ class PoolSingleton:
 
     def get_pool(self):
         if self._pool is None:
-            self._pool = multiprocessing.Pool()
+            self._pool = multiprocessing.Pool(processes=4)
         return self._pool
 
     def close_pool(self):

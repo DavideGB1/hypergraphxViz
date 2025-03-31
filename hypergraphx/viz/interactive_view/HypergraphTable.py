@@ -31,6 +31,7 @@ class HypergraphTable(QTableWidget):
     update_status = pyqtSignal(dict)
     def __init__(self, hypergraph, nodes = True  ):
         super(HypergraphTable, self).__init__()
+        self.itemChanged.connect(self.__check_new_cell_value)
         self.weight_col = 0
         self.metadata_col = 0
         self.loading = False
@@ -44,7 +45,6 @@ class HypergraphTable(QTableWidget):
         self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.setItemDelegateForColumn(0, ReadOnlyDelegate(self))
-        self.itemChanged.connect(self.__check_new_cell_value)
 
     def remove_row(self):
         """
@@ -69,6 +69,7 @@ class HypergraphTable(QTableWidget):
         else:
             self.__update_table_edges()
         self.loading = False
+
 
     def __update_table_nodes(self):
         """
@@ -255,9 +256,7 @@ class HypergraphTable(QTableWidget):
             self.last_changes = not self.last_changes
             return
         if item.column() == self.metadata_col:
-            pass
-            #Currently not working. Will be fixed later
-            #self.__modify_metadata(item)
+            self.__modify_metadata(item)
         elif item.column() == self.weight_col and self.hypergraph.is_weighted():
             self.__modify_weight(item)
         elif item.column() == 1 and isinstance(self.hypergraph, TemporalHypergraph):
@@ -326,12 +325,19 @@ class HypergraphTable(QTableWidget):
                 edge_src = str_to_tuple(self.item(item.row(), 0).text())
                 edge_trg = str_to_tuple(self.item(item.row(), 1).text())
                 edge = (edge_src, edge_trg)
+                if self.hypergraph.is_weighted():
+                    val["weight"] = self.hypergraph.get_weight(edge)
                 self.hypergraph.set_edge_metadata(edge, val)
             elif isinstance(self.hypergraph, TemporalHypergraph):
                 row = item.row()
                 edge = str_to_tuple(self.item(row, 0).text())
                 time = int(self.item(row, 1).text())
+                if self.hypergraph.is_weighted():
+                    val["weight"] = self.hypergraph.get_weight(edge, time)
+                val["time"] = time
                 self.hypergraph.set_edge_metadata(edge, time, val)
             else:
                 edge = str_to_tuple(self.item(item.row(), 0).text())
+                if self.hypergraph.is_weighted():
+                    val["weight"] = self.hypergraph.get_weight(edge)
                 self.hypergraph.set_edge_metadata(edge, val)
