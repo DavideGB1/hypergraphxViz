@@ -95,6 +95,7 @@ class Window(QWidget):
         self.slider = SliderDockWidget(self.hypergraph.max_size())
         self.slider.update_value.connect(self.new_slider_value)
         self.main_layout.addDockWidget(Qt.BottomDockWidgetArea, self.slider)
+        self.loading = False
 
 
         # setting layout to the main window
@@ -142,12 +143,22 @@ class Window(QWidget):
         dictionary["community_model"] = self.community_model
         dictionary["algorithm_options_dict"] = self.algorithm_options_dict
         dictionary["graphic_options"] = self.graphic_options
+        if self.thread is not None and not self.thread.isFinished() and self.loading:
+            self.thread.terminate()
+            self.change_focus()
+            self.thread = None
+
         if self.thread is None:
             self.change_focus()
             pool = PoolSingleton()
-            self.thread = PlotWorker(self.current_function, self.hypergraph, dictionary, pool.get_pool(), self.community_model, self.community_algorithm, self.community_options_dict, self.use_last)
+            self.thread = PlotWorker(self.current_function, self.hypergraph, dictionary, pool.get_pool(),
+                                     self.community_model, self.community_algorithm, self.community_options_dict,
+                                     self.use_last)
             self.thread.progress.connect(self.drawn)
             self.thread.start()
+            self.loading = False
+
+        
         self.use_last = False
 
     def drawn(self, value_list):
@@ -190,6 +201,7 @@ class Window(QWidget):
         hypergraph : Hypergraph, DirectedHypergraph, or TemporalHypergraph, optional
             A new hypergraph instance to update the current hypergraph.
         """
+        self.loading = True
         self.community_model = None
         self.main_layout.removeDockWidget(self.drawing_options_widget)
         self.drawing_options_widget.deleteLater()
