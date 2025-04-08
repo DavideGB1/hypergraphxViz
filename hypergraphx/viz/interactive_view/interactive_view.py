@@ -120,7 +120,6 @@ class Window(QWidget):
         self.main_layout.addDockWidget(Qt.RightDockWidgetArea, self.drawing_options_widget)
         self.use_default()
 
-
     #Drawing
     def plot(self):
         """

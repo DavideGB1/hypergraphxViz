@@ -70,7 +70,6 @@ class HypergraphTable(QTableWidget):
             self.__update_table_edges()
         self.loading = False
 
-
     def __update_table_nodes(self):
         """
         Updates the table to display the nodes of a hypergraph and their associated metadata.
