@@ -44,7 +44,7 @@ class Window(QWidget):
         pool = PoolSingleton()
         script_dir = os.path.dirname(os.path.realpath(__file__))
         self.setWindowIcon(QIcon(script_dir + os.path.sep+ 'logo_cropped.png'))
-        if "win" in sys.platform:
+        if "win" in sys.platform and "darwin" not in sys.platform:
             myappid = 'mycompany.myproduct.subproduct.version'  # arbitrary string
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         self.community_algorithm = "None"

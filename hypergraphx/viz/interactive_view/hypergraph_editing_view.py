@@ -3,7 +3,7 @@ import re
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QMainWindow, QToolBar, \
     QAction, QFileDialog, QMessageBox, QDialog, QVBoxLayout, QLabel, QSpinBox, QPlainTextEdit, QPushButton, \
-    QMenu, QMenuBar, QTextEdit, QLineEdit, QStyledItemDelegate
+    QMenu, QMenuBar, QTextEdit, QLineEdit, QStyledItemDelegate, QTabWidget
 from pyqt_vertical_tab_widget import VerticalTabWidget
 import hypergraphx
 from hypergraphx import DirectedHypergraph, TemporalHypergraph, Hypergraph
@@ -24,7 +24,9 @@ class ModifyHypergraphMenu(QMainWindow):
 
     def __init__(self, hypergraph):
         super(ModifyHypergraphMenu, self).__init__()
-        self.vertical_tab = VerticalTabWidget()
+        self.vertical_tab = QTabWidget()
+        self.vertical_tab.setTabPosition(QTabWidget.West)
+
         self.hypergraph = hypergraph
         self.__createToolBar()
         self.nodes_tab = HypergraphTable(self.hypergraph)

@@ -1,5 +1,6 @@
 from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QProgressBar, QLabel, QSizePolicy
+from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QProgressBar, QLabel, QSizePolicy, QTabWidget, \
+    QPushButton
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
@@ -170,13 +171,15 @@ class HypergraphStatsWidget(QMainWindow):
     def __init__(self, hypergraph):
         super(HypergraphStatsWidget, self).__init__()
         self.hypergraph = None
-        self.vertical_tab = VerticalTabWidget()
+        self.vertical_tab = QTabWidget()
+        self.vertical_tab.setTabPosition(QTabWidget.West)
         self.update_hypergraph(hypergraph)
 
 
     def update_hypergraph(self, hypergraph):
         self.hypergraph = hypergraph
-        self.vertical_tab = VerticalTabWidget()
+        self.vertical_tab = QTabWidget()
+        self.vertical_tab.setTabPosition(QTabWidget.West)
         self.hypergraph = hypergraph
 
         centrality_tab = GenericGraphWidget(
@@ -198,12 +201,7 @@ class HypergraphStatsWidget(QMainWindow):
         self.vertical_tab.addTab(degree_tab, "Degree")
         self.vertical_tab.addTab(centrality_tab, "Centrality")
         if isinstance(hypergraph, Hypergraph):
-            motifs_tab = GenericGraphWidget(
-                hypergraph=hypergraph,
-                drawing_function=plot_motifs,
-                drawing_params={'axes': (1, 1), 'calculation_function': motifs_calculations},
-                title="Motifs"
-            )
+            motifs_tab = MotifsWidget(hypergraph)
             self.vertical_tab.addTab(motifs_tab, "Motifs")
         if isinstance(hypergraph, Hypergraph):
             adj_tab = GenericGraphWidget(
@@ -223,6 +221,56 @@ class HypergraphStatsWidget(QMainWindow):
             self.vertical_tab.addTab(weight_tab, "Weights")
 
         self.setCentralWidget(self.vertical_tab)
+
+class MotifsWidget(QWidget):
+
+    def __init__(self, hypergraph):
+        super().__init__()
+        self.hypergraph = hypergraph
+        self.button = QPushButton("Calculate Motifs")
+        self.button.clicked.connect(self.update_hypergraph)
+        self.layout = QVBoxLayout()
+        self.layout.addWidget(self.button)
+        self.setLayout(self.layout)
+
+        self.drawing_function = plot_motifs
+        self.drawing_params = {'axes': (1, 1), 'calculation_function': motifs_calculations}
+        self.title = "Motifs"
+        self.figure = None
+        self.axes = None
+        self.thread = None
+
+
+    def draw_graph(self, data):
+        clear_layout(self.layout)
+        self.figure = Figure()
+        if isinstance(self.drawing_params['axes'], tuple):
+            self.axes = self.figure.subplots(*self.drawing_params['axes'])
+        else:
+            self.axes = self.figure.subplots(1, 1)
+        if not self.drawing_function == plot_motifs:
+            self.drawing_function(self.axes, data, **self.drawing_params.get('extra_params', {}))
+        else:
+            plot_motifs(data, None, self.axes)
+        self.figure.subplots_adjust(wspace=self.drawing_params.get('wspace', 0.5),
+                                    hspace=self.drawing_params.get('hspace', 0.5))
+
+        canvas = FigureCanvas(self.figure)
+        canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+        toolbar = NavigationToolbar(canvas, self)
+        self.layout.addWidget(toolbar)
+        self.layout.addWidget(canvas)
+        self.setLayout(self.layout)
+        self.update()
+
+    def update_hypergraph(self):
+        clear_layout(self.layout)
+        self.layout.addWidget(LoadingScreen())
+        self.setLayout(self.layout)
+        self.thread = StatsWorker(self.hypergraph, self.drawing_params['calculation_function'])
+        self.thread.progress.connect(self.draw_graph)
+        self.thread.start()
 
 #Support
 def generate_key(dictionary):
