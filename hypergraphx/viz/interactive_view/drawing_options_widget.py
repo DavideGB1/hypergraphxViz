@@ -14,6 +14,7 @@ class DrawingOptionsDockWidget(QDockWidget):
     update_value = pyqtSignal(dict)
     def __init__(self, weighted = False, hypergraph_type = "normal", n_nodes = 0):
         super().__init__()
+        self.redraw_flag = False
         self.combobox_weight_influence = None
         self.spin_box_label = None
         self.n_nodes = n_nodes
@@ -46,7 +47,7 @@ class DrawingOptionsDockWidget(QDockWidget):
         if self.weighted:
             self.__weighted_options()
         self.redraw_button = QPushButton("Redraw")
-        self.redraw_button.clicked.connect(self.update)
+        self.redraw_button.clicked.connect(self.redraw)
         self.vbox.addWidget(self.redraw_button)
 
         self.use_last = False
@@ -341,7 +342,9 @@ class DrawingOptionsDockWidget(QDockWidget):
     def update_hypergraph_type(self, hypergraph_type):
         self.hypergraph_type = hypergraph_type
         self.__update_hypergraph_drawing_options()
-        
+    def redraw(self):
+        self.redraw_flag = True
+        self.update()
     def update(self):
         if self.heaviest_edges_spin_box_label is not None:
             heaviest_value = self.heaviest_edges_spin_box.value()/100
@@ -357,5 +360,6 @@ class DrawingOptionsDockWidget(QDockWidget):
                                 "community_detection_algorithm": cda,
                                 "drawing_options":self.drawing_combobox.currentText() ,"use_last": self.use_last, "algorithm_options":self.algorithm_options_dict,
                                 "graphic_options": self.graphic_options,"extra_attributes": self.extra_attributes,
-                                "community_options": self.community_options_dict, "weight_influence": weight_influence})
+                                "community_options": self.community_options_dict, "weight_influence": weight_influence, "redraw": self.redraw_flag})
+        self.redraw_flag = False
         self.use_last = False
