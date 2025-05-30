@@ -10,7 +10,7 @@ from scipy.spatial import ConvexHull
 
 from hypergraphx import Hypergraph
 from hypergraphx.readwrite import load_hypergraph
-from hypergraphx.representations.projections import clique_projection
+from hypergraphx.representations.projections import clique_projection, extra_node_projection
 from hypergraphx.viz.__graphic_options import GraphicOptions
 from hypergraphx.viz.__support import __ignore_unused_args, __filter_hypergraph, _get_node_community, \
     _draw_node_community, _get_community_info, draw_networkx_edge_labels_clone
@@ -74,7 +74,10 @@ def _draw_hyperedge_set(
                 drawDirection = True
         #Calculate the correct distance of the points
         halfAngle = angle/2
-        lenOut = abs(math.cos(halfAngle) * radius / math.sin(halfAngle))
+        try:
+            lenOut = abs(math.cos(halfAngle) * radius / math.sin(halfAngle))
+        except ZeroDivisionError:
+            lenOut = abs(math.cos(halfAngle) * radius / 0.01)
         if lenOut > min(v1.length / 2, v2.length / 2):
             lenOut = min(v1.length / 2, v2.length / 2)
             cRadius = abs(lenOut * math.sin(halfAngle) / math.cos(halfAngle))
@@ -208,17 +211,17 @@ def draw_sets(
 
     #Filter the Hypergraph nodes and edges
     hypergraph = __filter_hypergraph(hypergraph, cardinality, x_heaviest)
-    try:
-        for node in hypergraph.isolated_nodes():
-            hypergraph.remove_node(node)
-    except AttributeError:
-        pass
+    #try:
+    #    for node in hypergraph.isolated_nodes():
+    #        hypergraph.remove_node(node)
+    #except AttributeError:
+    #    pass
 
     if graphicOptions is None:
         graphicOptions = GraphicOptions()
     # Extract node positions based on the hypergraph clique projection.
     if pos is None:
-        g = clique_projection(hypergraph)
+        g, _ = extra_node_projection(hypergraph)
         if hypergraph.is_weighted():
             for edge in g.edges():
                 weight = g.get_edge_data(edge[0], edge[1])['weight']
@@ -231,23 +234,24 @@ def draw_sets(
                         g[edge[0]][edge[1]]['weight'] = 1 / weight
         first_pos = kamada_kawai_layout(g, scale=scale)
         if first_pos != {}:
-            pos = spring_layout(g,pos=first_pos, iterations=iterations)
+            pos = spring_layout(g,pos=first_pos, iterations=iterations, k = 15)
         else:
-            pos = spring_layout(g, iterations=iterations)
+            pos = spring_layout(g, iterations=iterations, k = 15)
 
 
     # Set color hyperedges of size > 2 (order > 1).
     if hyperedge_color_by_order is None:
-        hyperedge_color_by_order = {2: "#FFBC79", 3: "#79BCFF", 4: "#4C9F4C"}
+        hyperedge_color_by_order = {2: "#FCB07E", 3: "#048BA8", 4: "#99C24D", 5: "#BC2C1A", 6: "#2F1847"}
     if hyperedge_facecolor_by_order is None:
-        hyperedge_facecolor_by_order = {2: "#FFBC79", 3: "#79BCFF", 4: "#4C9F4C"}
+        hyperedge_facecolor_by_order = {2: "#FCB07E", 3: "#048BA8", 4: "#99C24D", 5: "#BC2C1A", 6: "#2F1847"}
 
     # Extract edges (hyperedges of size=2/order=1).
     edges = hypergraph.get_edges(order=1)
 
     # Initialize empty graph with the nodes and the pairwise interactions of the hypergraph.
     G = nx.Graph()
-    G.add_nodes_from(hypergraph.get_nodes())
+    for node in hypergraph.get_nodes():
+        G.add_node(node)
     for e in edges:
         weight = hypergraph.get_weight(e)
         match weight_positioning:
