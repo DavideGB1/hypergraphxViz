@@ -158,6 +158,7 @@ def draw_sets(
     figsize: tuple[float, float] = (10, 10),
     dpi: int = 300,
     graphicOptions: Optional[GraphicOptions] = None,
+    dummy_nodes = [],
     **kwargs) -> dict:
     """
     Draws a set projection of the hypergraph.
@@ -231,9 +232,9 @@ def draw_sets(
                         g[edge[0]][edge[1]]['weight'] = 1 / weight
         first_pos = kamada_kawai_layout(g, scale=scale)
         if first_pos != {}:
-            pos = spring_layout(g,pos=first_pos, iterations=iterations)
+            pos = spring_layout(g,pos=first_pos, iterations=iterations, k=15)
         else:
-            pos = spring_layout(g, iterations=iterations)
+            pos = spring_layout(g, iterations=iterations, k =15)
 
 
     # Set color hyperedges of size > 2 (order > 1).
@@ -267,7 +268,7 @@ def draw_sets(
         nx.draw_networkx_labels(
             G,
             pos,
-            labels  = dict((n, n) for n in G.nodes()),
+            labels  = dict((n, n) for n in G.nodes() if n not in dummy_nodes),
             font_size=graphicOptions.label_size,
             font_color=graphicOptions.label_color,
             **kwargs
@@ -296,6 +297,12 @@ def draw_sets(
 
             #Calculate Order and use it to select a color
             order = len(hye) - 1
+            has_dummy = False
+            for node in hye:
+                if node in dummy_nodes:
+                    has_dummy = True
+            if has_dummy:
+                order-=1
             if order not in hyperedge_color_by_order.keys():
                 std_color = "#" + "%06x" % random.randint(0, 0xFFFFFF)
                 hyperedge_color_by_order[order] = std_color
@@ -346,21 +353,22 @@ def draw_sets(
         mapping, col = _get_community_info(hypergraph,k)
 
     for node in G.nodes():
-        if u is None:
-            nx.draw_networkx_nodes(
-                G,
-                pos,
-                nodelist=[node],
-                node_size=graphicOptions.node_size[node],
-                node_shape=graphicOptions.node_shape[node],
-                node_color=graphicOptions.node_color[node],
-                edgecolors=graphicOptions.node_facecolor[node],
-                ax=ax,
-                **kwargs
-            )
-        else:
-            wedge_sizes, wedge_colors = _get_node_community(mapping,node, u, col,0.1)
-            _draw_node_community(ax, node, pos[node], wedge_sizes, wedge_colors, graphicOptions, **kwargs)
+        if node not in dummy_nodes:
+            if u is None:
+                nx.draw_networkx_nodes(
+                    G,
+                    pos,
+                    nodelist=[node],
+                    node_size=graphicOptions.node_size[node],
+                    node_shape=graphicOptions.node_shape[node],
+                    node_color=graphicOptions.node_color[node],
+                    edgecolors=graphicOptions.node_facecolor[node],
+                    ax=ax,
+                    **kwargs
+                )
+            else:
+                wedge_sizes, wedge_colors = _get_node_community(mapping,node, u, col,0.1)
+                _draw_node_community(ax, node, pos[node], wedge_sizes, wedge_colors, graphicOptions, **kwargs)
 
     ax.axis("equal")
     ax.axis("off")

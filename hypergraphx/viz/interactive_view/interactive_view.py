@@ -1,11 +1,10 @@
-import copy
 import ctypes
 import faulthandler
 import multiprocessing
 import os
 import sys
 from copy import deepcopy
-
+import copy
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QVBoxLayout, QWidget, QHBoxLayout, QLabel, \
