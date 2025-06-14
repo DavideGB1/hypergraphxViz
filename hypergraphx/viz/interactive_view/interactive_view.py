@@ -1,3 +1,4 @@
+import copy
 import ctypes
 import faulthandler
 import multiprocessing
@@ -5,6 +6,8 @@ import os
 import sys
 from copy import deepcopy
 import copy
+
+import numpy as np
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QVBoxLayout, QWidget, QHBoxLayout, QLabel, \
@@ -18,6 +21,7 @@ from hypergraphx.communities.hy_mmsbm.model import HyMMSBM
 from hypergraphx.communities.hy_sc.model import HySC
 from hypergraphx.communities.hypergraph_mt.model import HypergraphMT
 from hypergraphx.measures.degree import degree_sequence
+from hypergraphx.measures.edge_similarity import jaccard_similarity
 from hypergraphx.measures.s_centralities import s_betweenness_nodes, s_betweenness_nodes_averaged
 from hypergraphx.utils import normalize_array
 from hypergraphx.viz.__graphic_options import GraphicOptions
@@ -282,8 +286,8 @@ class Window(QWidget):
         self.algorithm_options_dict = input_dictionary["algorithm_options"]
         self.graphic_options = input_dictionary["graphic_options"]
         self.extra_attributes = input_dictionary["extra_attributes"]
-        self.plot()
-
+        if input_dictionary["redraw"]:
+            self.plot()
     def new_slider_value(self, value):
         """
         gets the new slider value and refreshes the plot.
@@ -294,7 +298,6 @@ class Window(QWidget):
             The new value to update the slider with.
         """
         self.slider_value = value
-        self.plot()
 
     # Support
     def normalize_centrality(self):

@@ -164,7 +164,8 @@ def draw_clique(
 
     #Calculate positions if not provided
     if pos is None:
-        pos = nx.spring_layout(G=g, iterations=iterations, weight="weight")
+        tmp_pos = nx.kamada_kawai_layout(G=g, weight="weight")
+        pos = nx.spring_layout(G=g, pos= tmp_pos,iterations=iterations, weight="weight")
 
     if ax is None:
         plt.figure(figsize=figsize, dpi=dpi)
