@@ -323,8 +323,8 @@ class SliderDockWidget(QDockWidget):
             Updates the maximum edge value for the slider, and resets the slider's value to keep it within the new maximum range.
     """
     update_value = pyqtSignal(tuple)
-    def __init__(self, max_edge):
-        super().__init__()
+    def __init__(self,max_edge, parent=None):
+        super().__init__(parent)
         self.slider = QSlider()
         self.max_edge = max_edge
         self.ranged = False

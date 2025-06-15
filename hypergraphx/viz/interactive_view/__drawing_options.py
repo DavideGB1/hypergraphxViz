@@ -379,9 +379,9 @@ class SetOptionsWidget(QWidget):
         Sends the modified options to the main menu.
         """
         dict = {"rounded_polygon":self.rounded_polygons_btn.isChecked(),"draw_labels": self.labels_button.button.isChecked(),
-                "iterations": int(self.iterations_selector.spinbox.value()), "scale": self.scale_spinbox.spinBox.value()}
+                "iterations": int(self.iterations_selector.spinbox.value()), "scale_factor": self.scale_spinbox.spinBox.value()}
         self.modified_options.emit(dict)
 
     def get_options(self):
         return {"rounded_polygon":self.rounded_polygons_btn.isChecked(),"draw_labels": self.labels_button.button.isChecked(),
-                "iterations": int(self.iterations_selector.spinbox.value()), "scale": self.scale_spinbox.spinBox.value()}
+                "iterations": int(self.iterations_selector.spinbox.value()), "scale_factor": self.scale_spinbox.spinBox.value()}

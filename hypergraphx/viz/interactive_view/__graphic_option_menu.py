@@ -243,6 +243,8 @@ class GraphicOptionsWidget(QWidget):
         self.widget_list.append(self.balance_n_l_size)
         attributes = self.graphic_options.__dict__
         to_remove = [attribute for attribute in attributes if "default" in attribute]
+        if isinstance(attributes["node_size"],dict):
+            attributes["node_size"] = self.graphic_options.default_node_size
         for attribute in to_remove:
             attributes.pop(attribute)
         try:

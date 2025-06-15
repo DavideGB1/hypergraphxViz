@@ -12,8 +12,8 @@ from hypergraphx.viz.interactive_view.community_options.__community_option_menu 
 
 class DrawingOptionsDockWidget(QDockWidget):
     update_value = pyqtSignal(dict)
-    def __init__(self, weighted = False, hypergraph_type = "normal", n_nodes = 0):
-        super().__init__()
+    def __init__(self, weighted = False, hypergraph_type = "normal", n_nodes = 0, parent=None):
+        super().__init__(parent)
         self.redraw_flag = False
         self.combobox_weight_influence = None
         self.spin_box_label = None
@@ -34,19 +34,19 @@ class DrawingOptionsDockWidget(QDockWidget):
         self.graphic_options = GraphicOptions()
         self.vbox = QVBoxLayout()
 
-        drawing_label = QLabel("Drawing Algorithm:")
+        drawing_label = QLabel("Drawing Algorithm:",parent=self)
         self.vbox.addWidget(drawing_label)
         self.__create_drawing_combobox()
         if self.hypergraph_type == "normal":
-            community_label = QLabel("Community Detection Algorithm:")
+            community_label = QLabel("Community Detection Algorithm:", parent=self)
             self.vbox.addWidget(community_label)
             self.__create_community_detection_combobox()
-        centrality_label = QLabel("Centrality Calculation Method:")
+        centrality_label = QLabel("Centrality Calculation Method:", parent=self)
         self.vbox.addWidget(centrality_label)
         self.__create_centrality_combobox()
         if self.weighted:
             self.__weighted_options()
-        self.redraw_button = QPushButton("Redraw")
+        self.redraw_button = QPushButton("Redraw",parent=self)
         self.redraw_button.clicked.connect(self.redraw)
         self.vbox.addWidget(self.redraw_button)
 
@@ -54,30 +54,30 @@ class DrawingOptionsDockWidget(QDockWidget):
 
         self.tab = QTabWidget()
 
-        drawing_options_tab = QWidget()
+        drawing_options_tab = QWidget(parent=self)
         vbox = QVBoxLayout()
         drawing_options_tab.setLayout(vbox)
-        self.drawing_options_list = QListWidget()
+        self.drawing_options_list = QListWidget(parent=self)
         vbox.addWidget(self.drawing_options_list)
         self.tab.addTab(drawing_options_tab, "Drawing Options")
 
-        graphic_options_tab = QWidget()
+        graphic_options_tab = QWidget(parent=self)
         vbox = QVBoxLayout()
         graphic_options_tab.setLayout(vbox)
-        self.graphic_options_list = QListWidget()
+        self.graphic_options_list = QListWidget(parent=self)
         vbox.addWidget(self.graphic_options_list)
         self.tab.addTab(graphic_options_tab, "Graphic Options")
 
-        self.community_options_tab = QWidget()
+        self.community_options_tab = QWidget(parent=self)
         vbox = QVBoxLayout()
         self.community_options_tab.setLayout(vbox)
-        self.community_options_list = QListWidget()
+        self.community_options_list = QListWidget(parent=self)
         vbox.addWidget(self.community_options_list)
         self.tab.addTab(self.community_options_tab, "Community Options")
         self.tab.setTabVisible(self.tab.indexOf(self.community_options_tab), False)
         self.vbox.addWidget(self.tab)
 
-        self.widget = QWidget()
+        self.widget = QWidget(parent=self)
         self.widget.setLayout(self.vbox)
         self.setWidget(self.widget)
         self.setFeatures(QDockWidget.NoDockWidgetFeatures)
@@ -141,7 +141,7 @@ class DrawingOptionsDockWidget(QDockWidget):
         widget.modified_options.connect(func)
         
     def __create_centrality_combobox(self):
-        self.centrality_combobox = QComboBox()
+        self.centrality_combobox = QComboBox(parent=self)
         if self.hypergraph_type == "normal":
             self.centrality_combobox.addItems(["No Centrality", "Degree Centrality", "Betweenness Centrality", "Adjacency Factor (t=1)", "Adjacency Factor (t=2)"])
         else:
@@ -154,7 +154,7 @@ class DrawingOptionsDockWidget(QDockWidget):
         self.update()
         
     def __create_community_detection_combobox(self):
-        self.community_combobox = QComboBox()
+        self.community_combobox = QComboBox(parent=self)
         self.community_combobox.addItems(["None", "Hypergraph Spectral Clustering","Hypergraph-MT", "Hy-MMSBM"])
         self.community_combobox.currentTextChanged.connect(self.__change_community_detection_algorithm)
         self.vbox.addWidget(self.community_combobox)
@@ -216,7 +216,7 @@ class DrawingOptionsDockWidget(QDockWidget):
         """
         Creates and initializes a QComboBox widget for selecting drawing algorithms.
         """
-        self.drawing_combobox = QComboBox()
+        self.drawing_combobox = QComboBox(parent=self)
         self.__update_hypergraph_drawing_options()
         self.drawing_combobox.currentTextChanged.connect(self.__changes_drawing_algorithm)
         self.vbox.addWidget(self.drawing_combobox)

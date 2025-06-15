@@ -1,10 +1,11 @@
+import multiprocessing
+
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QProgressBar, QLabel, QSizePolicy, QTabWidget, \
     QPushButton
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
-from pyqt_vertical_tab_widget import VerticalTabWidget
 from qtpy import QtCore
 
 from hypergraphx import Hypergraph, TemporalHypergraph
@@ -12,7 +13,6 @@ from hypergraphx.measures.s_centralities import s_betweenness, s_closeness, s_be
     s_betweenness_nodes_averaged, s_closenness_nodes_averaged, s_betweenness_averaged, s_closeness_averaged
 from hypergraphx.motifs import compute_motifs
 from hypergraphx.viz.interactive_view.custom_widgets import LoadingScreen
-from hypergraphx.viz.interactive_view.pool_singleton import PoolSingleton
 from hypergraphx.viz.interactive_view.support import clear_layout
 from hypergraphx.viz.plot_motifs import plot_motifs
 
@@ -162,24 +162,23 @@ class StatsWorker(QtCore.QThread):
         self.hypergraph = hypergraph
         self.function = function
     def run(self):
-        res = PoolSingleton().get_pool().apply(self.function, args=(self.hypergraph, ))
-        self.progress.emit(res)
+        with multiprocessing.Pool(processes=1, maxtasksperchild=1) as pool:
+            result = pool.apply(self.function, args=(self.hypergraph, ))
+            self.progress.emit(result)
+
 
 class HypergraphStatsWidget(QMainWindow):
     updated_hypergraph = pyqtSignal(dict)
 
-    def __init__(self, hypergraph):
-        super(HypergraphStatsWidget, self).__init__()
+    def __init__(self, hypergraph, parent=None):
+        super(HypergraphStatsWidget, self).__init__(parent)
         self.hypergraph = None
-        self.vertical_tab = QTabWidget()
+        self.vertical_tab = QTabWidget(parent=self)
         self.vertical_tab.setTabPosition(QTabWidget.West)
         self.update_hypergraph(hypergraph)
 
-
     def update_hypergraph(self, hypergraph):
-        self.hypergraph = hypergraph
-        self.vertical_tab = QTabWidget()
-        self.vertical_tab.setTabPosition(QTabWidget.West)
+        self.vertical_tab.clear()
         self.hypergraph = hypergraph
 
         centrality_tab = GenericGraphWidget(
@@ -187,28 +186,31 @@ class HypergraphStatsWidget(QMainWindow):
             drawing_function=draw_centrality,
             drawing_params={'axes': (2, 2), 'calculation_function': calculate_centrality_pool, 'wspace': 2,
                             'hspace': 2},
-            title="Centrality"
+            title="Centrality",
+            parent=self.vertical_tab
         )
 
         degree_tab = GenericGraphWidget(
             hypergraph=hypergraph,
             drawing_function=draw_degree,
             drawing_params={'axes': (2, 1), 'calculation_function': degree_calculations},
-            title="Degree"
+            title="Degree",
+            parent=self.vertical_tab
         )
 
 
         self.vertical_tab.addTab(degree_tab, "Degree")
         self.vertical_tab.addTab(centrality_tab, "Centrality")
         if isinstance(hypergraph, Hypergraph):
-            motifs_tab = MotifsWidget(hypergraph)
+            motifs_tab = MotifsWidget(hypergraph, parent=self.vertical_tab)
             self.vertical_tab.addTab(motifs_tab, "Motifs")
         if isinstance(hypergraph, Hypergraph):
             adj_tab = GenericGraphWidget(
                 hypergraph=hypergraph,
                 drawing_function=draw_adjacency,
                 drawing_params={'axes': (2, 1), 'calculation_function': adjacency_calculations_pool},
-                title="Adjacency"
+                title="Adjacency",
+                parent=self.vertical_tab
             )
             self.vertical_tab.addTab(adj_tab, "Adjacency")
         if self.hypergraph.is_weighted():
@@ -216,7 +218,8 @@ class HypergraphStatsWidget(QMainWindow):
                 hypergraph=hypergraph,
                 drawing_function=draw_weight,
                 drawing_params={'axes': (1, 1), 'calculation_function': calculate_weight_distribution},
-                title="Weight"
+                title="Weight",
+                parent=self.vertical_tab
             )
             self.vertical_tab.addTab(weight_tab, "Weights")
 
@@ -224,8 +227,8 @@ class HypergraphStatsWidget(QMainWindow):
 
 class MotifsWidget(QWidget):
 
-    def __init__(self, hypergraph):
-        super().__init__()
+    def __init__(self, hypergraph, parent=None):
+        super().__init__(parent)
         self.hypergraph = hypergraph
         self.button = QPushButton("Calculate Motifs")
         self.button.clicked.connect(self.update_hypergraph)

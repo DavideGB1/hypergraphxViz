@@ -1,10 +1,10 @@
 import re
 
 from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QMainWindow, QToolBar, \
+from PyQt5.QtWidgets import QMainWindow, QToolBar, \
     QAction, QFileDialog, QMessageBox, QDialog, QVBoxLayout, QLabel, QSpinBox, QPlainTextEdit, QPushButton, \
-    QMenu, QMenuBar, QTextEdit, QLineEdit, QStyledItemDelegate, QTabWidget
-from pyqt_vertical_tab_widget import VerticalTabWidget
+    QMenu, QMenuBar, QTextEdit, QLineEdit, QTabWidget
+
 import hypergraphx
 from hypergraphx import DirectedHypergraph, TemporalHypergraph, Hypergraph
 from hypergraphx.generation import random_hypergraph
@@ -12,25 +12,21 @@ from hypergraphx.generation.random import random_uniform_hypergraph
 from hypergraphx.readwrite.save import save_hypergraph
 from hypergraphx.viz.interactive_view.HypergraphTable import HypergraphTable
 from hypergraphx.viz.interactive_view.__examples import examples_generator
-from PyQt5 import QtCore, QtGui, QtWidgets
-
-from hypergraphx.viz.interactive_view.support import str_to_int_or_float, str_to_tuple, str_to_dict, \
-    numerical_hypergraph
-
+from hypergraphx.viz.interactive_view.support import str_to_tuple, str_to_dict, numerical_hypergraph
 
 
 class ModifyHypergraphMenu(QMainWindow):
     updated_hypergraph = pyqtSignal(dict)
 
-    def __init__(self, hypergraph):
-        super(ModifyHypergraphMenu, self).__init__()
+    def __init__(self, hypergraph, parent=None):
+        super(ModifyHypergraphMenu, self).__init__(parent)
         self.vertical_tab = QTabWidget()
         self.vertical_tab.setTabPosition(QTabWidget.West)
 
         self.hypergraph = hypergraph
         self.__createToolBar()
-        self.nodes_tab = HypergraphTable(self.hypergraph)
-        self.edges_tab = HypergraphTable(self.hypergraph, False)
+        self.nodes_tab = HypergraphTable(self.hypergraph, parent=self)
+        self.edges_tab = HypergraphTable(self.hypergraph, False, parent=self)
         self.edges_tab.update_status.connect(self.changed_weights)
         self.vertical_tab.addTab(self.nodes_tab, "Nodes")
         self.vertical_tab.addTab(self.edges_tab, "Edges")
@@ -300,13 +296,23 @@ class ModifyHypergraphMenu(QMainWindow):
         if file_dialog.exec():
             selected_file = file_dialog.selectedFiles()
             try:
-                self.hypergraph = hypergraphx.readwrite.load_hypergraph(selected_file[0])
+                if selected_file[0].endswith(".hif.json"):
+                    self.hypergraph = hypergraphx.readwrite.load_hif(selected_file[0])
+                else:
+                    self.hypergraph = hypergraphx.readwrite.load_hypergraph(selected_file[0])
                 self.update_hypergraph()
             except ValueError:
                 msg = QMessageBox()
                 msg.setIcon(QMessageBox.Critical)
                 msg.setText("Error: Invalid Input File")
                 msg.setInformativeText('Input File is not .json | .hgx')
+                msg.setWindowTitle("Error")
+                msg.exec_()
+            except ValueError:
+                msg = QMessageBox()
+                msg.setIcon(QMessageBox.Critical)
+                msg.setText("Error: Invalid Input File")
+                msg.setInformativeText('The file is not well formatted')
                 msg.setWindowTitle("Error")
                 msg.exec_()
 
@@ -425,15 +431,27 @@ class ModifyHypergraphMenu(QMainWindow):
                 pass
 
     def update_hypergraph(self):
-        self.vertical_tab.removeTab(0)
-        self.vertical_tab.removeTab(0)
-        self.nodes_tab = HypergraphTable(self.hypergraph)
-        self.edges_tab = HypergraphTable(self.hypergraph, False)
+        if self.edges_tab:
+            try:
+                self.edges_tab.update_status.disconnect(self.changed_weights)
+            except TypeError:
+                pass
+
+        self.vertical_tab.clear()
+
+        if self.nodes_tab:
+            self.nodes_tab.deleteLater()
+        if self.edges_tab:
+            self.edges_tab.deleteLater()
+
+        self.nodes_tab = HypergraphTable(self.hypergraph, nodes=True, parent=self)
+        self.edges_tab = HypergraphTable(self.hypergraph, nodes=False, parent=self)
         self.edges_tab.update_status.connect(self.changed_weights)
+
         self.vertical_tab.addTab(self.nodes_tab, "Nodes")
         self.vertical_tab.addTab(self.edges_tab, "Edges")
 
-        self.updated_hypergraph.emit({ "hypergraph": self.hypergraph})
+        self.updated_hypergraph.emit({"hypergraph": self.hypergraph})
 
     def changed_weights(self):
         self.updated_hypergraph.emit({"hypergraph": self.hypergraph})

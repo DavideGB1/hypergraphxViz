@@ -29,8 +29,8 @@ class HypergraphTable(QTableWidget):
     QTableWidget with custom functions ad allows to modify the hypergraph.
     """
     update_status = pyqtSignal(dict)
-    def __init__(self, hypergraph, nodes = True  ):
-        super(HypergraphTable, self).__init__()
+    def __init__(self, hypergraph, nodes = True, parent = None):
+        super(HypergraphTable, self).__init__(parent)
         self.itemChanged.connect(self.__check_new_cell_value)
         self.weight_col = 0
         self.metadata_col = 0
