@@ -1,9 +1,10 @@
+import gc
 import re
 
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import QMainWindow, QToolBar, \
     QAction, QFileDialog, QMessageBox, QDialog, QVBoxLayout, QLabel, QSpinBox, QPlainTextEdit, QPushButton, \
-    QMenu, QMenuBar, QTextEdit, QLineEdit, QTabWidget
+    QMenu, QMenuBar, QTextEdit, QLineEdit, QTabWidget, QDialogButtonBox
 
 import hypergraphx
 from hypergraphx import DirectedHypergraph, TemporalHypergraph, Hypergraph
@@ -15,22 +16,351 @@ from hypergraphx.viz.interactive_view.__examples import examples_generator
 from hypergraphx.viz.interactive_view.support import str_to_tuple, str_to_dict, numerical_hypergraph
 
 
+class AddNodeDialog(QDialog):
+    def __init__(self, hypergraph, parent=None):
+        super(AddNodeDialog, self).__init__(parent)
+        self.hypergraph = hypergraph
+        self.setWindowTitle("Add Node")
+
+        # Setup del layout e dei widget
+        self.layout = QVBoxLayout(self)
+        self.nodes_name_label = QLabel("Node Name:")
+        self.name_input = QLineEdit(parent=self)
+        self.metadata_label = QLabel("Node Metadata:")
+        self.metadata_input = QTextEdit(parent=self)
+        self.metadata_input.setPlaceholderText("Insert the metadata (example class:CS, gender:M).")
+        self.generate_button = QPushButton("Add Node",parent=self)
+        self.generate_button.clicked.connect(self.send_input)
+
+        self.layout.addWidget(self.nodes_name_label)
+        self.layout.addWidget(self.name_input)
+        self.layout.addWidget(self.metadata_label)
+        self.layout.addWidget(self.metadata_input)
+        self.layout.addWidget(self.generate_button)
+
+    def validate_input(self) -> bool:
+        txt = self.name_input.text()
+        is_valid = True
+        message = ""
+        message_title = ""
+        if numerical_hypergraph(self.hypergraph):
+            if not txt.isnumeric():
+                message_title = "Error: Invalid Node Name"
+                message = "Invalid Node Name: the node name must be a number"
+                is_valid =  False
+            elif int(txt) in self.hypergraph.get_nodes():
+                message_title = "Error: Duplicated Node"
+                message = "Duplicated Node: in the hypergraph there is a node with the same name"
+                is_valid =  False
+        else:
+            if txt.isnumeric():
+                message_title = "Error: Invalid Node Name"
+                message = "Invalid Node Name: the node name must be a string"
+                is_valid =  False
+            elif txt in self.hypergraph.get_nodes():
+                message_title = "Error: Duplicated Node"
+                message = "Duplicated Node: in the hypergraph there is a node with the same name"
+                is_valid =  False
+        if is_valid:
+            return True
+        else:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Critical)
+            msg.setText(message_title)
+            msg.setInformativeText(message)
+            msg.setWindowTitle(message_title)
+            msg.exec_()
+            return False
+
+    def send_input(self):
+        if self.validate_input():
+            self.accept()
+
+    def get_values(self):
+        return {
+            "name": self.name_input.text().replace("\n", ""),
+            "metadata": str_to_dict(self.metadata_input.toPlainText())
+        }
+
+class AddEdgeDialog(QDialog):
+    def __init__(self, hypergraph, edge_type, parent=None):
+        super().__init__(parent)
+        self.hypergraph = hypergraph
+        self.edge_type = edge_type
+        self.setWindowTitle("Add Edge")
+
+        # Variabili per i widget di input
+        self.edge_inputs = []
+        self.time_spinbox = None
+        self.weight_spinbox = None
+        self.metadata_input = None
+        self.generate_button = None
+
+        self.__setup_ui()
+
+    def _validate_edge_text(self, text):
+        if not text:
+            return False
+        regex_num = r"^\s*\d+(?:\s*,\s*\d+)*\s*$"
+        regex_word = r"^\s*[a-zA-Z\d_]+(?:\s*,\s*[a-zA-Z\d_]+)*\s*$"
+
+        if numerical_hypergraph(self.hypergraph):
+            return bool(re.match(regex_num, text))
+        else:
+            return bool(re.match(regex_word, text))
+
+    def __update_button_state(self):
+        """Abilita il pulsante 'Add Edge' solo se tutti gli input sono validi."""
+        is_valid = all(self._validate_edge_text(edge_input.text()) for edge_input in self.edge_inputs)
+        self.generate_button.setEnabled(is_valid)
+
+    def __setup_ui(self):
+        layout = QVBoxLayout(self)
+
+        # --- Campi per l'Arco ---
+        if self.edge_type == "normal":
+            fields = [("Edge:", "Insert the edge like 1,2,3,4.")]
+        elif self.edge_type == "directed":
+            fields = [
+                ("Edge Source:", "Insert the edge source (e.g., 1,2)."),
+                ("Edge Target:", "Insert the edge target (e.g., 3,4)."),
+            ]
+        elif self.edge_type == "temporal":
+            fields = [("Edge:", "Insert the edge like 1,2,3,4.")]
+
+        for label_text, placeholder in fields:
+            label = QLabel(label_text, self)
+            line_edit = QLineEdit(self)
+            line_edit.setPlaceholderText(placeholder)
+            line_edit.textChanged.connect(self.__update_button_state)
+            self.edge_inputs.append(line_edit)
+            layout.addWidget(label)
+            layout.addWidget(line_edit)
+
+        if self.edge_type == "temporal":
+            self.time_spinbox = QSpinBox(self)
+            self.time_spinbox.setMinimum(1)
+            layout.addWidget(QLabel("Time:", self))
+            layout.addWidget(self.time_spinbox)
+
+        if self.hypergraph.is_weighted():
+            self.weight_spinbox = QSpinBox(self)
+            self.weight_spinbox.setMinimum(1)
+            self.weight_spinbox.setValue(1)
+            layout.addWidget(QLabel("Weight:", self))
+            layout.addWidget(self.weight_spinbox)
+
+        self.metadata_input = QTextEdit(self)
+        self.metadata_input.setPlaceholderText("Insert metadata (e.g., class:CS, year:2023).")
+        layout.addWidget(QLabel("Edge Metadata:", self))
+        layout.addWidget(self.metadata_input)
+
+        self.generate_button = QPushButton("Add Edge", self)
+        self.generate_button.setEnabled(False)
+        self.generate_button.clicked.connect(self.accept)
+        layout.addWidget(self.generate_button)
+
+    def get_values(self):
+        """Returns a dictionary with the values entered by the user."""
+        values = {
+            "weight": 1,
+            "time": None,
+            "metadata": str_to_dict(self.metadata_input.toPlainText())
+        }
+
+        if self.weight_spinbox:
+            values["weight"] = self.weight_spinbox.value()
+        if self.time_spinbox:
+            values["time"] = self.time_spinbox.value()
+
+        if self.edge_type == "directed":
+            source = str_to_tuple(self.edge_inputs[0].text())
+            target = str_to_tuple(self.edge_inputs[1].text())
+            values["edge_data"] = (source, target)
+        else:
+            values["edge_data"] = str_to_tuple(self.edge_inputs[0].text())
+
+        return values
+
+
+class RandomGraphDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Generate Random Hypergraph")
+
+        self.num_nodes = 1
+        self.edges_dictionary = {}
+
+        self.n_nodes_spinbox = QSpinBox()
+        self.edges_input_text = QPlainTextEdit()
+        self.edges_display_text = QPlainTextEdit()
+
+        self._setup_ui()
+
+    def _setup_ui(self):
+        layout = QVBoxLayout(self)
+
+        layout.addWidget(QLabel("Number of Nodes:"))
+        self.n_nodes_spinbox.setValue(1)
+        self.n_nodes_spinbox.setMinimum(1)
+        self.n_nodes_spinbox.valueChanged.connect(self._update_edges_dictionary)
+        layout.addWidget(self.n_nodes_spinbox)
+
+        layout.addWidget(QLabel("Edges Dictionary (e.g., 2:14, 3:5):"))
+        self.edges_input_text.setPlaceholderText("Insert pairs of <size>:<count>, separated by commas.")
+        layout.addWidget(self.edges_input_text)
+
+        add_edges_button = QPushButton("Parse and Add Edges")
+        add_edges_button.clicked.connect(self._update_edges_dictionary)
+        layout.addWidget(add_edges_button)
+
+        layout.addWidget(QLabel("Current Edges Dictionary:"))
+        self.edges_display_text.setReadOnly(True)
+        layout.addWidget(self.edges_display_text)
+
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+
+    def _update_edges_dictionary(self):
+        """Class method to process input and update state."""
+        current_max_nodes = self.n_nodes_spinbox.value()
+
+        parsed_dict = {}
+        input_text = self.edges_input_text.toPlainText()
+        pairs = input_text.split(",")
+
+        for pair in pairs:
+            if ":" not in pair:
+                continue
+            try:
+                k, v = pair.split(":")
+                k, v = int(k.strip()), int(v.strip())
+                if k <= current_max_nodes and k > 0:
+                    parsed_dict[k] = v
+            except (ValueError, TypeError):
+                pass
+
+        self.edges_dictionary = parsed_dict
+        self.edges_display_text.setPlainText(str(self.edges_dictionary))
+
+    def get_values(self):
+        """Public method to get results after dialogue is accepted."""
+        self._update_edges_dictionary()
+        return {
+            "num_nodes": self.n_nodes_spinbox.value(),
+            "edges_by_size": self.edges_dictionary
+        }
+
+class RandomUniformGraphDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Generate Random Uniform Hypergraph")
+        self.n_nodes_spinbox = QSpinBox()
+        self.size_spinbox = QSpinBox()
+        self.n_edges_spinbox = QSpinBox()
+
+        self._setup_ui()
+
+    def _setup_ui(self):
+        layout = QVBoxLayout(self)
+
+        layout.addWidget(QLabel("Number of Nodes:"))
+        self.n_nodes_spinbox.setRange(1, 1000000)
+        self.n_nodes_spinbox.setValue(10)
+        layout.addWidget(self.n_nodes_spinbox)
+
+        layout.addWidget(QLabel("Edges Size (k):"))
+        self.size_spinbox.setRange(1, 1000000)
+        self.size_spinbox.setValue(3)
+        layout.addWidget(self.size_spinbox)
+
+        layout.addWidget(QLabel("Number of Edges:"))
+        self.n_edges_spinbox.setRange(1, 1000000)
+        self.n_edges_spinbox.setValue(15)
+        layout.addWidget(self.n_edges_spinbox)
+
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+
+    def get_values(self):
+        """Returns the values ​​selected by the user in a dictionary."""
+        return {
+            "num_nodes": self.n_nodes_spinbox.value(),
+            "edge_size": self.size_spinbox.value(),
+            "num_edges": self.n_edges_spinbox.value()
+        }
+
 class ModifyHypergraphMenu(QMainWindow):
     updated_hypergraph = pyqtSignal(dict)
 
     def __init__(self, hypergraph, parent=None):
         super(ModifyHypergraphMenu, self).__init__(parent)
-        self.vertical_tab = QTabWidget()
+        self.vertical_tab = QTabWidget(parent=parent)
         self.vertical_tab.setTabPosition(QTabWidget.West)
 
         self.hypergraph = hypergraph
         self.__createToolBar()
-        self.nodes_tab = HypergraphTable(self.hypergraph, parent=self)
-        self.edges_tab = HypergraphTable(self.hypergraph, False, parent=self)
+
+        self.nodes_tab = HypergraphTable(self.hypergraph, nodes=True, parent=self)
+        self.edges_tab = HypergraphTable(self.hypergraph, nodes=False, parent=self)
+
         self.edges_tab.update_status.connect(self.changed_weights)
+
         self.vertical_tab.addTab(self.nodes_tab, "Nodes")
         self.vertical_tab.addTab(self.edges_tab, "Edges")
+
         self.vertical_tab.currentChanged.connect(self.__change_name)
+        self.vertical_tab.setObjectName("EditingTab")
+        self.vertical_tab.setStyleSheet("""
+            QTabWidget#EditingTab::pane {
+                border: 1px solid #BDBDBD;
+                background-color: white;
+                margin-left: -1px;
+            }
+            
+            QTabBar::tab:first {
+                margin-top: 10px;
+            }
+            
+            QTabWidget#EditingTab QTabBar::tab {
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #F5F5F5, stop: 1 #E0E0E0);
+                border: 1px solid #BDBDBD;
+                border-top-left-radius: 6px;
+                border-bottom-left-radius: 6px;
+                border-top-right-radius: 6px;
+                border-bottom-right-radius: 6px;
+                padding: 5px 8px;
+                margin-bottom: 3px;
+                margin-left: 10px;
+                color: #444;
+                font-weight: bold;
+                font-size: 12px;
+                width: 30; 
+                height: 50px;
+            }
+            
+            QTabWidget#EditingTab QTabBar::tab:hover:!selected {
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #FFFFFF, stop: 1 #E8E8E8);
+            }
+            
+            QTabWidget#EditingTab QTabBar::tab:selected {
+                background-color: white;
+                color: #005A9E;
+                border-right-color: transparent; 
+                border-top-right-radius: 0px;
+                border-bottom-right-radius: 0px;
+                margin-right: -1px;
+                padding-right: 12px; 
+            }
+            
+            QTabWidget#EditingTab QTabBar::tab:selected:hover {
+                background-color: white;
+            }
+        """)
         self.setCentralWidget(self.vertical_tab)
         self.__createMenuBar()
         self.__change_name()
@@ -52,7 +382,7 @@ class ModifyHypergraphMenu(QMainWindow):
 
         This method is responsible for creating the main menu bar and populating it with menus
         """
-        toolbar = QMenuBar()
+        toolbar = QMenuBar(parent=self)
         load_action = QAction("Load", self)
         load_action.triggered.connect(self.open_file)
         save_action = QAction("Save", self)
@@ -97,7 +427,7 @@ class ModifyHypergraphMenu(QMainWindow):
             - Add Row: Triggers the __add_row method to add a new row.
             - Remove Row: Triggers the __remove_row method to remove an existing row.
         """
-        toolbar = QToolBar()
+        toolbar = QToolBar(parent=self)
         toolbar.setMovable(False)
 
         self.remove_node = QAction("Remove Row", self)
@@ -117,9 +447,21 @@ class ModifyHypergraphMenu(QMainWindow):
                 except KeyError:
                     self.hypergraph.remove_node(int(self.vertical_tab.currentWidget().currentItem().text()), True)
             else:
-                self.hypergraph.remove_edge(eval(self.vertical_tab.currentWidget().currentItem().text()))
+                if isinstance(self.hypergraph,Hypergraph):
+                    self.hypergraph.remove_edge(str_to_tuple(self.vertical_tab.currentWidget().currentItem().text()))
+                elif isinstance(self.hypergraph, DirectedHypergraph):
+                    row = self.vertical_tab.currentWidget().selectedItems()[0].row()
+                    in_edge = str_to_tuple(self.vertical_tab.currentWidget().item(row, 0).text())
+                    out_edge = str_to_tuple(self.vertical_tab.currentWidget().item(row, 1).text())
+                    edge = (in_edge, out_edge)
+                    self.hypergraph.remove_edge(edge)
+                elif isinstance(self.hypergraph,TemporalHypergraph):
+                    row = self.vertical_tab.currentWidget().selectedItems()[0].row()
+                    edge = str_to_tuple(self.vertical_tab.currentWidget().item(row, 0).text())
+                    time = int(self.vertical_tab.currentWidget().item(row, 1).text())
+                    self.hypergraph.remove_edge(edge, time)
         except Exception:
-            pass
+            return
         self.vertical_tab.currentWidget().remove_row()
         self.update_hypergraph()
 
@@ -138,319 +480,158 @@ class ModifyHypergraphMenu(QMainWindow):
                 self.add_edge("temporal")
 
     def add_node_func(self):
-        generate = QPushButton("Add Node")
-        def val_input(txt):
-            if numerical_hypergraph(self.hypergraph) and txt.isnumeric():
-                generate.setEnabled(True)
-            elif not numerical_hypergraph(self.hypergraph) and not txt.isnumeric() :
-                generate.setEnabled(True)
-            else:
-                generate.setEnabled(False)
-
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Add Node")
-        layout = QVBoxLayout()
-        n_nodes_label = QLabel("Node Name:")
-        n_nodes_textarea = QLineEdit()
-        n_nodes_textarea.textChanged.connect(val_input)
-        layout.addWidget(n_nodes_label)
-        layout.addWidget(n_nodes_textarea)
-
-        metadata_label = QLabel("Node Metadata:")
-        metadata_textarea = QTextEdit()
-        metadata_textarea.setPlaceholderText("Insert the metadata (example class:CS, gender:M).")
-        layout.addWidget(metadata_label)
-        layout.addWidget(metadata_textarea)
-        generate.setEnabled(False)
-        generate.clicked.connect(dialog.accept)
-        layout.addWidget(generate)
-        dialog.setLayout(layout)
+        dialog = AddNodeDialog(self.hypergraph, self)
         if dialog.exec() == QDialog.Accepted:
-            self.hypergraph.add_node(n_nodes_textarea.text().replace("\n",""), str_to_dict(metadata_textarea.toPlainText()))
+            values = dialog.get_values()
+            self.hypergraph.add_node(values["name"], values["metadata"])
             self.update_hypergraph()
 
-    def validate_edge_input(self,input_text, hypergraph):
-
-        """Validate edge input based on whether the hypergraph is numerical or not."""
-        regex_num = r"^\d+(?:,\d+)*$"
-        regex_word = r"^[a-zA-Z]+(?:,[a-zA-Z]+)*$"
-        if (numerical_hypergraph(hypergraph) and re.match(regex_num, input_text)) or (
-                not numerical_hypergraph(hypergraph) and re.match(regex_word, input_text)
-        ):
-            return True
-        return False
-
-    def __setup_ui(self, edge_fields, include_time=False, include_weight=False, validate_fn=None):
-        """Setup common UI elements for edge input dialogs."""
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Add Edge")
-        layout = QVBoxLayout()
-
-        edge_inputs = []
-        for label_text, placeholder in edge_fields:
-            edge_label = QLabel(label_text)
-            edge_input = QLineEdit()
-            edge_input.setPlaceholderText(placeholder)
-            edge_inputs.append(edge_input)
-            layout.addWidget(edge_label)
-            layout.addWidget(edge_input)
-
-        time_spinbox = None
-        if include_time:
-            time_label = QLabel("Time:")
-            time_spinbox = QSpinBox()
-            time_spinbox.setValue(1)
-            time_spinbox.setMinimum(1)
-            time_spinbox.setSingleStep(1)
-            layout.addWidget(time_label)
-            layout.addWidget(time_spinbox)
-
-        weight_spinbox = None
-        if include_weight and self.hypergraph.is_weighted():
-            weight_label = QLabel("Weight:")
-            weight_spinbox = QSpinBox()
-            weight_spinbox.setValue(1)
-            weight_spinbox.setMinimum(1)
-            weight_spinbox.setSingleStep(1)
-            layout.addWidget(weight_label)
-            layout.addWidget(weight_spinbox)
-
-        metadata_label = QLabel("Edge Metadata:")
-        metadata_textarea = QTextEdit()
-        metadata_textarea.setPlaceholderText("Insert the metadata (example class:CS, gender:M).")
-        layout.addWidget(metadata_label)
-        layout.addWidget(metadata_textarea)
-
-        generate_button = QPushButton("Add Edge")
-        generate_button.setEnabled(False)
-        if validate_fn:
-            for edge_input in edge_inputs:
-                edge_input.textChanged.connect(lambda: generate_button.setEnabled(validate_fn()))
-        generate_button.clicked.connect(dialog.accept)
-        layout.addWidget(generate_button)
-
-        dialog.setLayout(layout)
-        return dialog, edge_inputs, time_spinbox, weight_spinbox, metadata_textarea
-
     def add_edge(self, edge_type):
-        """Unified 'Add Edge' method for different edge types."""
-        if edge_type == "normal":
-            validate_fn = lambda: self.validate_edge_input(edge_inputs[0].text(), self.hypergraph)
-            dialog, edge_inputs, _, weight_spinbox, metadata_textarea = self.__setup_ui(
-                [("Edge:", "Insert the edge like 1,2,3,4.")],
-                include_weight=True,
-                validate_fn=validate_fn,
-            )
-            if dialog.exec() == QDialog.Accepted:
-                weight = int(weight_spinbox.value()) if weight_spinbox else 1
-                self.hypergraph.add_edge(
-                    str_to_tuple(edge_inputs[0].text()),
-                    weight,
-                    str_to_dict(metadata_textarea.toPlainText()),
+        """
+        Opens a dialog to add an arc of a specific type.
+        """
+        dialog = AddEdgeDialog(self.hypergraph, edge_type, self)
+
+        if dialog.exec() == QDialog.Accepted:
+            values = dialog.get_values()
+            try:
+                if edge_type == "temporal":
+                    self.hypergraph.add_edge(
+                        values["edge_data"],
+                        values["time"],
+                        values["weight"],
+                        values["metadata"]
+                    )
+                else:
+                    self.hypergraph.add_edge(
+                        values["edge_data"],
+                        values["weight"],
+                        values["metadata"]
+                    )
+                self.update_hypergraph()
+            except Exception as e:
+                QMessageBox.critical(
+                    self,
+                    "Error Adding Edge",
+                    f"An error occurred while adding the edge:\n{e}"
                 )
-        elif edge_type == "directed":
-            validate_fn = lambda: all(
-                self.validate_edge_input(e.text(), self.hypergraph) for e in edge_inputs
-            )
-            dialog, edge_inputs, _, weight_spinbox, metadata_textarea = self.__setup_ui(
-                [
-                    ("Edge Source:", "Insert the edge source (e.g., 1,2)."),
-                    ("Edge Target:", "Insert the edge target (e.g., 3,4)."),
-                ],
-                include_weight=True,
-                validate_fn=validate_fn,
-            )
-            if dialog.exec() == QDialog.Accepted:
-                weight = int(weight_spinbox.value()) if weight_spinbox else 1
-                self.hypergraph.add_edge(
-                    (str_to_tuple(edge_inputs[0].text()), str_to_tuple(edge_inputs[1].text())),
-                    weight,
-                    str_to_dict(metadata_textarea.toPlainText()),
-                )
-        elif edge_type == "temporal":
-            validate_fn = lambda: self.validate_edge_input(edge_inputs[0].text(), self.hypergraph)
-            dialog, edge_inputs, time_spinbox, weight_spinbox, metadata_textarea = self.__setup_ui(
-                [("Edge:", "Insert the edge like 1,2,3,4.")],
-                include_time=True,
-                include_weight=True,
-                validate_fn=validate_fn,
-            )
-            if dialog.exec() == QDialog.Accepted:
-                time = int(time_spinbox.value())
-                weight = int(weight_spinbox.value()) if weight_spinbox else 1
-                self.hypergraph.add_edge(
-                    str_to_tuple(edge_inputs[0].text()),
-                    time,
-                    weight,
-                    str_to_dict(metadata_textarea.toPlainText()),
-                )
-        self.update_hypergraph()
 
     def open_file(self):
-        file_dialog = QFileDialog(self)
-        file_dialog.setWindowTitle("Open File")
-        file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
-        file_dialog.setViewMode(QFileDialog.ViewMode.Detail)
-        file_dialog.setNameFilters(["JSON (*.json)", "HGX (*.hgx)"])
-
-        if file_dialog.exec():
-            selected_file = file_dialog.selectedFiles()
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Open File",
+            "",
+            "JSON (*.json);;HGX (*.hgx)"
+        )
+        if not file_path:
+            gc.collect()
+            return
+        else:
             try:
-                if selected_file[0].endswith(".hif.json"):
-                    self.hypergraph = hypergraphx.readwrite.load_hif(selected_file[0])
+                if file_path.endswith(".hif.json"):
+                    self.hypergraph = hypergraphx.readwrite.load_hif(file_path)
                 else:
-                    self.hypergraph = hypergraphx.readwrite.load_hypergraph(selected_file[0])
+                    self.hypergraph = hypergraphx.readwrite.load_hypergraph(file_path)
                 self.update_hypergraph()
-            except ValueError:
-                msg = QMessageBox()
-                msg.setIcon(QMessageBox.Critical)
-                msg.setText("Error: Invalid Input File")
-                msg.setInformativeText('Input File is not .json | .hgx')
-                msg.setWindowTitle("Error")
-                msg.exec_()
-            except ValueError:
-                msg = QMessageBox()
-                msg.setIcon(QMessageBox.Critical)
-                msg.setText("Error: Invalid Input File")
-                msg.setInformativeText('The file is not well formatted')
-                msg.setWindowTitle("Error")
-                msg.exec_()
+
+            except (ValueError, KeyError) as e:
+                QMessageBox.critical(
+                    self,
+                    "File Load Error",
+                    f"Could not load the selected file.\n\nDetails: {e}"
+                )
+        gc.collect()
 
     def save_file(self):
-        file_dialog = QFileDialog(self)
-        file_dialog.setWindowTitle("Save File")
-        file_dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
-        file_dialog.setViewMode(QFileDialog.ViewMode.Detail)
-        file_dialog.setNameFilters(["JSON (*.json)", "HGX (*.hgx)"])
+        """
+        Opens a dialog to save the current hypergraph
+        in JSON or HGX format.
+        """
+        file_path, selected_filter = QFileDialog.getSaveFileName(
+            self,
+            "Save Hypergraph File",
+            "",
+            "HypergraphX Binary (*.hgx);;JSON File (*.json)"
+        )
 
-        if file_dialog.exec():
-            selected_file = file_dialog.selectedFiles()[0]
-            if ".hgx" in selected_file:
-                save_hypergraph(self.hypergraph, selected_file,True)
-            elif ".json" in selected_file:
-                save_hypergraph(self.hypergraph, selected_file, False)
-            else:
-                msg = QMessageBox()
-                msg.setIcon(QMessageBox.Critical)
-                msg.setText("Error: Invalid File Type")
-                msg.setInformativeText('File Type is not .json | .hgx')
-                msg.setWindowTitle("Error")
-                msg.exec_()
+        if not file_path:
+            gc.collect()
+            return
+        else:
+            try:
+                if "hgx" in selected_filter:
+                    if not file_path.endswith('.hgx'):
+                        file_path += '.hgx'
+                    save_hypergraph(self.hypergraph, file_path, binary=True)
+
+                elif "json" in selected_filter:
+                    if not file_path.endswith('.json'):
+                        file_path += '.json'
+                    save_hypergraph(self.hypergraph, file_path, binary=False)
+                else:
+                    QMessageBox.warning(
+                        self,
+                        "Save Error",
+                        "An unknown file type was selected. Could not save the file."
+                    )
+                    return
+
+                QMessageBox.information(
+                    self,
+                    "Success",
+                    f"Hypergraph saved successfully to:\n{file_path}"
+                )
+
+            except Exception as e:
+                QMessageBox.critical(
+                    self,
+                    "Save Error",
+                    f"An error occurred while saving the file.\n\nDetails: {e}"
+                )
+            gc.collect()
 
     def random_graph(self):
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Generate Random Hypergraph")
-        layout = QVBoxLayout()
-        n_nodes_label = QLabel("Number of Nodes:")
-        n_nodes_spinbox = QSpinBox()
-        n_nodes_spinbox.setValue(1)
-        n_nodes_spinbox.setMinimum(1)
-        n_nodes_spinbox.setSingleStep(1)
-        layout.addWidget(n_nodes_label)
-        layout.addWidget(n_nodes_spinbox)
-        edges_label = QLabel("Edges Dictionary:")
-        text = QPlainTextEdit()
-        text.setPlaceholderText("Insert the edges dictionary (example 2:14).\n")
-        button = QPushButton("Add Edges")
-        edges_dictionary = dict()
-        current_edges_label = QLabel("Current Edges:")
-        edges_text = QPlainTextEdit()
-        edges_text.setReadOnly(True)
-        edges_text.setPlainText("")
+        dialog = RandomGraphDialog(self)
 
-
-        def edges_dictionary_converter():
-            edges_dict = {}
-            print(text.toPlainText())
-            values = text.toPlainText().replace("Insert the edges dictionary (example 2:14).\n",'')
-            values = values.split(",")
-            for pair in values:
-                try:
-                    k, v = pair.split(":")
-                    if int(k) <= n_nodes_spinbox.value():
-                        edges_dict[int(k.strip())] = int(v.strip())
-                except ValueError:
-                    pass
-            edges_dictionary.update(edges_dict)
-            edges_text.setPlainText(str(edges_dictionary))
-        button.clicked.connect(edges_dictionary_converter)
-
-        generate = QPushButton("Generate")
-        generate.clicked.connect(dialog.accept)
-        layout.addWidget(edges_label)
-        layout.addWidget(text)
-        layout.addWidget(button)
-        layout.addWidget(current_edges_label)
-        layout.addWidget(edges_text)
-        layout.addWidget(generate)
-        dialog.setLayout(layout)
-        if dialog.exec()== QDialog.Accepted:
+        if dialog.exec() == QDialog.Accepted:
+            values = dialog.get_values()
             try:
-                self.hypergraph = random_hypergraph(num_nodes=n_nodes_spinbox.value(), num_edges_by_size=edges_dictionary)
+                self.hypergraph = random_hypergraph(
+                    num_nodes=values["num_nodes"],
+                    num_edges_by_size=values["edges_by_size"]
+                )
                 self.update_hypergraph()
-            except ValueError:
-                pass
+            except ValueError as e:
+                QMessageBox.critical(self, "Generation Error", f"Could not generate the hypergraph.\n\nDetails: {e}")
+
+        gc.collect()
 
     def random_uniform_graph(self):
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Generate Random Uniform Hypergraph")
-        layout = QVBoxLayout()
-        n_nodes_label = QLabel("Number of Nodes:")
-        n_nodes_spinbox = QSpinBox()
-        n_nodes_spinbox.setValue(1)
-        n_nodes_spinbox.setMinimum(1)
-        n_nodes_spinbox.setSingleStep(1)
-        layout.addWidget(n_nodes_label)
-        layout.addWidget(n_nodes_spinbox)
+        dialog = RandomUniformGraphDialog(self)
 
-        size_label = QLabel("Edges Size:")
-        size_spinbox = QSpinBox()
-        size_spinbox.setValue(1)
-        size_spinbox.setMinimum(1)
-        size_spinbox.setSingleStep(1)
-        layout.addWidget(size_label)
-        layout.addWidget(size_spinbox)
-
-        n_edges_label = QLabel("Number of Edges:")
-        n_edges_spinbox = QSpinBox()
-        n_edges_spinbox.setValue(1)
-        n_edges_spinbox.setMinimum(1)
-        n_edges_spinbox.setSingleStep(1)
-        layout.addWidget(n_edges_label)
-        layout.addWidget(n_edges_spinbox)
-
-        generate = QPushButton("Generate")
-        generate.clicked.connect(dialog.accept)
-        layout.addWidget(generate)
-        dialog.setLayout(layout)
-        if dialog.exec()== QDialog.Accepted:
+        if dialog.exec() == QDialog.Accepted:
+            values = dialog.get_values()
             try:
-                self.hypergraph = random_uniform_hypergraph(n_nodes_spinbox.value(),size_spinbox.value(), n_edges_spinbox.value())
+                self.hypergraph = random_uniform_hypergraph(
+                    values["num_nodes"],
+                    values["edge_size"],
+                    values["num_edges"]
+                )
+                gc.collect()
                 self.update_hypergraph()
-            except ValueError:
-                pass
+            except ValueError as e:
+                QMessageBox.critical(self, "Generation Error", f"Could not generate the hypergraph.\n\nDetails: {e}")
+        gc.collect()
 
     def update_hypergraph(self):
-        if self.edges_tab:
-            try:
-                self.edges_tab.update_status.disconnect(self.changed_weights)
-            except TypeError:
-                pass
-
-        self.vertical_tab.clear()
-
-        if self.nodes_tab:
-            self.nodes_tab.deleteLater()
-        if self.edges_tab:
-            self.edges_tab.deleteLater()
-
-        self.nodes_tab = HypergraphTable(self.hypergraph, nodes=True, parent=self)
-        self.edges_tab = HypergraphTable(self.hypergraph, nodes=False, parent=self)
-        self.edges_tab.update_status.connect(self.changed_weights)
-
-        self.vertical_tab.addTab(self.nodes_tab, "Nodes")
-        self.vertical_tab.addTab(self.edges_tab, "Edges")
-
+        """
+        Refresh the view after a hypergraph change.
+        This method is now safe, fast, and does not leak memory.
+        Simply call the refresh methods on existing widgets.
+        """
+        self.nodes_tab.set_hypergraph(self.hypergraph)
+        self.edges_tab.set_hypergraph(self.hypergraph)
+        gc.collect()
         self.updated_hypergraph.emit({"hypergraph": self.hypergraph})
 
     def changed_weights(self):

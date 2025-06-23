@@ -1,13 +1,14 @@
-from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtWidgets import QDockWidget, QDoubleSpinBox, QLabel, QPushButton, QTabWidget, QWidget, QVBoxLayout, \
-    QListWidget, QComboBox, QListWidgetItem
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QDockWidget, QDoubleSpinBox, QLabel, QTabWidget, QListWidget, QComboBox, QListWidgetItem, \
+    QStackedWidget, QWidget, QScrollArea
 
 from hypergraphx.viz.__graphic_options import GraphicOptions
 from hypergraphx.viz.interactive_view.__drawing_options import *
-from hypergraphx.viz.interactive_view.__graphic_option_menu import GraphicOptionsWidget, get_Sets_options, \
-    get_PAOH_options, get_Radial_options, get_ExtraNode_options, get_Bipartite_options, get_Clique_options
-from hypergraphx.viz.interactive_view.community_options.__community_option_menu import CommunityOptionsDict, \
-    SpectralClusteringOptionsWidget, MTOptionsWidget, MMSBMOptionsWidget
+from hypergraphx.viz.interactive_view.__graphic_option_menu import get_Sets_options, \
+    get_PAOH_options, get_Radial_options, get_ExtraNode_options, get_Bipartite_options, get_Clique_options, \
+    create_graphic_options_widget
+from hypergraphx.viz.interactive_view.community_options.__community_option_menu import CommunityOptionsDict
 
 
 class DrawingOptionsDockWidget(QDockWidget):
@@ -30,125 +31,362 @@ class DrawingOptionsDockWidget(QDockWidget):
         self.centrality_combobox = None
         self.heaviest_edges_spin_box = None
         self.heaviest_edges_spin_box_label = None
+        self.drawing_options_widgets = dict()
+        self.drawing_options_stack = QStackedWidget(self)
+
+        self.drawing_options_widgets["Sets"] = SetOptionsWidget(self)
+        self.drawing_options_widgets["Radial"] = RadialOptionsWidget(self)
+        self.drawing_options_widgets["PAOH"] = PAOHOptionsWidget(self)
+        self.drawing_options_widgets["Extra-Node"] = ExtraNodeOptionsWidget(self)
+        self.drawing_options_widgets["Bipartite"] = BipartiteOptionsWidget(self)
+        self.drawing_options_widgets["Clique"] = CliqueOptionsWidget(self)
+        for widget in self.drawing_options_widgets.values():
+            self.drawing_options_stack.addWidget(widget)
+            widget.modified_options.connect(self.__update_drawing_options)
+
         self.weighted = weighted
-        self.graphic_options = GraphicOptions()
         self.vbox = QVBoxLayout()
 
-        drawing_label = QLabel("Drawing Algorithm:",parent=self)
-        self.vbox.addWidget(drawing_label)
+        self.drawing_vbox = QVBoxLayout()
+        self.drawing_label = QLabel("Drawing Algorithm:",parent=self)
+        self.drawing_label.setStyleSheet("font-weight: bold; font-size: 12px;")
+        self.drawing_vbox.addWidget(self.drawing_label)
+        self.drawing_vbox_widget = QWidget(self)
+        self.drawing_vbox_widget.setLayout(self.drawing_vbox)
+        self.drawing_vbox_widget.setStyleSheet("border-bottom: 1px solid #dcdcdc;")
+        self.vbox.addWidget(self.drawing_vbox_widget)
         self.__create_drawing_combobox()
+
         if self.hypergraph_type == "normal":
-            community_label = QLabel("Community Detection Algorithm:", parent=self)
-            self.vbox.addWidget(community_label)
+            self.community_vbox= QVBoxLayout()
+            self.community_label = QLabel("Community Detection Algorithm:", parent=self)
+            self.community_label.setStyleSheet("font-weight: bold; font-size: 12px;")
+            self.community_vbox.addWidget(self.community_label)
             self.__create_community_detection_combobox()
-        centrality_label = QLabel("Centrality Calculation Method:", parent=self)
-        self.vbox.addWidget(centrality_label)
+            self.community_vbox_widget = QWidget(self)
+            self.community_vbox_widget.setLayout(self.community_vbox)
+            self.community_vbox_widget.setStyleSheet("border-bottom: 1px solid #dcdcdc;")
+            self.vbox.addWidget(self.community_vbox_widget)
+
+        self.centrality_vbox = QVBoxLayout()
+        self.centrality_label = QLabel("Centrality Calculation Method:", parent=self)
+        self.centrality_label.setStyleSheet("font-weight: bold; font-size: 12px;")
+        self.centrality_vbox.addWidget(self.centrality_label)
+        self.centrality_vbox_widget = QWidget(self)
+        self.centrality_vbox_widget.setLayout(self.centrality_vbox)
+        self.centrality_vbox_widget.setStyleSheet("border-bottom: 1px solid #dcdcdc;")
+        self.vbox.addWidget(self.centrality_vbox_widget)
         self.__create_centrality_combobox()
-        if self.weighted:
-            self.__weighted_options()
+        self.__weighted_options()
+        self.change_weighted_options()
         self.redraw_button = QPushButton("Redraw",parent=self)
         self.redraw_button.clicked.connect(self.redraw)
-        self.vbox.addWidget(self.redraw_button)
+        self.redraw_button.setIcon(QIcon('draw.svg'))
+        self.redraw_button.setStyleSheet("""
+            QPushButton {
+                color: white;
+                font-size: 14px;
+                font-weight: bold;
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                            stop: 0 #5D9CEC, stop: 1 #4A89DC);
+
+                /* Bordo principale sottile per la forma */
+                border: 1px solid #3A79CB;
+                /* L'OMBRA: un bordo più spesso e scuro solo in basso */
+                border-bottom: 4px solid #3A79CB;
+                border-radius: 8px; /* Angoli più arrotondati */
+
+                padding: 6px 18px;
+
+                /* Spazio per l'ombra quando non è premuto */
+                margin-bottom: 4px;
+            }
+
+            QPushButton:hover {
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                            stop: 0 #6AACFF, stop: 1 #5D9CEC);
+                border-color: #4A89DC;
+                border-bottom-color: #4A89DC;
+            }
+
+            QPushButton:pressed {
+                /* Il pulsante si abbassa! */
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                            stop: 0 #4A89DC, stop: 1 #3A79CB);
+
+                /* Rimuoviamo l'ombra */
+                border-bottom: 1px solid #3A79CB;
+
+                /* Spostiamo il pulsante verso il basso per occupare lo spazio dell'ombra */
+                margin-top: 4px;
+                margin-bottom: 0px;
+            }
+
+            QPushButton:disabled {
+                background: #B0BEC5;
+                color: #78909C;
+                border: 1px solid #90A4AE;
+                border-bottom: 4px solid #78909C;
+            }
+        """)
+
+        self.vbox.addWidget(self.redraw_button, 0, Qt.AlignCenter)
 
         self.use_last = False
 
         self.tab = QTabWidget()
+        self.tab.setObjectName("OptionsTabs")
+        self.tab.setStyleSheet("""
+            QTabWidget#OptionsTabs QTabBar::tab {
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #F5F5F5, stop: 1 #E0E0E0);
+                border: 1px solid #BDBDBD;
+                border-bottom: none;
+                border-top-left-radius: 6px;
+                border-top-right-radius: 6px;
+                padding: 4px 5px;
+                margin-right: 2px;
+                color: #444;
+                font-weight: bold;
+                font-size: 12px;
+                width: 75px;
+            }
+            
+            QTabWidget#OptionsTabs QTabBar::tab:hover:!selected {
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #FFFFFF, stop: 1 #E8E8E8);
+            }
+            QTabWidget#OptionsTabs QTabBar::tab:selected {
+                background-color: white;
+                color: #005A9E;
+                border-bottom-color: transparent; 
+                margin-bottom: -1px;
+                padding-bottom: 9px;
+            }
+            
+            QTabWidget#OptionsTabs QTabBar::tab:selected:hover {
+                background-color: white;
+            }
+        """)
 
-        drawing_options_tab = QWidget(parent=self)
-        vbox = QVBoxLayout()
-        drawing_options_tab.setLayout(vbox)
-        self.drawing_options_list = QListWidget(parent=self)
-        vbox.addWidget(self.drawing_options_list)
-        self.tab.addTab(drawing_options_tab, "Drawing Options")
+        self.tab.addTab(self.drawing_options_stack, "Algorithm")
 
-        graphic_options_tab = QWidget(parent=self)
-        vbox = QVBoxLayout()
-        graphic_options_tab.setLayout(vbox)
-        self.graphic_options_list = QListWidget(parent=self)
-        vbox.addWidget(self.graphic_options_list)
-        self.tab.addTab(graphic_options_tab, "Graphic Options")
+        self.graphic_options= GraphicOptions()
+        self.graphic_options_widgets = dict()
+        self.graphic_options_tab = QStackedWidget(self)
+        self.graphic_options_widgets["Sets"] = create_graphic_options_widget(
+            layout_type="Sets",graphic_options = self.graphic_options,
+            extra_attributes= self.__extra_options("Sets", self.hypergraph_type),parent=self
+        )
+        self.graphic_options_widgets["Radial"] = create_graphic_options_widget(
+            layout_type="Radial",graphic_options = self.graphic_options,
+            extra_attributes= self.__extra_options("Radial", self.hypergraph_type),parent=self
+        )
+        self.graphic_options_widgets["PAOH"] = create_graphic_options_widget(
+            layout_type="PAOH",graphic_options = self.graphic_options,
+            extra_attributes= self.__extra_options("PAOH", self.hypergraph_type),parent=self
+        )
+        self.graphic_options_widgets["Extra-Node"] = create_graphic_options_widget(
+            layout_type="Extra-Node",graphic_options = self.graphic_options,
+            extra_attributes= self.__extra_options("Extra-Node", self.hypergraph_type),parent=self
+        )
+        self.graphic_options_widgets["Bipartite"] = create_graphic_options_widget(
+            layout_type="Bipartite",graphic_options = self.graphic_options,
+            extra_attributes= self.__extra_options("Bipartite", self.hypergraph_type),parent=self
+        )
+        self.graphic_options_widgets["Clique"] = create_graphic_options_widget(
+            layout_type="Clique",graphic_options = self.graphic_options,
+            extra_attributes= self.__extra_options("Clique", self.hypergraph_type),parent=self
+        )
+        self.graphic_options_tab.setStyleSheet("""
+                QStackedWidget {
+                background-color: white;}
+        """)
+        for widget in self.graphic_options_widgets.values():
+            self.graphic_options_tab.addWidget(widget)
+            widget.modified_options.connect(self.__update_graphic_options)
 
-        self.community_options_tab = QWidget(parent=self)
-        vbox = QVBoxLayout()
-        self.community_options_tab.setLayout(vbox)
-        self.community_options_list = QListWidget(parent=self)
-        vbox.addWidget(self.community_options_list)
-        self.tab.addTab(self.community_options_tab, "Community Options")
+        self.tab.addTab(self.graphic_options_tab, "Graphic")
+
+        self.community_options_widgets = dict()
+        self.community_options_tab = QStackedWidget(self)
+
+        self.community_options_widgets["Hypergraph Spectral Clustering"] = SpectralClusteringOptionsWidget(self)
+        self.community_options_widgets["Hypergraph-MT"] = MTOptionsWidget(self)
+        self.community_options_widgets["Hy-MMSBM"] = MMSBMOptionsWidget(self)
+        for widget in self.community_options_widgets.values():
+            widget.set_max_communities(self.n_nodes)
+            self.community_options_tab.addWidget(widget)
+            widget.modified_options.connect(self.__update_community_options)
+        self.tab.addTab(self.community_options_tab, "Community")
         self.tab.setTabVisible(self.tab.indexOf(self.community_options_tab), False)
+
+        self.tab.setObjectName("OptionsTabs")
         self.vbox.addWidget(self.tab)
 
         self.widget = QWidget(parent=self)
+        self.widget.setObjectName("OptionsContainer")
+        self.widget.setStyleSheet("""
+                    QWidget#OptionsContainer {
+                        border-left: 1px solid #dcdcdc;
+                        padding: 0px;
+                    }
+                """)
         self.widget.setLayout(self.vbox)
-        self.setWidget(self.widget)
+
+        scroll_area = QScrollArea(self)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setStyleSheet("QScrollArea { border: none; }")
+        scroll_area.setWidget(self.widget)
+        self.setWidget(scroll_area)
         self.setFeatures(QDockWidget.NoDockWidgetFeatures)
         self.__changes_drawing_algorithm()
         
-    def __extra_options(self) -> None:
+    def __extra_options(self, val, hypergraph_type):
         """
         Generate the extra options list for the visualization functions
         """
-        if self.drawing_combobox.currentText() == "Radial":
-            self.extra_attributes = dict()
-            self.extra_attributes["radius_scale_factor"] = 1.0
-            self.extra_attributes["font_spacing_factor"] = 1.5
-        elif self.drawing_combobox.currentText() == "PAOH" and self.hypergraph_type == "temporal":
-            self.extra_attributes = dict()
-            self.extra_attributes["time_font_size"] = 18
-            self.extra_attributes["time_separation_line_color"] = "#000000"
-            self.extra_attributes["time_separation_line_size"] = 4
-        elif self.drawing_combobox.currentText() == "Sets":
-            self.extra_attributes = dict()
-            self.extra_attributes["hyperedge_alpha"] = 0.8
-            self.extra_attributes["rounding_radius_factor"] = 0.1
-            self.extra_attributes["polygon_expansion_factor"] = 1.8
-        else:
-            self.extra_attributes = dict()
-        if self.hypergraph_type == "directed":
-            self.extra_attributes["in_edge_color"] = "green"
-            self.extra_attributes["out_edge_color"] = "red"
+        extra_attributes = dict()
+        if val == "Radial":
+            extra_attributes["radius_scale_factor"] = 1.0
+            extra_attributes["font_spacing_factor"] = 1.5
+        elif val == "PAOH" and hypergraph_type == "temporal":
+            extra_attributes["time_font_size"] = 18
+            extra_attributes["time_separation_line_color"] = "#000000"
+            extra_attributes["time_separation_line_size"] = 4
+        elif val == "Sets":
+            extra_attributes["hyperedge_alpha"] = 0.8
+            extra_attributes["rounding_radius_factor"] = 0.1
+            extra_attributes["polygon_expansion_factor"] = 1.8
+        if hypergraph_type == "directed":
+            extra_attributes["in_edge_color"] = "green"
+            extra_attributes["out_edge_color"] = "red"
+        return extra_attributes
             
     def __weighted_options(self):
+        self.heaviest_weight_vbox = QVBoxLayout()
         self.heaviest_edges_spin_box = QDoubleSpinBox(self)
         self.heaviest_edges_spin_box.setDecimals(0)
         self.heaviest_edges_spin_box.setRange(0, 100)
         self.heaviest_edges_spin_box.setValue(100)
+        self.heaviest_edges_spin_box.setStyleSheet("""
+    QDoubleSpinBox {
+        background-color: white;
+        border: 1px solid #BDBDBD;
+        border-top-color: #A0A0A0; 
+        border-left-color: #A0A0A0;
+        border-radius: 8px;
+        padding: 4px;
+        font-size: 13px;
+        color: #333;
+        padding-left: 10px; 
+    }
+
+    QDoubleSpinBox:hover {
+        border-color: #5D9CEC;
+    }
+
+    QDoubleSpinBox:focus {
+        border-color: #4A89DC;
+    }
+
+    QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
+        subcontrol-origin: border;
+        width: 22px;
+        background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #6AACFF, stop:1 #4A89DC);
+        border: 1px solid #3A79CB;
+        border-bottom: 2px solid #3A79CB; 
+        border-radius: 4px;
+    }
+
+    QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover {
+        background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7BCFFF, stop:1 #5D9CEC);
+    }
+
+    /* Modifica allo stato :pressed */
+    QDoubleSpinBox::up-button:pressed, QDoubleSpinBox::down-button:pressed {
+        background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #4A89DC, stop:1 #3A79CB);
+        border-bottom: 1px solid #3A79CB;
+        /* Rimuoviamo il margin-top che spingeva fuori la freccia */
+    }
+    
+    /* Spostiamo l'effetto pressione direttamente sulle frecce */
+    QDoubleSpinBox::up-button:pressed {
+        padding-top: 1px; /* Sposta la freccia in giù */
+    }
+    QDoubleSpinBox::down-button:pressed {
+        padding-top: 1px; /* Sposta la freccia in giù */
+    }
+
+    /* Posizionamento del pulsante SU */
+    QDoubleSpinBox::up-button {
+        subcontrol-position: top right;
+        margin: 2px 2px 1px 0px;
+    }
+
+    /* Posizionamento del pulsante GIÙ */
+    QDoubleSpinBox::down-button {
+        subcontrol-position: bottom right;
+        margin: 1px 2px 2px 0px;
+    }
+""")
         self.heaviest_edges_spin_box_label = QLabel(self)
         self.heaviest_edges_spin_box_label.setText("Show {value}% Heaviest Edges".format(value=self.heaviest_edges_spin_box.value()))
+        self.heaviest_edges_spin_box_label.setStyleSheet("font-weight: bold; font-size: 12px;")
         self.heaviest_edges_spin_box_label.setAlignment(Qt.AlignTop)
         self.heaviest_edges_spin_box.setAlignment(Qt.AlignTop)
         self.heaviest_edges_spin_box.valueChanged.connect(self.__send_new_heaviest_edges)
-        self.vbox.addWidget(self.heaviest_edges_spin_box_label)
-        self.vbox.addWidget(self.heaviest_edges_spin_box)
-        self.combobox_weight_influence_label = QLabel("Weight-Distance Relationship",self)
-        self.vbox.addWidget(self.combobox_weight_influence_label)
+        self.heaviest_weight_vbox.addWidget(self.heaviest_edges_spin_box_label)
+        self.heaviest_weight_vbox.addWidget(self.heaviest_edges_spin_box)
+        self.heaviest_weight_vbox_widget = QWidget(self)
+        self.heaviest_weight_vbox_widget.setLayout(self.heaviest_weight_vbox)
+        self.heaviest_weight_vbox_widget.setStyleSheet("border-bottom: 1px solid #dcdcdc;")
+        self.vbox.addWidget(self.heaviest_weight_vbox_widget)
+
+        self.weight_influence_vbox = QVBoxLayout()
+        self.combobox_weight_influence_label = QLabel("Weight-Distance Relation",self)
+        self.combobox_weight_influence_label.setStyleSheet("font-weight: bold; font-size: 12px;")
+        self.weight_influence_vbox.addWidget(self.combobox_weight_influence_label)
         self.combobox_weight_influence = QComboBox(self)
         self.combobox_weight_influence.addItems(["No Relationship", "Directly Proportional","Inversely Proportional"])
         self.combobox_weight_influence.currentTextChanged.connect(self.update)
-        self.vbox.addWidget(self.combobox_weight_influence)
+        self.weight_influence_vbox.addWidget(self.combobox_weight_influence)
+        self.weight_influence_vbox_widget = QWidget(self)
+        self.weight_influence_vbox_widget.setLayout(self.weight_influence_vbox)
+        self.weight_influence_vbox_widget.setStyleSheet("border-bottom: 1px solid #dcdcdc;")
+        self.vbox.addWidget(self.weight_influence_vbox_widget)
+
+    def change_weighted_options(self):
+        if self.weighted:
+            self.weight_influence_vbox_widget.setVisible(True)
+            self.heaviest_weight_vbox_widget.setVisible(True)
+        else:
+            self.weight_influence_vbox_widget.setVisible(False)
+            self.heaviest_weight_vbox_widget.setVisible(False)
 
     def __send_new_heaviest_edges(self):
         self.heaviest_edges_spin_box_label.setText("Show {value}% Heaviest Edges".format(value=self.heaviest_edges_spin_box.value()))
         self.update()
-        
-    @staticmethod
-    def __add_algorithm_options_button(widget, list, func):
-        list.clear()
-        for x in widget.widget_list:
-            myQListWidgetItem = QListWidgetItem(list)
-            myQListWidgetItem.setSizeHint(x.sizeHint())
-            list.addItem(myQListWidgetItem)
-            list.setItemWidget(myQListWidgetItem, x)
-        widget.modified_options.connect(func)
-        
+
     def __create_centrality_combobox(self):
         self.centrality_combobox = QComboBox(parent=self)
-        if self.hypergraph_type == "normal":
-            self.centrality_combobox.addItems(["No Centrality", "Degree Centrality", "Betweenness Centrality", "Adjacency Factor (t=1)", "Adjacency Factor (t=2)"])
+        if self.hypergraph_type != "directed":
+            self.centrality_combobox.addItems(
+            ["No Centrality", "Degree Centrality", "Betweenness Centrality",
+             "Adjacency Factor (t=1)", "Adjacency Factor (t=2)"])
         else:
-            self.centrality_combobox.addItems(["No Centrality", "Degree Centrality", "Betweenness Centrality"])
+            self.centrality_combobox.addItems(
+                ["No Centrality", "Degree Centrality", "Betweenness Centrality"])
         self.centrality_combobox.currentTextChanged.connect(self.__update_centrality)
-        self.vbox.addWidget(self.centrality_combobox)
-        
+        self.centrality_vbox.addWidget(self.centrality_combobox)
+    def __update_hypergraph_centrality_options(self):
+        self.centrality_combobox.clear()
+        if self.hypergraph_type != "directed":
+            self.centrality_combobox.addItems(
+            ["No Centrality", "Degree Centrality", "Betweenness Centrality",
+             "Adjacency Factor (t=1)", "Adjacency Factor (t=2)"])
+        else:
+            self.centrality_combobox.addItems(
+                ["No Centrality", "Degree Centrality", "Betweenness Centrality"])
+
     def __update_centrality(self):
         self.use_last = True
         self.update()
@@ -157,34 +395,8 @@ class DrawingOptionsDockWidget(QDockWidget):
         self.community_combobox = QComboBox(parent=self)
         self.community_combobox.addItems(["None", "Hypergraph Spectral Clustering","Hypergraph-MT", "Hy-MMSBM"])
         self.community_combobox.currentTextChanged.connect(self.__change_community_detection_algorithm)
-        self.vbox.addWidget(self.community_combobox)
-        
-    def __get_community_options(self):
-        """
-        Retrieves the community options widget based on the current text selected in the community combobox.
-        Defines options for community detection based on the user selection in the combobox using pattern matching.
+        self.community_vbox.addWidget(self.community_combobox)
 
-        Returns
-        -------
-        None or QWidget
-            Returns `None` if no specific option is chosen, or the corresponding options widget for the chosen method.
-
-        Notes
-        -----
-        - "Hypergraph Spectral Clustering": Returns an instance of `SpectralClusteringOptionsWidget`.
-        - "Hypergraph-MT": Returns an instance of `MTOptionsWidget`.
-        - "Hy-MMSBM": Returns an instance of `MMSBMOptionsWidget`.
-        """
-        match self.community_combobox.currentText():
-            case "None":
-                return None
-            case "Hypergraph Spectral Clustering":
-                return SpectralClusteringOptionsWidget(self.n_nodes)
-            case "Hypergraph-MT":
-                return MTOptionsWidget(self.n_nodes)
-            case "Hy-MMSBM":
-                return MMSBMOptionsWidget(self.n_nodes)
-        
     def __change_community_detection_algorithm(self):
         """
         Changes the community detection algorithm settings based on the user's selection 
@@ -193,10 +405,11 @@ class DrawingOptionsDockWidget(QDockWidget):
         if self.community_combobox.currentText() == "None":
             self.tab.setTabVisible(self.tab.indexOf(self.community_options_tab), False)
         else:
-            self.community_options_dict = CommunityOptionsDict()
-            self.community_algorithm_option_gui = self.__get_community_options()
-            self.__add_algorithm_options_button(self.community_algorithm_option_gui, self.community_options_list,
-                                              self.__update_community_options)
+            current_algorithm_name = self.community_combobox.currentText()
+            if current_algorithm_name in self.community_options_widgets:
+                widget_to_show = self.community_options_widgets[current_algorithm_name]
+                self.community_options_tab.setCurrentWidget(widget_to_show)
+
             self.tab.setTabVisible(self.tab.indexOf(self.community_options_tab), True)
         self.update()
         
@@ -219,7 +432,7 @@ class DrawingOptionsDockWidget(QDockWidget):
         self.drawing_combobox = QComboBox(parent=self)
         self.__update_hypergraph_drawing_options()
         self.drawing_combobox.currentTextChanged.connect(self.__changes_drawing_algorithm)
-        self.vbox.addWidget(self.drawing_combobox)
+        self.drawing_vbox.addWidget(self.drawing_combobox)
         
     def __changes_drawing_algorithm(self):
         """
@@ -229,69 +442,20 @@ class DrawingOptionsDockWidget(QDockWidget):
         visibility of the weight influence combobox based on the current drawing type.
         It also ensures the overall update of the interface after adjusting options.
         """
-        self.__get_correct_options()
-        self.__extra_options()
-        graphic_options = self.__get_graphic_options()
-        self.graphic_options_widget = GraphicOptionsWidget(self.graphic_options, self.extra_attributes, graphic_options)
-        self.__add_algorithm_options_button(self.graphic_options_widget, self.graphic_options_list,
-                                          self.__update_graphic_options)
-        self.__add_algorithm_options_button(self.drawing_options, self.drawing_options_list, self.__update_drawing_options)
-        self.algorithm_options_dict = self.drawing_options.get_options()
-        if self.heaviest_edges_spin_box_label is not None:
-            if self.drawing_combobox.currentText() in ["Sets", "Extra-Node"]:
-                self.combobox_weight_influence.show()
-                self.combobox_weight_influence_label.show()
-            else:
-                self.combobox_weight_influence.hide()
-                self.combobox_weight_influence_label.hide()
-        self.update()
-        
-    def __get_graphic_options(self):
-        """
-        Gets the graphic options based on the current selection in the drawing_combobox.
-        The method determines which graphical options to retrieve by matching the text 
-        currently selected in the drawing_combobox. It provides appropriate configuration 
-        options for different visualization type.
+        current_algorithm_name = self.drawing_combobox.currentText()
 
-        Returns
-        -------
-        dict or list
-            The configuration options for the selected graphic visualization type.
-        """
-        match self.drawing_combobox.currentText():
-            case "Sets":
-                return get_Sets_options(self.weighted, self.hypergraph_type == "directed")
-            case "PAOH":
-                return get_PAOH_options(self.weighted, self.hypergraph_type == "directed")
-            case "Radial":
-                return get_Radial_options(self.weighted, self.hypergraph_type == "directed")
-            case "Extra-Node":
-                return get_ExtraNode_options(self.weighted, self.hypergraph_type == "directed")
-            case "Bipartite":
-                return get_Bipartite_options(self.weighted, self.hypergraph_type == "directed")
-            case "Clique":
-                return get_Clique_options()
-        
-    def __get_correct_options(self):
-        """
-        Configures and sets the appropriate drawing options widget based on the current selection from the drawing combobox.
-        The method checks the currently selected text in the `drawing_combobox` and assigns a corresponding widget instance to `drawing_options`.
-        This enables configuration or customization of specific drawing or visualization settings for different visual representation styles.
-        """
-        match self.drawing_combobox.currentText():
-            case "Sets":
-                self.drawing_options = SetOptionsWidget()
-            case "PAOH":
-                self.drawing_options = PAOHOptionsWidget()
-            case "Radial":
-                self.drawing_options = RadialOptionsWidget()
-            case "Extra-Node":
-                self.drawing_options = ExtraNodeOptionsWidget()
-            case "Bipartite":
-                self.drawing_options = BipartiteOptionsWidget()
-            case "Clique":
-                self.drawing_options = CliqueOptionsWidget()
-            
+        if current_algorithm_name in self.drawing_options_widgets:
+            widget_to_show = self.drawing_options_widgets[current_algorithm_name]
+            self.drawing_options_stack.setCurrentWidget(widget_to_show)
+            self.algorithm_options_dict = widget_to_show.get_options()
+
+        if current_algorithm_name in self.graphic_options_widgets:
+            widget_to_show = self.graphic_options_widgets[current_algorithm_name]
+            self.graphic_options_tab.setCurrentWidget(widget_to_show)
+            self.graphic_options, self.extra_attributes = widget_to_show.get_data()
+
+        self.update()
+
     def __update_graphic_options(self, new_options):
         """
         Updates the graphic options for the instance.
@@ -339,14 +503,25 @@ class DrawingOptionsDockWidget(QDockWidget):
             self.drawing_combobox.addItems(["PAOH"])
             self.drawing_combobox.setCurrentText("PAOH")
 
-    def update_hypergraph_type(self, hypergraph_type):
+    def update_hypergraph(self, hypergraph_type, n_nodes, weighted):
         self.hypergraph_type = hypergraph_type
+        self.n_nodes = n_nodes
+        self.weighted = weighted
+        self.community_combobox.setCurrentText("None")
+        if not self.hypergraph_type == "normal":
+            self.community_label.setVisible(False)
+            self.community_combobox.setVisible(False)
+        self.centrality_combobox.setCurrentText("No Centrality")
         self.__update_hypergraph_drawing_options()
+        self.__update_hypergraph_centrality_options()
+        self.change_weighted_options()
+
     def redraw(self):
         self.redraw_flag = True
         self.update()
+
     def update(self):
-        if self.heaviest_edges_spin_box_label is not None:
+        if self.weighted:
             heaviest_value = self.heaviest_edges_spin_box.value()/100
             weight_influence = self.combobox_weight_influence.currentText()
         else:

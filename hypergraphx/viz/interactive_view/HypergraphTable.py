@@ -40,7 +40,7 @@ class HypergraphTable(QTableWidget):
         self.use_nodes = nodes
         self.old_values = dict()
         self.hypergraph = hypergraph
-        self.update_table(hypergraph)
+        self.set_hypergraph(hypergraph)
         # Table will fit the screen horizontally
         self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -52,7 +52,7 @@ class HypergraphTable(QTableWidget):
         """
         self.removeRow(self.currentRow())
 
-    def update_table(self, hypergraph):
+    def set_hypergraph(self, hypergraph):
         """
         Updates the table with data from the provided hypergraph object.
 
@@ -64,10 +64,16 @@ class HypergraphTable(QTableWidget):
         """
         self.hypergraph = hypergraph
         self.loading = True
+        self.itemChanged.disconnect(self.__check_new_cell_value)
+        self.clearContents()
+        self.old_values.clear()
+
         if self.use_nodes:
             self.__update_table_nodes()
         else:
             self.__update_table_edges()
+
+        self.itemChanged.connect(self.__check_new_cell_value)
         self.loading = False
 
     def __update_table_nodes(self):

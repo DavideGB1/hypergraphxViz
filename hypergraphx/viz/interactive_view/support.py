@@ -1,3 +1,5 @@
+import ast
+
 from PyQt5.QtWidgets import QLayout
 
 from hypergraphx import Hypergraph, DirectedHypergraph, TemporalHypergraph
@@ -56,19 +58,31 @@ def str_to_tuple(string: str):
     tuple
         A tuple containing converted integers or floats.
     """
-    string = string.removeprefix("(")
-    string = string.removesuffix(")")
-    string = string.replace("'","")
-    string = string.replace(", ",",")
-    res = string.split(",")
-    vals = []
-    for val in res:
-        try:
-            vals.append(str_to_int_or_float(val))
-        except ValueError:
-            pass
+    try:
+        # Usa ast.literal_eval per valutare la stringa in modo sicuro
+        result = ast.literal_eval(string)
+        if not isinstance(result, tuple):
+            result = (result,)
+        processed_elements = []
+        for item in result:
+            if isinstance(item, (int, float)):
+                processed_elements.append(item)
+            elif isinstance(item, str):
+                try:
+                    processed_elements.append(float(item))
+                except ValueError:
+                    try:
+                        processed_elements.append(int(item))
+                    except ValueError:
+                        processed_elements.append(item)
+            else:
+                processed_elements.append(item)
 
-    return tuple(vals)
+        return tuple(processed_elements)
+
+    except (ValueError, SyntaxError) as e:
+        print(f"Errore nella conversione della stringa in tupla: {e}")
+        return ()
 
 def str_to_int_or_float(string):
     """

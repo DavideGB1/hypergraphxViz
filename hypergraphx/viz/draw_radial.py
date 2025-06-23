@@ -194,6 +194,7 @@ def _draw_radial_elements(
 
     # Draw sectors and hyperedges
     sector_depth = font_spacing_factor + 1 if draw_labels else 1
+    sector_depth += 0.5
     for sector in sector_list:
         for edge in sorted(sector):
             sorted_edge_nodes = sorted(edge)

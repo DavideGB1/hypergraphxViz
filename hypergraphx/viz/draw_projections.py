@@ -185,13 +185,19 @@ def _compute_clique_drawing_data(
     pos: Optional[dict],
     u: Optional[Any],
     k: int,
+    weight_positioning: int
 ) -> dict:
     """
     Computes the necessary data for drawing the clique projection.
     """
     hypergraph = __filter_hypergraph(h, cardinality, x_heaviest)
     g = clique_projection(hypergraph)
-
+    if hypergraph.is_weighted():
+        for u_node, v_node, data in g.edges(data=True):
+            if weight_positioning == 0:
+                data['weight'] = 1
+            elif weight_positioning == 2:
+                data['weight'] = 1 / data['weight']
     if pos is None:
         tmp_pos = nx.kamada_kawai_layout(G=g, weight="weight")
         pos = nx.spring_layout(G=g, pos=tmp_pos, iterations=iterations, weight="weight")
@@ -255,6 +261,7 @@ def draw_clique(
     x_heaviest: float = 1.0,
     draw_labels=True,
     iterations: int = 1000,
+    weight_positioning: int  = 0,
     pos=None,
     ax: Optional[plt.Axes] = None,
     figsize: tuple[float, float] = (10, 10),
@@ -296,7 +303,7 @@ def draw_clique(
     dict
         A dictionary of node positions.
     """
-    data = _compute_clique_drawing_data(h, cardinality, x_heaviest, iterations, pos, u, k, graphicOptions)
+    data = _compute_clique_drawing_data(h, cardinality, x_heaviest, iterations, weight_positioning, pos, u, k,graphicOptions)
 
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize, dpi=dpi)

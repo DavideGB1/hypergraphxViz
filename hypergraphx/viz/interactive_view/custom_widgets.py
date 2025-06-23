@@ -1,40 +1,13 @@
 import random
 
-from PyQt5.QtCore import pyqtSignal, Qt, QTimer
-from PyQt5.QtGui import QColor, QPixmap, QIcon, QFont
-from PyQt5.QtWidgets import QWidget, QCheckBox, QLabel, QDoubleSpinBox, QHBoxLayout, QPushButton, QColorDialog, \
+from PyQt5.QtCore import pyqtSignal, Qt, QRectF
+from PyQt5.QtGui import QColor, QPixmap, QIcon, QBrush, QPainter
+from PyQt5.QtWidgets import QWidget, QLabel, QDoubleSpinBox, QHBoxLayout, QPushButton, QColorDialog, \
     QComboBox, QVBoxLayout, QDockWidget, QSlider, QProgressBar
 from superqt import QRangeSlider
 
 from hypergraphx.viz.interactive_view.graphic_enum import GraphicOptionsName
 
-
-class LabelButton(QWidget):
-    """
-    LabelButton is a custom QWidget that contains a QCheckBox. It emits a signal whenever the checkbox is toggled to indicate whether the labels should be shown or not.
-
-    Attributes
-    ----------
-    update_status : pyqtSignal
-        A PyQt signal that emits a dictionary containing the current state of the checkbox.
-
-    Methods
-    -------
-    __init__(parent=None)
-        Initializes the LabelButton widget, sets up the checkbox, and connects the toggled signal to a handler function.
-
-    Usage
-    -----
-    This component can be utilized in PyQt applications where toggling a checkbox is required to update some state logic related to labels.
-    """
-    update_status = pyqtSignal(dict)
-    def __init__(self, parent = None):
-        super(LabelButton, self).__init__()
-        self.button = QCheckBox("Show Labels")
-        self.button.setChecked(True)
-        def use_labels():
-            self.update_status.emit({ "val" : self.button.isChecked()})
-        self.button.toggled.connect(use_labels)
 
 class IterationsSelector(QWidget):
     """
@@ -56,20 +29,83 @@ class IterationsSelector(QWidget):
     """
     changed_value = pyqtSignal(dict)
     def __init__(self, parent = None):
-        super(IterationsSelector, self).__init__()
-        self.iterations_selector_label = QLabel("Number of Iterations:")
-        self.spinbox = QDoubleSpinBox()
-        def iterations_selector_funz():
-            self.changed_value.emit({"use_last": False})
+        super(IterationsSelector, self).__init__(parent)
+        self.iterations_selector_label = QLabel("Number of Iterations:", parent=self)
+        self.spinbox = QDoubleSpinBox(parent=self)
+
         self.spinbox.setDecimals(0)
         self.spinbox.setRange(0, 100000000)
         self.spinbox.setValue(1000)
         self.spinbox.setSingleStep(1)
-        self.spinbox.valueChanged.connect(iterations_selector_funz)
+        self.spinbox.valueChanged.connect(self.on_value_changed)
+
+        self.spinbox.setStyleSheet(
+            """
+                QDoubleSpinBox {
+                    background-color: white;
+                    border: 1px solid #BDBDBD;
+                    border-top-color: #A0A0A0; 
+                    border-left-color: #A0A0A0;
+                    border-radius: 8px;
+                    padding: 4px;
+                    font-size: 13px;
+                    color: #333;
+                    padding-left: 10px; 
+                }
+                
+                QDoubleSpinBox:hover {
+                    border-color: #5D9CEC;
+                }
+                
+                QDoubleSpinBox:focus {
+                    border-color: #4A89DC;
+                }
+                
+                QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
+                    subcontrol-origin: border;
+                    width: 22px;
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #6AACFF, stop:1 #4A89DC);
+                    border: 1px solid #3A79CB;
+                    border-bottom: 2px solid #3A79CB; 
+                    border-radius: 4px;
+                }
+                
+                QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7BCFFF, stop:1 #5D9CEC);
+                }
+                
+                QDoubleSpinBox::up-button:pressed, QDoubleSpinBox::down-button:pressed {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #4A89DC, stop:1 #3A79CB);
+                    border-bottom: 1px solid #3A79CB;
+                }
+                
+                QDoubleSpinBox::up-button:pressed {
+                    padding-top: 1px;
+                }
+                QDoubleSpinBox::down-button:pressed {
+                    padding-top: 1px;
+                }
+                
+                QDoubleSpinBox::up-button {
+                    subcontrol-position: top right;
+                    margin: 2px 2px 1px 0px;
+                }
+                
+                QDoubleSpinBox::down-button {
+                    subcontrol-position: bottom right;
+                    margin: 1px 2px 2px 0px;
+                }
+            """
+        )
+
         self.hbox = QHBoxLayout()
         self.hbox.addWidget(self.iterations_selector_label)
         self.hbox.addWidget(self.spinbox)
         self.setLayout(self.hbox)
+    def value(self):
+        return int(self.spinbox.value())
+    def on_value_changed(self):
+        self.changed_value.emit({"use_last": False})
 
 class ComboBoxCustomWindget(QWidget):
     """
@@ -103,92 +139,119 @@ class ComboBoxCustomWindget(QWidget):
             `update_status` signal with the updated key-value pair.
     """
     update_status = pyqtSignal(dict)
-    def __init__(self,name, value, translation_dictionary):
-        super(ComboBoxCustomWindget, self).__init__()
+    def __init__(self,name, value, translation_dictionary, parent = None):
+        super(ComboBoxCustomWindget, self).__init__(parent)
+
+        self.name = name
+        self.translation_dictionary = translation_dictionary
+        self.key_list = list(translation_dictionary.keys())
+        self.val_list = list(translation_dictionary.values())
+
         self.hbox = QHBoxLayout()
-        self.label = QLabel(GraphicOptionsName[name].value)
+        self.label = QLabel(GraphicOptionsName[name].value, parent=self)
         self.hbox.addWidget(self.label)
-        self.combobox = QComboBox()
 
-
+        self.combobox = QComboBox(parent=self)
         self.combobox.addItems(translation_dictionary.values())
         self.combobox.setCurrentText(translation_dictionary[value])
+        self.combobox.currentTextChanged.connect(self.on_selection_changed)
 
-        def comboBox_selection():
-            key_list = list(translation_dictionary.keys())
-            val_list = list(translation_dictionary.values())
-            position = val_list.index(self.combobox.currentText())
-            self.update_status.emit({name: key_list[position]})
-
-        self.combobox.currentTextChanged.connect(comboBox_selection)
         self.hbox.addWidget(self.combobox)
         self.setLayout(self.hbox)
+
+    def on_selection_changed(self, current_text):
+        """This is the slot that handles the change."""
+        try:
+            position = self.val_list.index(current_text)
+            key = self.key_list[position]
+            self.update_status.emit({self.name: key})
+        except ValueError:
+            pass
 
 class ColorPickerCustomWidget(QWidget):
     """
     Class ColorPickerCustomWidget
     -----------------------------
-
-    A custom widget for selecting and displaying a color using a QPushButton and a QColorDialog. The widget enables the user to choose a color and updates the associated attribute or extra data, emitting a signal upon updating the color.
-
-    Parameters
-    ----------
-    name : str
-        The name associated with the color attribute or graphic option.
-    value : str
-        The initial color value represented as a string (e.g., hexadecimal format).
-    in_extra : bool
-        A flag indicating whether the color value is part of extra attributes or graphic options.
-    graphic_options : object
-        The object containing graphic options as attributes.
-    extra_attributes : dict
-        A dictionary containing additional attributes, where the color value might be stored.
-
-    Attributes
-    ----------
-    hbox : QHBoxLayout
-        The layout container for arranging the label and color button.
-    update_status : pyqtSignal
-        A signal that emits a dictionary when the color is updated.
-
-    Methods
-    -------
-    __init__(name, value, in_extra, graphic_options, extra_attributes)
-        Initializes the widget, creates a label, a color button, and sets up the layout and functionality.
-    color_picker()
-        Launches a QColorDialog for selecting a new color, updates the associated value, and emits a signal.
+    A custom widget for selecting and displaying a color.
     """
     update_status = pyqtSignal(dict)
-    def __init__(self, name, value, in_extra, graphic_options, extra_attributes):
-        super(ColorPickerCustomWidget, self).__init__()
-        self.hbox = QHBoxLayout()
-        label = QLabel(GraphicOptionsName[name].value)
-        self.hbox.addWidget(label)
-        color_btn = QPushButton()
-        pixmap = QPixmap(int(color_btn.width() * 0.95), int(color_btn.height() * 0.9))
-        pixmap.fill(QColor(value))
-        color_btn.setIcon(QIcon(pixmap))
 
-        def color_picker():
-            dialog = QColorDialog(self)
-            if in_extra:
-                dialog.setCurrentColor(QColor(extra_attributes[name]))
-            else:
-                dialog.setCurrentColor(QColor(graphic_options.__getattribute__(name)))
-                pass
-            dialog.exec_()
-            new_color = dialog.currentColor()
-            pixmap = QPixmap(int(color_btn.width() * 0.95), int(color_btn.height() * 0.9))
-            pixmap.fill(QColor(new_color))
-            color_btn.setIcon(QIcon(pixmap))
-            if in_extra:
-                extra_attributes[name] = value
-            else:
-                graphic_options.__setattr__(name, new_color.name())
-            self.update_status.emit(dict())
-        color_btn.clicked.connect(color_picker)
-        self.hbox.addWidget(color_btn)
+    def __init__(self, name, value, in_extra, graphic_options, extra_attributes, parent=None):
+        super(ColorPickerCustomWidget, self).__init__(parent)
+
+        self.name = name
+        self.in_extra = in_extra
+        self.graphic_options = graphic_options
+        self.extra_attributes = extra_attributes
+
+        self.color_btn = QPushButton(parent=self)
+        self.update_button_color(QColor(value))
+        self.color_btn.clicked.connect(self.open_color_picker)
+        self.color_btn.setStyleSheet(
+            """
+                QPushButton {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,stop:0 #F5F5F5, stop:1 #E0E0E0);
+                    border: 1px solid #BDBDBD;
+                    border-radius: 5px;
+                    width: 24px;
+                    height: 24px;
+                }
+                QPushButton:hover {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                                                stop:0 #FFFFFF, stop:1 #E8E8E8);
+                    border-color: #9E9E9E;
+                }
+                QPushButton:pressed {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,stop:0 #E0E0E0, stop:1 #D0D0D0);
+                    padding-top: 2px;
+                }
+            """
+        )
+        self.hbox = QHBoxLayout()
+        label = QLabel(f"{name.replace('_', ' ').title()}:", parent=self)
+        self.hbox.addWidget(label)
+        self.hbox.addWidget(self.color_btn)
         self.setLayout(self.hbox)
+
+    def update_button_color(self, color: QColor):
+        size = 18
+        pixmap = QPixmap(size, size)
+        pixmap.fill(Qt.transparent)
+
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setBrush(QBrush(color))
+        painter.setPen(Qt.NoPen)
+
+        rect = QRectF(0, 0, size, size)
+        radius = 4.0
+        painter.drawRoundedRect(rect, radius, radius)
+
+        painter.end()
+
+        self.color_btn.setIcon(QIcon(pixmap))
+        self.color_btn.setIconSize(pixmap.size())
+
+
+    def open_color_picker(self):
+        """
+        Opens a dialog for choosing the color using the static method, updates the value and emits the signal.
+        """
+        if self.in_extra:
+            current_color = QColor(self.extra_attributes[self.name])
+        else:
+            current_color = QColor(getattr(self.graphic_options, self.name))
+
+        new_color = QColorDialog.getColor(current_color, self, "Choose a Color")
+
+        if new_color.isValid():
+            new_color_name = new_color.name()
+            self.update_button_color(new_color)
+            if self.in_extra:
+                self.extra_attributes[self.name] = new_color_name
+            else:
+                setattr(self.graphic_options, self.name, new_color_name)
+            self.update_status.emit({self.name: new_color_name})
 
 class SpinboxCustomWindget(QWidget):
     """
@@ -217,90 +280,127 @@ class SpinboxCustomWindget(QWidget):
         Returns the current value of the spinbox.
     """
     update_status = pyqtSignal(dict)
-    def __init__(self, name, min, max,val, shadow_name = "", decimals = 0, step = 1):
-        super(SpinboxCustomWindget, self).__init__()
-        self.label = QLabel(name)
-        self.spinBox = QDoubleSpinBox()
+    def __init__(self, name, min, max,val, shadow_name = "", decimals = 0, step = 1, parent=None):
+        super(SpinboxCustomWindget, self).__init__(parent)
+        self.label = QLabel(name, parent=self)
+        self.spinBox = QDoubleSpinBox(parent=self)
         self.spinBox.setDecimals(decimals)
         self.spinBox.setRange(min, max)
         self.spinBox.setValue(val)
         self.spinBox.setSingleStep(step)
-        self.hbox = QHBoxLayout()
-        def spinBox_selection():
-            self.update_status.emit({shadow_name: self.spinBox.value()})
 
-        self.spinBox.valueChanged.connect(spinBox_selection)
+        self.spinBox.setStyleSheet(
+            """
+                QDoubleSpinBox {
+                    background-color: white;
+                    border: 1px solid #BDBDBD;
+                    border-top-color: #A0A0A0; 
+                    border-left-color: #A0A0A0;
+                    border-radius: 8px;
+                    padding: 4px;
+                    font-size: 13px;
+                    color: #333;
+                    padding-left: 10px; 
+                }
+                
+                QDoubleSpinBox:hover {
+                    border-color: #5D9CEC;
+                }
+                
+                QDoubleSpinBox:focus {
+                    border-color: #4A89DC;
+                }
+                
+                QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
+                    subcontrol-origin: border;
+                    width: 22px;
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #6AACFF, stop:1 #4A89DC);
+                    border: 1px solid #3A79CB;
+                    border-bottom: 2px solid #3A79CB; 
+                    border-radius: 4px;
+                }
+                
+                QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7BCFFF, stop:1 #5D9CEC);
+                }
+                
+                QDoubleSpinBox::up-button:pressed, QDoubleSpinBox::down-button:pressed {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #4A89DC, stop:1 #3A79CB);
+                    border-bottom: 1px solid #3A79CB;
+                }
+                
+                QDoubleSpinBox::up-button:pressed {
+                    padding-top: 1px;
+                }
+                QDoubleSpinBox::down-button:pressed {
+                    padding-top: 1px;
+                }
+                
+                QDoubleSpinBox::up-button {
+                    subcontrol-position: top right;
+                    margin: 2px 2px 1px 0px;
+                }
+                
+                QDoubleSpinBox::down-button {
+                    subcontrol-position: bottom right;
+                    margin: 1px 2px 2px 0px;
+                }
+        """
+        )
+
+        self.hbox = QHBoxLayout()
+        self.shadow_name = shadow_name
+
+        self.spinBox.valueChanged.connect(self.on_value_changed)
         self.hbox.addWidget(self.label)
         self.hbox.addWidget(self.spinBox)
         self.setLayout(self.hbox)
-    def get_val(self):
+    def on_value_changed(self, new_value):
+        """Slot that manages the change of value."""
+        self.update_status.emit({self.shadow_name: new_value})
+    def setMax(self, max):
+        self.spinBox.setMaximum(max)
+    def setValue(self, value):
+        self.spinBox.setValue(value)
+    def value(self):
         return self.spinBox.value()
 
-class CheckBoxCustomWidget(QWidget):
+class RandomSeedButton(QPushButton):
     """
-    A custom QWidget class containing a QCheckBox, which emits a signal when its state changes.
+    A QPushButton that generates a random seed and emits it via a signal.
+
+    This class defines a custom QPushButton that, when clicked, generates a random integer
+    to be used as a seed and emits it using a PyQt signal. The emitted signal transmits a
+    dictionary containing the generated seed.
 
     Attributes
     ----------
-    update_status : pyqtSignal(dict)
-        A signal emitted when the checkbox state is toggled, providing a dictionary with the shadow name as the key
-        and the checkbox's current checked state as the value.
+    update_status : pyqtSignal
+        A signal that emits a dictionary containing the generated seed.
 
     Parameters
     ----------
-    name : str
-        The label text for the checkbox.
-    status : bool
-        The initial checked state of the checkbox.
-    shadow_name : str
-        A unique identifier used as the key in the dictionary emitted by the update_status signal.
-
-    Methods
-    -------
-    __init__(name, status, shadow_name)
-        Initializes the custom checkbox widget and connects its state change to the update_status signal.
+    parent : QWidget or None, optional
+        The parent widget of this button. Defaults to None.
     """
     update_status = pyqtSignal(dict)
-    def __init__(self, name, status, shadow_name):
-        super(CheckBoxCustomWidget, self).__init__()
-        self.check_box = QCheckBox(name)
-        self.check_box.setChecked(status)
-        def checkbox_selection():
-            self.update_status.emit({shadow_name: self.check_box.isChecked()})
-        self.check_box.toggled.connect(checkbox_selection)
 
-class RandomSeedButton(QWidget):
-    """
-        A QPushButton widget that generates a random seed and emits it via a signal.
-
-        This class defines a custom QPushButton that, when clicked, generates a random integer
-        to be used as a seed and emits it using a PyQt signal. The emitted signal transmits a
-        dictionary containing the generated seed.
-
-        Attributes
-        ----------
-        update_status : pyqtSignal
-            A signal that emits a dictionary containing the generated seed.
-
-        Parameters
-        ----------
-        parent : QWidget or None, optional
-            The parent widget of this button. Defaults to None.
-
-        Methods
-        -------
-        None.
-    """
-    update_status = pyqtSignal(dict)
     def __init__(self, parent=None):
-        super(RandomSeedButton, self).__init__()
-        self.button = QPushButton("Random Seed")
+        # Call the QPushButton constructor
+        super().__init__("Random Seed", parent)
+        # Connect the button's built-in clicked signal to our handler
+        self.clicked.connect(self.on_button_clicked)
+        # Initialize the seed when the button is created
+        self.seed = random.randint(0, 100000)
 
-        def new_seed():
-            self.update_status.emit({"seed": random.randint(0,100000)})
+    def on_button_clicked(self):
+        """Slot that handles the button click."""
+        self.seed = random.randint(0, 100000)
+        self.update_status.emit({"seed": self.seed})
 
-        self.button.clicked.connect(new_seed)
-
+    def get_seed(self):
+        """Returns the current random seed."""
+        return self.seed
 
 class SliderDockWidget(QDockWidget):
     """
@@ -325,27 +425,83 @@ class SliderDockWidget(QDockWidget):
     update_value = pyqtSignal(tuple)
     def __init__(self,max_edge, parent=None):
         super().__init__(parent)
-        self.slider = QSlider()
+        self.slider = QSlider(parent=self)
         self.max_edge = max_edge
         self.ranged = False
-        self.slider_label = QLabel()
+        self.slider_label = QLabel(parent=self)
+        self.slider_label.setObjectName("CardinalityLabel")
         self.slider_label.setAlignment(Qt.AlignLeft)
         self.slider_hbox = QHBoxLayout()
         self.change_slider_type()
-        slider_button = QPushButton("Change Slider Type")
+        slider_button = QPushButton("Change Slider Type", parent=self)
+        slider_button.setStyleSheet("""
+            QPushButton {
+                color: white;
+                font-size: 14px;
+                font-weight: bold;
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,stop: 0 #5D9CEC, stop: 1 #4A89DC);
+                border: 1px solid #3A79CB;
+                border-bottom: 4px solid #3A79CB;
+                border-radius: 8px;
+                padding: 6px 18px;
+                margin-bottom: 4px;
+                min-height: 25px; 
+            }
+
+            QPushButton:hover {
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,stop: 0 #6AACFF, stop: 1 #5D9CEC);
+                border-color: #4A89DC;
+                border-bottom-color: #4A89DC;
+            }
+
+            QPushButton:pressed {
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,stop: 0 #4A89DC, stop: 1 #3A79CB);
+                border-bottom: 1px solid #3A79CB;
+                margin-top: 4px;
+                margin-bottom: 0px;
+            }
+
+            QPushButton:disabled {
+                background: #B0BEC5;
+                color: #78909C;
+                border: 1px solid #90A4AE;
+                border-bottom: 4px solid #78909C;
+            }
+        """)
         slider_button.setChecked(True)
         slider_button.toggle()
         slider_button.clicked.connect(self.change_slider_type)
+
         self.slider_hbox.addWidget(self.slider_label)
         self.slider_hbox.addWidget(self.slider)
         self.slider_hbox.addWidget(slider_button)
-        self.widget = QWidget()
+        self.widget = QWidget(parent=self)
         self.widget.setLayout(self.slider_hbox)
         self.slider_label.setText("Edge Cardinality: " + str(self.slider.value()))
+        self.widget.setObjectName("SliderContainer")
+        self.widget.setStyleSheet(
+            """
+                QWidget#SliderContainer {
+                    border-top: 1px solid #dcdcdc;
+                }
+                QLabel#CardinalityLabel {
+                    color: #ffffff;          
+                    font-size: 14px;
+                    font-weight: bold;
+                    
+                    background-color: #5D9CEC;
+                    border: 1px solid #4A89DC;
+                    border-radius: 5px;
+                    
+                    padding: 5px 10px;
+                    min-width: 160px;
+                    max-height: 25px;
+                    qproperty-alignment: 'AlignCenter'; 
+                }
+            """)
         self.setWidget(self.widget)
         self.setFeatures(QDockWidget.NoDockWidgetFeatures)
         self.slider_value_changed()
-
     def change_slider_type(self):
         """
         Toggle the type of slider between a standard range slider and a ranged slider.
@@ -367,14 +523,16 @@ class SliderDockWidget(QDockWidget):
         slider_hbox : QLayout
             The layout containing the slider widget.
         """
+        old_slider = self.slider
         if self.ranged:
             self.ranged = False
-            slider = QSlider(Qt.Horizontal)
+            slider = QSlider(Qt.Horizontal, parent=self)
             slider.setMinimum(2)
             slider.setMaximum(self.max_edge)
+
         else:
             self.ranged = True
-            slider = QRangeSlider(Qt.Orientation.Horizontal)
+            slider = QRangeSlider(Qt.Orientation.Horizontal, parent=self)
             slider.setMinimum(2)
             slider.setMaximum(self.max_edge)
             slider.setValue((2, self.max_edge))
@@ -383,7 +541,9 @@ class SliderDockWidget(QDockWidget):
         slider.setPageStep(0)
         slider.valueChanged.connect(self.slider_value_changed)
         self.slider_hbox.replaceWidget(self.slider, slider)
-        self.slider_hbox.removeWidget(self.slider)
+
+        old_slider.deleteLater()
+
         self.slider = slider
         self.slider_value_changed()
 
@@ -421,19 +581,80 @@ class SliderDockWidget(QDockWidget):
         else:
             self.slider.setValue(2)
 
+
+
+
 class LoadingScreen(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.layout = QVBoxLayout()
-        label = QLabel("Loading...")
-        progress_bar = QProgressBar()
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.setObjectName("LoadingScreen")
+
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+
+        self.bar_layout = QVBoxLayout()
+
+        label = QLabel("Loading...", self)
+        label.setObjectName("LoadingLabel")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        progress_bar = QProgressBar(self)
         progress_bar.setMinimum(0)
         progress_bar.setMaximum(0)
-        progress_bar.setValue(0)
-        self.layout.addStretch()
-        self.layout.addWidget(label)
-        self.layout.addWidget(progress_bar)
-        self.layout.addStretch()
-        self.setLayout(self.layout)
+
+        self.bar_layout.addStretch()
+        self.bar_layout.addWidget(label)
+        self.bar_layout.addWidget(progress_bar)
+        self.bar_layout.addStretch()
+        self.bar_widget = QWidget(parent=self)
+        self.bar_widget.setLayout(self.bar_layout)
+        self.bar_widget.setFixedSize(500, 200)
+        self.bar_widget.setStyleSheet("""
+/* Stile per il widget principale con ID #LoadingScreen */
+#LoadingScreen {
+    background-color: #4a4a4a; /* Sfondo grigio scuro */
+    border: 2px solid #5a5a5a;
+    border-radius: 15px; /* Angoli arrotondati */
+}
+
+/* Stile per tutte le QLabel dentro a #LoadingScreen */
+#LoadingScreen QLabel {
+    color: black; /* Colore del testo quasi bianco */
+    font-size: 18pt;
+    font-weight: bold;
+}
+
+/* Stile per la QProgressBar */
+QProgressBar {
+    border: 2px solid #666666;
+    border-radius: 8px;
+    background-color: #333333; /* Sfondo della barra (la "traccia") */
+    text-align: center; /* Anche se non c'è testo, è una buona pratica */
+    height: 25px; /* Aumentiamo l'altezza per un effetto più visibile */
+}
+
+/* Stile per la parte "piena" della barra (il "chunk") */
+QProgressBar::chunk {
+    /* Usiamo un gradiente lineare per dare un effetto 3D bombato */
+    background-color: qlineargradient(
+        x1: 0, y1: 0, x2: 0, y2: 1,
+        stop: 0 #0078d7, stop: 1 #005a9e
+    );
+    border-radius: 6px;
+    /* Aggiungiamo un margine per creare spazio tra il chunk e il bordo della barra */
+    margin: 2px; 
+}
+""")
+        self.container_layout = QVBoxLayout(parent = self)
+        self.container_layout.setContentsMargins(0, 0, 0, 0)
+        self.container_layout.addStretch()
+        self.h_layout = QHBoxLayout()
+        self.h_layout.addStretch()
+        self.h_layout.addWidget(self.bar_widget)
+        self.h_layout.addStretch()
+        self.container_layout.addLayout(self.h_layout)
+        self.container_layout.addStretch()
+        self.setLayout(self.container_layout)
+
 
 

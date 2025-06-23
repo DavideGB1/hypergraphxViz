@@ -324,7 +324,7 @@ def _draw_set_elements(
     if draw_labels:
         nx.draw_networkx_labels(
             G, pos, labels={n: n for n in G.nodes() if n not in dummy_nodes},
-            font_size=graphicOptions.label_size, font_color=graphicOptions.label_color, **kwargs
+            font_size=graphicOptions.label_size, font_color=graphicOptions.label_color, ax=ax, **kwargs
         )
 
 
