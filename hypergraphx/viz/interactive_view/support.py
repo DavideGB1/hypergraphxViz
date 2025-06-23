@@ -1,6 +1,10 @@
 import ast
 
-from PyQt5.QtWidgets import QLayout
+from PyQt5.QtGui import QIcon
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+
+from PyQt5.QtWidgets import QLayout, QSizePolicy
 
 from hypergraphx import Hypergraph, DirectedHypergraph, TemporalHypergraph
 
@@ -134,3 +138,35 @@ def numerical_hypergraph(hypergraph: Hypergraph|DirectedHypergraph|TemporalHyper
             return True
 
     return False
+
+def create_canvas_with_toolbar(figure):
+    canvas = FigureCanvas(figure)
+    canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+    toolbar = NavigationToolbar(canvas)
+    home_icon = QIcon("icons/home.svg")
+    toolbar._actions['home'].setIcon(home_icon)
+    back_icon = QIcon("icons/left.svg")
+    toolbar._actions['back'].setIcon(back_icon)
+    forward_icon = QIcon("icons/right.svg")
+    toolbar._actions['forward'].setIcon(forward_icon)
+    pan_icon = QIcon("icons/move.svg")
+    toolbar._actions['pan'].setIcon(pan_icon)
+    zoom_icon = QIcon("icons/zoom.svg")
+    toolbar._actions['zoom'].setIcon(zoom_icon)
+    configure_subplots_icon = QIcon("icons/options.svg")
+    toolbar._actions['configure_subplots'].setIcon(configure_subplots_icon)
+    edit_parameters_icon = QIcon("icons/settings.svg")
+    toolbar._actions['edit_parameters'].setIcon(edit_parameters_icon)
+    save_icon = QIcon("icons/save.svg")
+    toolbar._actions['save_figure'].setIcon(save_icon)
+    return canvas, toolbar
+
+def generate_key(dictionary):
+    keys_label = []
+    keys = []
+    idx = 1
+    for edge in dictionary.keys():
+        keys.append(idx)
+        idx += 1
+        keys_label.append(str(edge))
+    return keys_label, keys

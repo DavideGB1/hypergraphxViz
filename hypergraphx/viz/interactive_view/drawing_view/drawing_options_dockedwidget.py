@@ -1,14 +1,15 @@
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QDockWidget, QDoubleSpinBox, QLabel, QTabWidget, QListWidget, QComboBox, QListWidgetItem, \
-    QStackedWidget, QWidget, QScrollArea
+from PyQt5.QtWidgets import QDockWidget, QDoubleSpinBox, QLabel, QTabWidget, QComboBox, \
+    QStackedWidget, QWidget, QScrollArea, QVBoxLayout, QPushButton
 
 from hypergraphx.viz.__graphic_options import GraphicOptions
-from hypergraphx.viz.interactive_view.__drawing_options import *
-from hypergraphx.viz.interactive_view.__graphic_option_menu import get_Sets_options, \
-    get_PAOH_options, get_Radial_options, get_ExtraNode_options, get_Bipartite_options, get_Clique_options, \
-    create_graphic_options_widget
 from hypergraphx.viz.interactive_view.community_options.__community_option_menu import CommunityOptionsDict
+from hypergraphx.viz.interactive_view.drawing_options.clustering_options import SpectralClusteringOptionsWidget, \
+    MTOptionsWidget, MMSBMOptionsWidget
+from hypergraphx.viz.interactive_view.drawing_options.drawing_options import SetOptionsWidget, RadialOptionsWidget, \
+    PAOHOptionsWidget, ExtraNodeOptionsWidget, BipartiteOptionsWidget, CliqueOptionsWidget
+from hypergraphx.viz.interactive_view.graphic_options.derived_graphic_options import create_graphic_options_widget
 
 
 class DrawingOptionsDockWidget(QDockWidget):
@@ -81,7 +82,7 @@ class DrawingOptionsDockWidget(QDockWidget):
         self.change_weighted_options()
         self.redraw_button = QPushButton("Redraw",parent=self)
         self.redraw_button.clicked.connect(self.redraw)
-        self.redraw_button.setIcon(QIcon('draw.svg'))
+        self.redraw_button.setIcon(QIcon('../icons/draw.svg'))
         self.redraw_button.setStyleSheet("""
             QPushButton {
                 color: white;
@@ -240,7 +241,8 @@ class DrawingOptionsDockWidget(QDockWidget):
         self.setFeatures(QDockWidget.NoDockWidgetFeatures)
         self.__changes_drawing_algorithm()
         
-    def __extra_options(self, val, hypergraph_type):
+    @staticmethod
+    def __extra_options(val, hypergraph_type):
         """
         Generate the extra options list for the visualization functions
         """
