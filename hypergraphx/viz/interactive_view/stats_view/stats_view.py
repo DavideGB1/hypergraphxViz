@@ -142,11 +142,10 @@ QTabWidget#StatsTab QTabBar::tab:selected:hover {
             else:
                 if isinstance(hypergraph, Hypergraph):
                     self.motifs_tab.update_hypergraph(self.hypergraph)
-                    self.motifs_tab.setVisible(True)
-                    self.vertical_tab.setTabVisible(self.vertical_tab.indexOf(self.motifs_tab), True)
                 else:
-                    self.motifs_tab.setVisible(False)
-                    self.vertical_tab.setTabVisible(self.vertical_tab.indexOf(self.motifs_tab), False)
+                    self.vertical_tab.removeTab(self.vertical_tab.indexOf(self.motifs_tab))
+                    self.motifs_tab.deleteLater()
+                    self.motifs_tab = None
 
         if isinstance(hypergraph, Hypergraph):
             if self.adj_tab is None:

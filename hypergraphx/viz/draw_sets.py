@@ -9,10 +9,9 @@ from networkx import kamada_kawai_layout, spring_layout
 from scipy.spatial import ConvexHull
 
 from hypergraphx import Hypergraph
-from hypergraphx.readwrite import load_hypergraph
-from hypergraphx.representations.projections import clique_projection, extra_node_projection
+from hypergraphx.representations.projections import extra_node_projection
 from hypergraphx.viz.__graphic_options import GraphicOptions
-from hypergraphx.viz.__support import __ignore_unused_args, __filter_hypergraph, _get_node_community, \
+from hypergraphx.viz.__support import __filter_hypergraph, _get_node_community, \
     _draw_node_community, _get_community_info, draw_networkx_edge_labels_clone
 
 
@@ -328,7 +327,6 @@ def _draw_set_elements(
         )
 
 
-@__ignore_unused_args
 def draw_sets(
         hypergraph: Hypergraph,
         u=None,
@@ -349,7 +347,7 @@ def draw_sets(
         ax: Optional[plt.Axes] = None,
         figsize: tuple[float, float] = (10, 10),
         dpi: int = 300,
-        graphicOptions: Optional[GraphicOptions] = None,
+        graphicOptions: Optional[GraphicOptions] = GraphicOptions(),
         dummy_nodes=[],
         **kwargs) -> dict:
     """
@@ -400,12 +398,15 @@ def draw_sets(
         plt.figure(figsize=figsize, dpi=dpi)
         ax = plt.subplot(1, 1, 1)
 
+    if graphicOptions is None:
+        graphicOptions = GraphicOptions()
+
     # 1. Compute all layout and style information.
     computed_data = _compute_set_layout(
         hypergraph, u, k, weight_positioning, cardinality, x_heaviest,
         rounded_polygon, hyperedge_color_by_order, hyperedge_facecolor_by_order,
         hyperedge_alpha, scale, iterations, rounding_radius_size,
-        polygon_expansion_factor, pos, graphicOptions, dummy_nodes
+        polygon_expansion_factor, pos, dummy_nodes
     )
 
     # 2. Draw the elements onto the axes.
@@ -413,6 +414,7 @@ def draw_sets(
         ax=ax,
         data=computed_data,
         draw_labels=draw_labels,
+        graphicOptions = graphicOptions,
         **kwargs
     )
 

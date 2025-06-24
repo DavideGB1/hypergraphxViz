@@ -1,4 +1,4 @@
-import ast
+import re
 
 from PyQt5.QtGui import QIcon
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -48,13 +48,13 @@ def str_to_dict(string: str):
             pass
     return dict
 
-def str_to_tuple(string: str):
+def str_to_tuple(input_string: str):
     """
     Converts a string representation of a tuple into an actual tuple of integers or floats.
 
     Parameters
     ----------
-    string : str
+    input_string : str
         A string representing a tuple, e.g., "(1, 2.5, 'text')".
 
     Returns
@@ -62,31 +62,23 @@ def str_to_tuple(string: str):
     tuple
         A tuple containing converted integers or floats.
     """
-    try:
-        # Usa ast.literal_eval per valutare la stringa in modo sicuro
-        result = ast.literal_eval(string)
-        if not isinstance(result, tuple):
-            result = (result,)
-        processed_elements = []
-        for item in result:
-            if isinstance(item, (int, float)):
-                processed_elements.append(item)
-            elif isinstance(item, str):
-                try:
-                    processed_elements.append(float(item))
-                except ValueError:
-                    try:
-                        processed_elements.append(int(item))
-                    except ValueError:
-                        processed_elements.append(item)
-            else:
-                processed_elements.append(item)
+    elements = re.split(r'\s*,\s*', input_string.strip())
 
-        return tuple(processed_elements)
+    result_tuple = []
+    all_digit = True
+    for  item in elements:
+        if not item.isdigit():
+            all_digit = False
+            break
+    for item in elements:
+        if not item:
+            continue
+        if item.isdigit() and all_digit:
+            result_tuple.append(int(item))
+        else:
+            result_tuple.append(item)
 
-    except (ValueError, SyntaxError) as e:
-        print(f"Errore nella conversione della stringa in tupla: {e}")
-        return ()
+    return tuple(result_tuple)
 
 def str_to_int_or_float(string):
     """

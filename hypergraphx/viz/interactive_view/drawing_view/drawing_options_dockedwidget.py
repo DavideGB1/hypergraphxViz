@@ -88,37 +88,23 @@ class DrawingOptionsDockWidget(QDockWidget):
                 color: white;
                 font-size: 14px;
                 font-weight: bold;
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                                            stop: 0 #5D9CEC, stop: 1 #4A89DC);
-
-                /* Bordo principale sottile per la forma */
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #5D9CEC, stop: 1 #4A89DC);
                 border: 1px solid #3A79CB;
-                /* L'OMBRA: un bordo più spesso e scuro solo in basso */
                 border-bottom: 4px solid #3A79CB;
-                border-radius: 8px; /* Angoli più arrotondati */
-
+                border-radius: 8px;
                 padding: 6px 18px;
-
-                /* Spazio per l'ombra quando non è premuto */
                 margin-bottom: 4px;
             }
 
             QPushButton:hover {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                                            stop: 0 #6AACFF, stop: 1 #5D9CEC);
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #6AACFF, stop: 1 #5D9CEC);
                 border-color: #4A89DC;
                 border-bottom-color: #4A89DC;
             }
 
             QPushButton:pressed {
-                /* Il pulsante si abbassa! */
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                                            stop: 0 #4A89DC, stop: 1 #3A79CB);
-
-                /* Rimuoviamo l'ombra */
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #4A89DC, stop: 1 #3A79CB);
                 border-bottom: 1px solid #3A79CB;
-
-                /* Spostiamo il pulsante verso il basso per occupare lo spazio dell'ombra */
                 margin-top: 4px;
                 margin-bottom: 0px;
             }
@@ -270,66 +256,61 @@ class DrawingOptionsDockWidget(QDockWidget):
         self.heaviest_edges_spin_box.setRange(0, 100)
         self.heaviest_edges_spin_box.setValue(100)
         self.heaviest_edges_spin_box.setStyleSheet("""
-    QDoubleSpinBox {
-        background-color: white;
-        border: 1px solid #BDBDBD;
-        border-top-color: #A0A0A0; 
-        border-left-color: #A0A0A0;
-        border-radius: 8px;
-        padding: 4px;
-        font-size: 13px;
-        color: #333;
-        padding-left: 10px; 
-    }
-
-    QDoubleSpinBox:hover {
-        border-color: #5D9CEC;
-    }
-
-    QDoubleSpinBox:focus {
-        border-color: #4A89DC;
-    }
-
-    QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
-        subcontrol-origin: border;
-        width: 22px;
-        background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #6AACFF, stop:1 #4A89DC);
-        border: 1px solid #3A79CB;
-        border-bottom: 2px solid #3A79CB; 
-        border-radius: 4px;
-    }
-
-    QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover {
-        background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7BCFFF, stop:1 #5D9CEC);
-    }
-
-    /* Modifica allo stato :pressed */
-    QDoubleSpinBox::up-button:pressed, QDoubleSpinBox::down-button:pressed {
-        background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #4A89DC, stop:1 #3A79CB);
-        border-bottom: 1px solid #3A79CB;
-        /* Rimuoviamo il margin-top che spingeva fuori la freccia */
-    }
-    
-    /* Spostiamo l'effetto pressione direttamente sulle frecce */
-    QDoubleSpinBox::up-button:pressed {
-        padding-top: 1px; /* Sposta la freccia in giù */
-    }
-    QDoubleSpinBox::down-button:pressed {
-        padding-top: 1px; /* Sposta la freccia in giù */
-    }
-
-    /* Posizionamento del pulsante SU */
-    QDoubleSpinBox::up-button {
-        subcontrol-position: top right;
-        margin: 2px 2px 1px 0px;
-    }
-
-    /* Posizionamento del pulsante GIÙ */
-    QDoubleSpinBox::down-button {
-        subcontrol-position: bottom right;
-        margin: 1px 2px 2px 0px;
-    }
-""")
+            QDoubleSpinBox {
+                background-color: white;
+                border: 1px solid #BDBDBD;
+                border-top-color: #A0A0A0; 
+                border-left-color: #A0A0A0;
+                border-radius: 8px;
+                padding: 4px;
+                font-size: 13px;
+                color: #333;
+                padding-left: 10px; 
+            }
+            
+            QDoubleSpinBox:hover {
+                border-color: #5D9CEC;
+            }
+            
+            QDoubleSpinBox:focus {
+                border-color: #4A89DC;
+            }
+            
+            QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
+                subcontrol-origin: border;
+                width: 22px;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #6AACFF, stop:1 #4A89DC);
+                border: 1px solid #3A79CB;
+                border-bottom: 2px solid #3A79CB; 
+                border-radius: 4px;
+            }
+            
+            QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7BCFFF, stop:1 #5D9CEC);
+            }
+            
+            QDoubleSpinBox::up-button:pressed, QDoubleSpinBox::down-button:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #4A89DC, stop:1 #3A79CB);
+                border-bottom: 1px solid #3A79CB;
+            }
+            
+            QDoubleSpinBox::up-button:pressed {
+                padding-top: 1px; /* Sposta la freccia in giù */
+            }
+            QDoubleSpinBox::down-button:pressed {
+                padding-top: 1px; /* Sposta la freccia in giù */
+            }
+            
+            QDoubleSpinBox::up-button {
+                subcontrol-position: top right;
+                margin: 2px 2px 1px 0px;
+            }
+            
+            QDoubleSpinBox::down-button {
+                subcontrol-position: bottom right;
+                margin: 1px 2px 2px 0px;
+            }
+        """)
         self.heaviest_edges_spin_box_label = QLabel(self)
         self.heaviest_edges_spin_box_label.setText("Show {value}% Heaviest Edges".format(value=self.heaviest_edges_spin_box.value()))
         self.heaviest_edges_spin_box_label.setStyleSheet("font-weight: bold; font-size: 12px;")

@@ -117,6 +117,7 @@ class MotifsWidget(QWidget):
         self.button.setVisible(True)
         self.toolbar.setVisible(False)
         self.canvas.setVisible(False)
+        self.repaint()
         self.hypergraph = hypergraph
 
 class StatsWorker(QThread):
