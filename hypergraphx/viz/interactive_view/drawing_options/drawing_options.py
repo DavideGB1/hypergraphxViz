@@ -17,6 +17,7 @@ class PAOHOptionsWidget(BaseOptionsWidget):
 class RadialOptionsWidget(BaseOptionsWidget):
     def _setup_widgets(self):
         self.labels_button = QCheckBox("Show Labels", self)
+        self.labels_button.setChecked(True)
         self.labels_button.toggled.connect(self.send_data)
         self.main_layout.addWidget(self.labels_button)
 
@@ -27,6 +28,7 @@ class RadialOptionsWidget(BaseOptionsWidget):
 class CliqueOptionsWidget(BaseOptionsWidget):
     def _setup_widgets(self):
         self.labels_button = QCheckBox("Show Labels", self)
+        self.labels_button.setChecked(True)
         self.labels_button.toggled.connect(self.send_data)
 
         self.iterations_selector = IterationsSelector(self)
@@ -45,10 +47,11 @@ class CliqueOptionsWidget(BaseOptionsWidget):
 class ExtraNodeOptionsWidget(BaseOptionsWidget):
     def _setup_widgets(self):
         self.labels_button = QCheckBox("Show Labels", self)
+        self.labels_button.setChecked(True)
         self.labels_button.toggled.connect(self.send_data)
 
         self.ignore_binary_relations_btn = QCheckBox("Ignore Binary Relations", self)
-        self.ignore_binary_relations_btn.setChecked(True)
+        self.ignore_binary_relations_btn.setChecked(False)
         self.ignore_binary_relations_btn.toggled.connect(self.send_data)
 
         self.respect_planarity_btn = QCheckBox("Respect Planarity", self)
@@ -83,6 +86,7 @@ class BipartiteOptionsWidget(BaseOptionsWidget):
         self.alignment = "vertical"
 
         self.labels_button = QCheckBox("Show Labels", self)
+        self.labels_button.setChecked(True)
         self.labels_button.toggled.connect(self.send_data)
 
         self.change_alignment_btn = QPushButton("Alignment: Vertical", self)
@@ -110,11 +114,10 @@ class BipartiteOptionsWidget(BaseOptionsWidget):
 class SetOptionsWidget(BaseOptionsWidget):
     def _setup_widgets(self):
         self.labels_button = QCheckBox("Show Labels", self)
-
+        self.labels_button.setChecked(True)
         self.labels_button.toggled.connect(self.send_data)
 
         self.rounded_polygons_btn = QCheckBox("Draw Rounded Polygons", self)
-        self.rounded_polygons_btn.setChecked(True)
         self.rounded_polygons_btn.toggled.connect(self.send_data)
 
         self.iterations_selector = IterationsSelector(self)

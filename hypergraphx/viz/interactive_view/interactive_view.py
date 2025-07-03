@@ -265,5 +265,5 @@ def start_interactive_view(h: Hypergraph|TemporalHypergraph|DirectedHypergraph) 
         main.show()
         sys.exit(app.exec_())
 
-h = Hypergraph([("A", "B", "C"), ('D', 'C')])
+h = Hypergraph([("A", "B", "C"), ('D', 'C'), ("X","Y", "Z")])
 start_interactive_view(h)
