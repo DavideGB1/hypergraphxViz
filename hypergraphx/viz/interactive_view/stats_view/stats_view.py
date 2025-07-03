@@ -3,7 +3,7 @@ import gc
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QMainWindow, QTabWidget
 
-from hypergraphx import Hypergraph
+from hypergraphx import Hypergraph, DirectedHypergraph
 from hypergraphx.measures.node_similarity import jaccard_similarity_matrix
 from hypergraphx.viz.interactive_view.stats_view.stats_calculations import calculate_weight_distribution, draw_weight, \
     adjacency_calculations_pool, draw_adjacency, degree_calculations, calculate_centrality_pool, draw_centrality, \
@@ -151,7 +151,7 @@ QTabWidget#StatsTab QTabBar::tab:selected:hover {
                 self.motifs_tab.deleteLater()
                 self.motifs_tab = None
 
-        if isinstance(hypergraph, Hypergraph):
+        if not isinstance(hypergraph, DirectedHypergraph):
             if self.adj_tab is None:
                 self.adj_tab = GenericGraphWidget(
                     hypergraph=hypergraph,

@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 from scipy import sparse
-from scipy.sparse import csc_array
+from scipy.sparse import csc_array, csr_array
 from scipy.special import factorial
 from hypergraphx import Hypergraph, TemporalHypergraph
 from hypergraphx.utils.labeling import get_inverse_mapping
@@ -556,7 +556,7 @@ def temporal_adjacency_matrices_all_orders(
 def annealed_adjacency_matrix(
     temporal_hypergraph: TemporalHypergraph,
     return_mapping: bool = False,
-) -> sparse.csc_array | Tuple[sparse.csc_array, Dict[int, Any]]:
+):
     """Compute the annealed adjacency matrix of the temporal hypergraph by order.
     For any two nodes i, j in the hypergraph, the entry (i, j) of the adjacency matrix
     counts the average number of hyperedges of a given order where both i and j are contained over time.
@@ -574,36 +574,34 @@ def annealed_adjacency_matrix(
         Return the dictionary mapping the new node indices to the Temporal Hypergraph
     """
     encoder = temporal_hypergraph.get_mapping()
-    temporal_adjacency_matrix, mapping = temporal_hypergraph.temporal_adjacency_matrix(return_mapping=True)
-    T = len(temporal_adjacency_matrix.keys())
-    temporal_adjacency_matrix_lst = temporal_adjacency_matrix.values()
-    res = dict()
-    t = min(mapping.keys())
-    for matrix in temporal_adjacency_matrix_lst:
-        for j in range(matrix.shape[1]):
-            for i in range(matrix.indptr[j], matrix.indptr[j + 1]):
-                row = mapping[t][matrix.indices[i]]
-                column = mapping[t][j]
-                if row != column:
-                    cell = (row, column)
-                    cell = tuple(sorted(cell))
-                    if cell not in res.keys():
-                        res[cell] = 0
-                    res[cell] += matrix.data[i]
-        t+=1
-    res = {k: v / T for k,v in res.items()}
-    matrix_row = []
-    matrix_col = []
-    matrix_val = []
-    for k,v in res.items():
-        matrix_row.append(encoder.transform([k[0]])[0])
-        matrix_col.append(encoder.transform([k[1]])[0])
-        matrix_val.append(v)
-    matrix = csc_array((matrix_val, (matrix_row, matrix_col)))
+    temporal_adjacency_matrices = temporal_hypergraph.temporal_adjacency_matrix()
+
+    def get_inverse_mapping():
+        return {i: label for i, label in enumerate(encoder.classes_)}
+
+    if not temporal_adjacency_matrices:
+        num_nodes = len(encoder.classes_)
+        shape = (num_nodes, num_nodes)
+        empty_matrix = csr_array(shape, dtype=float)
+        if return_mapping:
+            return empty_matrix, get_inverse_mapping()
+        else:
+            return empty_matrix
+
+    matrix_list = list(temporal_adjacency_matrices.values())
+    T = len(matrix_list)
+
+    shape = matrix_list[0].shape
+    sum_matrix = csr_array(shape, dtype=np.float64)
+    for matrix in matrix_list:
+        sum_matrix += matrix
+
+    average_matrix = sum_matrix / T
+
     if return_mapping:
-        return matrix, get_inverse_mapping(encoder)
+        return average_matrix, get_inverse_mapping()
     else:
-        return matrix
+        return average_matrix
 
 def annealed_adjacency_matrices_all_orders(
     temporal_hypergraph: TemporalHypergraph

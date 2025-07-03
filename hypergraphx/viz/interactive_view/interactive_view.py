@@ -74,8 +74,7 @@ class MainView(QWidget):
         self.modify_hypergraph_tab.updated_hypergraph.connect(self.update_hypergraph)
         editing_icon = QIcon("icons/edit.svg")
         self.central_tab.addTab(self.modify_hypergraph_tab, editing_icon, "Hypergraph Editing")
-        self.about_me = ModifyHypergraphMenu(hypergraph, parent=self.central_tab)
-        self.about_me.updated_hypergraph.connect(self.update_hypergraph)
+        self.about_me = QWidget(parent=self)
         info_icon = QIcon("icons/info.svg")
         self.central_tab.addTab(self.about_me, info_icon, "About Me")
 
