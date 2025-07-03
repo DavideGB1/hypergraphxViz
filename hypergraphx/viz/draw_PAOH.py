@@ -7,6 +7,7 @@ from hypergraphx.viz.__support import (__ignore_unused_args, __filter_hypergraph
                                        __support_to_normal_hypergraph, _get_community_info, _get_node_community,
                                        _draw_node_community)
 
+
 @__ignore_unused_args
 def calculate_paoh_layout(
         h: Hypergraph | TemporalHypergraph | DirectedHypergraph,
@@ -15,31 +16,67 @@ def calculate_paoh_layout(
         cardinality: tuple[int, int] | int = -1,
         x_heaviest: float = 1.0,
         space_optimization: bool = False,
+        sort_nodes_by: bool = False,
+        sorting_mapping: dict = None,
         **kwargs
 ) -> Dict[str, Any]:
     """
     Calculates all the necessary data and layout for a PAOH plot without drawing.
     This function is designed to be run in a separate process to avoid blocking the GUI.
 
+    Parameters
+    ----------
+    # ... (altri parametri)
+    sort_nodes_by : str, optional
+        Criterio di ordinamento dei nodi sull'asse y.
+        'name' (default): ordina i nodi alfabeticamente.
+        'degree': ordina i nodi per grado crescente (i nodi con grado più alto appaiono in cima).
+
     Returns
     -------
     dict
         A dictionary containing all the pre-calculated data needed for drawing.
     """
-    #Apply filters to the Hypergraph
+
+    def get_edge_mapping_sorter(tup):
+        max_value = 0
+        for item in tup:
+            # Get the degree from the mapping
+            item_degree = sorting_mapping[item]
+            if item_degree > max_value:
+                max_value = item_degree
+        return max_value
+
+    if sort_nodes_by and space_optimization:
+        raise ValueError("It's not possible to sort nodes and optimize space at the same time.")
+
+    if sort_nodes_by and sorting_mapping is None:
+        raise ValueError("A Sorting Mapping must be provided is the nodes are going to be sorted")
+
+
+    # Apply filters to the Hypergraph
     hypergraph = __filter_hypergraph(h, cardinality, x_heaviest)
 
-    #Create Node Mapping
-    node_mapping = {node: i for i, node in enumerate(sorted(hypergraph.get_nodes()))}
+    # Get the list of nodes from the filtered hypergraph
+    nodes = hypergraph.get_nodes()
 
-    #Manage Directed Hypergraphs
+    # Sort the nodes based on the specified criteria
+    if sort_nodes_by:
+        sorted_node_list = sorted(nodes, key=lambda node: sorting_mapping[node])
+    else:
+        sorted_node_list = sorted(nodes)
+
+    # Create Node Mapping from the sorted list
+    node_mapping = {node: i for i, node in enumerate(sorted_node_list)}
+
+    # Manage Directed Hypergraphs
     isDirected = isinstance(h, DirectedHypergraph)
 
     edge_directed_mapping = {}
     if isDirected:
         hypergraph, edge_directed_mapping = __support_to_normal_hypergraph(hypergraph)
 
-    #Manage Temporal Hypergraphs
+    # Manage Temporal Hypergraphs
     isTemporal = isinstance(h, TemporalHypergraph)
 
     timestamp_mapping = {}
@@ -55,24 +92,28 @@ def calculate_paoh_layout(
         for ts_key in sorted_timestamps:
             edge_set = timestamp_mapping[ts_key]
             if space_optimization:
-                timestamps_layout.append(__PAOH_edge_placemente_calculation(edge_set))
+                timestamps_layout.append(__PAOH_edge_placement_calculation(edge_set))
             else:
+                if sort_nodes_by:
+                    edge_set = sorted(edge_set, key=get_edge_mapping_sorter, reverse=True)
                 timestamps_layout.append([[edge] for edge in edge_set])
     else:
         edges = hypergraph.get_edges()
         if space_optimization:
-            column_list = __PAOH_edge_placemente_calculation(edges)
+            column_list = __PAOH_edge_placement_calculation(edges)
         else:
+            if sort_nodes_by:
+                edges = sorted(edges, key=get_edge_mapping_sorter, reverse=True)
             column_list = [[edge] for edge in edges]
         timestamps_layout.append(column_list)
 
-    #If needed get communities data
+    # If needed get communities data
     community_mapping = None
     community_colors = None
     if u is not None:
         community_mapping, community_colors = _get_community_info(hypergraph, k)
 
-    #Get plot width
+    # Get plot width
     final_idx = 0
     for timestamp_group in timestamps_layout:
         for _ in timestamp_group:
@@ -82,7 +123,7 @@ def calculate_paoh_layout(
     if isTemporal:
         final_idx -= 0.5
 
-    #Return the needed datas
+    # Return the needed datas
     calculation_data = {
         "hypergraph": hypergraph,
         "node_mapping": node_mapping,
@@ -99,6 +140,7 @@ def calculate_paoh_layout(
     }
     return calculation_data
 
+
 @__ignore_unused_args
 def draw_paoh_from_data(
         ax: plt.Axes,
@@ -113,8 +155,9 @@ def draw_paoh_from_data(
 ) -> None:
     """
     Draws a PAOH plot on a given matplotlib axis using pre-calculated data.
+    (Questa funzione non necessita di modifiche)
     """
-    #Unpack the data
+    # Unpack the data
     hypergraph = data["hypergraph"]
     node_mapping = data["node_mapping"]
     isDirected = data["isDirected"]
@@ -128,11 +171,10 @@ def draw_paoh_from_data(
     community_colors = data["community_colors"]
     final_idx_width = data["final_idx_width"]
 
-    #Get and Validate the Graphic Options
+    # Get and Validate the Graphic Options
     if graphicOptions is None:
         graphicOptions = GraphicOptions()
     graphicOptions.check_if_options_are_valid(hypergraph)
-
 
     sorted_nodes = sorted(node_mapping.keys(), key=lambda n: node_mapping[n])
     max_node_y = len(sorted_nodes) - 0.5
@@ -140,7 +182,7 @@ def draw_paoh_from_data(
     idx = 0
     idx_timestamp = 0
 
-    #Main drawing cycle
+    # Main drawing cycle
     for timestamp_group in timestamps_layout:
         if isTemporal:
             ts_key = sorted(timestamp_mapping.keys())[idx_timestamp]
@@ -151,8 +193,8 @@ def draw_paoh_from_data(
             for edge in sorted(column_set):
                 original_edge = (ts_key, edge) if isTemporal else edge
 
-                first_node, last_node = min(edge), max(edge)
-                y1, y2 = node_mapping[first_node], node_mapping[last_node]
+                first_node, last_node = min(edge), max(edge, key=lambda n: node_mapping[n])
+                y1, y2 = node_mapping[min(edge, key=lambda n: node_mapping[n])], node_mapping[last_node]
 
                 ax.plot([idx, idx], [y1, y2],
                         color=graphicOptions.edge_color.get(original_edge),
@@ -196,12 +238,12 @@ def draw_paoh_from_data(
             idx_timestamp += 1
             idx += 0.5
 
-    #Finalize axis options
+    # Finalize axis options
     ax.set_ylabel(y_label)
     ax.set_xlabel(x_label)
     ax.set_xticks([])
     ax.set_xlim([-0.5, final_idx_width])
-    ax.set_ylim([-0.5, len(sorted_nodes)])
+    ax.set_ylim([-0.5, len(sorted_nodes) - 0.5])
     ax.set_yticks(range(len(sorted_nodes)))
     ax.set_yticklabels(sorted_nodes)
     ax.grid(which="minor", ls="--", lw=1)
@@ -215,6 +257,8 @@ def draw_PAOH(
         cardinality: tuple[int, int] | int = -1,
         x_heaviest: float = 1.0,
         space_optimization: bool = False,
+        sort_nodes_by: bool = False,
+        sorting_mapping: dict = None,
         y_label: str = "Nodes",
         x_label: str = "Edges",
         time_font_size: int = 18,
@@ -230,8 +274,21 @@ def draw_PAOH(
     Draws a PAOH representation of the hypergraph.
     This function acts as a wrapper, first calculating the layout and then drawing it.
 
+    Parameters
+    ----------
+    # ... (altri parametri)
+    sort_nodes_by : str, optional
+        Criterio di ordinamento dei nodi sull'asse y.
+        'name' (default): ordina i nodi alfabeticamente.
+        'degree': ordina i nodi per grado (i nodi con grado più alto appaiono in cima).
+
     (Il resto della docstring originale può essere mantenuto qui)
     """
+    if sort_nodes_by and space_optimization:
+        raise ValueError("It's not possible to sort nodes and optimize space at the same time.")
+
+    if sort_nodes_by and sorting_mapping is None:
+        raise ValueError("A Sorting Mapping must be provided is the nodes are going to be sorted")
 
     calculation_data = calculate_paoh_layout(
         h=h,
@@ -240,13 +297,14 @@ def draw_PAOH(
         cardinality=cardinality,
         x_heaviest=x_heaviest,
         space_optimization=space_optimization,
+        sort_nodes_by=sort_nodes_by,
+        sorting_mapping = sorting_mapping,
         graphicOptions=graphicOptions,
         **kwargs
     )
 
     if ax is None:
-        plt.figure(figsize=figsize, dpi=dpi)
-        ax = plt.subplot(1, 1, 1)
+        fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
 
     draw_paoh_from_data(
         ax=ax,
@@ -256,11 +314,12 @@ def draw_PAOH(
         time_font_size=time_font_size,
         time_separation_line_color=time_separation_line_color,
         time_separation_line_width=time_separation_line_width,
+        graphicOptions=graphicOptions,  # MODIFICATA: ho aggiunto il passaggio di graphicOptions
         **kwargs
     )
 
 
-def __PAOH_edge_placemente_calculation(l: list) -> list:
+def __PAOH_edge_placement_calculation(l: list) -> list:
     column_found = False
     column_list = list()
     column_list.append(set())

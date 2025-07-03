@@ -39,7 +39,7 @@ def create_figure(draw_function, hypergraph, dictionary):
     centrality = None
     match dictionary["centrality"]:
         case "No Centrality":
-            centrality = None
+            pass
         case "Degree Centrality":
             centrality = degree_sequence(hypergraph)
         case "Betweenness Centrality":
@@ -82,9 +82,11 @@ def create_figure(draw_function, hypergraph, dictionary):
             cardinality=dictionary["slider_value"],
             x_heaviest=dictionary["heaviest_edges_value"],
             space_optimization=dictionary["algorithm_options_dict"]["space_optimization"],
+            sort_nodes_by=dictionary["algorithm_options_dict"]["sort_nodes_by"],
+            sorting_mapping = centrality,
         )
+        centrality = None
     elif draw_function == "Radial":
-        print(dictionary["extra_attributes"]["radius_scale_factor"])
         result = _compute_radial_layout(
             h=hypergraph,
             u=dictionary["community_model"],
@@ -236,5 +238,5 @@ class PlotWorker(QThread):
             print(f"Error in PlotWorker: {e}")
 
     def cancel(self):
-        """Richiede la cancellazione del thread."""
+        """Request thread cancellation."""
         self._is_cancelled = True

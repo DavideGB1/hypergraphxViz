@@ -371,6 +371,13 @@ class DrawingOptionsDockWidget(QDockWidget):
                 ["No Centrality", "Degree Centrality", "Betweenness Centrality"])
 
     def __update_centrality(self):
+        if self.centrality_combobox.currentText() == "No Centrality":
+            self.drawing_options_widgets["PAOH"].space_optimization_btn.setEnabled(True)
+            self.algorithm_options_dict["sort_nodes_by"] = False
+        else:
+            self.drawing_options_widgets["PAOH"].space_optimization_btn.setEnabled(False)
+            self.algorithm_options_dict["sort_nodes_by"] = True
+        self.drawing_options_widgets["PAOH"].space_optimization_btn.setChecked(False)
         self.use_last = True
         self.update()
         
@@ -514,6 +521,12 @@ class DrawingOptionsDockWidget(QDockWidget):
             cda = self.community_combobox.currentText()
         except Exception:
             cda = "None"
+
+        if self.centrality_combobox.currentText() == "No Centrality":
+            self.algorithm_options_dict["sort_nodes_by"] = False
+        else:
+            self.algorithm_options_dict["sort_nodes_by"] = True
+
         self.update_value.emit({"%_heaviest_edges": heaviest_value,"centrality": self.centrality_combobox.currentText(),
                                 "community_detection_algorithm": cda,
                                 "drawing_options":self.drawing_combobox.currentText() ,"use_last": self.use_last, "algorithm_options":self.algorithm_options_dict,

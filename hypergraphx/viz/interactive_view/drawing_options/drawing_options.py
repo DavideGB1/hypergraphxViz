@@ -12,7 +12,7 @@ class PAOHOptionsWidget(BaseOptionsWidget):
         self.main_layout.addWidget(self.space_optimization_btn)
 
     def get_options(self):
-        return {"space_optimization": self.space_optimization_btn.isChecked()}
+        return {"space_optimization": self.space_optimization_btn.isChecked(), "sort_nodes_by": False}
 
 class RadialOptionsWidget(BaseOptionsWidget):
     def _setup_widgets(self):
