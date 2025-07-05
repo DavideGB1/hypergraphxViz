@@ -74,6 +74,10 @@ class MainView(QWidget):
         self.modify_hypergraph_tab.updated_hypergraph.connect(self.update_hypergraph)
         editing_icon = QIcon("icons/edit.svg")
         self.central_tab.addTab(self.modify_hypergraph_tab, editing_icon, "Hypergraph Editing")
+        self.about_me = ModifyHypergraphMenu(hypergraph, parent=self.central_tab)
+        self.about_me.updated_hypergraph.connect(self.update_hypergraph)
+        info_icon = QIcon("icons/info.svg")
+        self.central_tab.addTab(self.about_me, info_icon, "About Me")
 
         self.layout = QVBoxLayout()
         self.layout.setContentsMargins(0, 0, 0, 0)
@@ -91,7 +95,11 @@ class MainView(QWidget):
         hypergraph : Hypergraph, DirectedHypergraph, or TemporalHypergraph, optional
             A new hypergraph instance to update the current hypergraph.
         """
-        self.drawing_tab.update_hypergraph(example, hypergraph)
+        if example is not None:
+            self.hypergraph = example["hypergraph"]
+        if hypergraph is not None:
+            self.hypergraph = hypergraph
+        self.drawing_tab.update_hypergraph(self.hypergraph)
         self.stats_tab.update_hypergraph(self.hypergraph)
 
 def start_interactive_view(h: Hypergraph|TemporalHypergraph|DirectedHypergraph) -> None:
@@ -265,5 +273,5 @@ def start_interactive_view(h: Hypergraph|TemporalHypergraph|DirectedHypergraph) 
         main.show()
         sys.exit(app.exec_())
 
-h = Hypergraph([("A", "B", "C"), ('D', 'C'), ("X","Y", "Z")])
+h = Hypergraph([(6,7,8,9),(7,8,15),(8,9,14),(3,6),(1,2,3),(4,5,6),(4,5,12,16,17),(17,18,2),(1,4,10,11,12),(10,11,13),(5,6,17,18),(4,12,16,17),(16,17,20),(17,19,20,22),(18,19,21),(16,17,18,19,21),(19,22),(19,23,24,25),(23,24,25),(24,26),(23,27)])
 start_interactive_view(h)

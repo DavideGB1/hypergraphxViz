@@ -340,9 +340,9 @@ class ModifyHypergraphMenu(QMainWindow):
         else:
             try:
                 if file_path.endswith(".hif.json"):
-                    self.hypergraph = hypergraphx.readwrite.load_hif(file_path)
+                    self.actual_hypergraph = hypergraphx.readwrite.load_hif(file_path)
                 else:
-                    self.hypergraph = hypergraphx.readwrite.load_hypergraph(file_path)
+                    self.actual_hypergraph = hypergraphx.readwrite.load_hypergraph(file_path)
                 self.update_hypergraph()
 
             except (ValueError, KeyError) as e:

@@ -164,7 +164,7 @@ def s_betweenness_nodes_averaged(H: TemporalHypergraph):
                 res[k] += v
     return {k: v/T for k, v in res.items()}
 
-def s_closenness_nodes_averaged(H: TemporalHypergraph):
+def s_closeness_nodes_averaged(H: TemporalHypergraph):
     """
     Computes the closeness centrality for each node in the temporal hypergraph.
     The function calculates the closeness centrality during each time of the temporal hypergraph and then

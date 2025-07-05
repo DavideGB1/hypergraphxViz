@@ -23,15 +23,6 @@ def calculate_paoh_layout(
     """
     Calculates all the necessary data and layout for a PAOH plot without drawing.
     This function is designed to be run in a separate process to avoid blocking the GUI.
-
-    Parameters
-    ----------
-    # ... (altri parametri)
-    sort_nodes_by : str, optional
-        Criterio di ordinamento dei nodi sull'asse y.
-        'name' (default): ordina i nodi alfabeticamente.
-        'degree': ordina i nodi per grado crescente (i nodi con grado più alto appaiono in cima).
-
     Returns
     -------
     dict
@@ -45,7 +36,7 @@ def calculate_paoh_layout(
             item_degree = sorting_mapping[item]
             if item_degree > max_value:
                 max_value = item_degree
-        return max_value
+        return (max_value, tuple(sorted(tup)))
 
     if sort_nodes_by and space_optimization:
         raise ValueError("It's not possible to sort nodes and optimize space at the same time.")
@@ -59,15 +50,15 @@ def calculate_paoh_layout(
 
     # Get the list of nodes from the filtered hypergraph
     nodes = hypergraph.get_nodes()
-
     # Sort the nodes based on the specified criteria
     if sort_nodes_by:
-        sorted_node_list = sorted(nodes, key=lambda node: sorting_mapping[node])
+        sorted_node_list = sorted(nodes, key=lambda node: (sorting_mapping.get(node, 0), node))
     else:
         sorted_node_list = sorted(nodes)
 
     # Create Node Mapping from the sorted list
     node_mapping = {node: i for i, node in enumerate(sorted_node_list)}
+
 
     # Manage Directed Hypergraphs
     isDirected = isinstance(h, DirectedHypergraph)
@@ -155,7 +146,6 @@ def draw_paoh_from_data(
 ) -> None:
     """
     Draws a PAOH plot on a given matplotlib axis using pre-calculated data.
-    (Questa funzione non necessita di modifiche)
     """
     # Unpack the data
     hypergraph = data["hypergraph"]
@@ -273,16 +263,6 @@ def draw_PAOH(
     """
     Draws a PAOH representation of the hypergraph.
     This function acts as a wrapper, first calculating the layout and then drawing it.
-
-    Parameters
-    ----------
-    # ... (altri parametri)
-    sort_nodes_by : str, optional
-        Criterio di ordinamento dei nodi sull'asse y.
-        'name' (default): ordina i nodi alfabeticamente.
-        'degree': ordina i nodi per grado (i nodi con grado più alto appaiono in cima).
-
-    (Il resto della docstring originale può essere mantenuto qui)
     """
     if sort_nodes_by and space_optimization:
         raise ValueError("It's not possible to sort nodes and optimize space at the same time.")
@@ -314,7 +294,7 @@ def draw_PAOH(
         time_font_size=time_font_size,
         time_separation_line_color=time_separation_line_color,
         time_separation_line_width=time_separation_line_width,
-        graphicOptions=graphicOptions,  # MODIFICATA: ho aggiunto il passaggio di graphicOptions
+        graphicOptions=graphicOptions,
         **kwargs
     )
 

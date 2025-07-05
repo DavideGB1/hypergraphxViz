@@ -112,7 +112,7 @@ class HypergraphDrawingWidget(QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, self.drawing_options_widget)
         self.use_default()
 
-    def update_hypergraph(self, example = None, hypergraph = None):
+    def update_hypergraph(self, hypergraph = None):
         """
         Updates the hypergraph instance with new data and corresponding UI components.
 
@@ -125,10 +125,7 @@ class HypergraphDrawingWidget(QMainWindow):
         """
         self.loading = True
         self.community_model = None
-        if example is not None:
-            self.hypergraph = example["hypergraph"]
-        if hypergraph is not None:
-            self.hypergraph = hypergraph
+        self.hypergraph = hypergraph
         self.slider_value = (2, self.hypergraph.max_size())
         if isinstance(self.hypergraph, Hypergraph):
             self.drawing_options_widget.update_hypergraph(hypergraph_type = "normal", n_nodes = self.hypergraph.num_nodes(), weighted = self.hypergraph.is_weighted())

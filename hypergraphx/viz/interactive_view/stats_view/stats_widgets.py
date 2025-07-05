@@ -1,11 +1,12 @@
 import multiprocessing
 
 from PyQt5.QtCore import QThread, pyqtSignal
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QHBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView
 from matplotlib.figure import Figure
+from matplotlib.gridspec import GridSpec
 
 from hypergraphx.viz.interactive_view.custom_widgets.loading_screen import LoadingScreen
-from hypergraphx.viz.interactive_view.stats_view.stats_calculations import motifs_calculations
+from hypergraphx.viz.interactive_view.stats_view.stats_calculations import motifs_calculations, calculate_centrality_pool
 from hypergraphx.viz.interactive_view.support import create_canvas_with_toolbar
 from hypergraphx.viz.plot_motifs import plot_motifs
 
@@ -33,7 +34,15 @@ class GenericGraphWidget(QWidget):
 
     def draw_graph(self, data):
         self.figure.clf()
-        if isinstance(self.drawing_params['axes'], tuple):
+        if 'layout' in self.drawing_params:
+            layout_type = self.drawing_params['layout']
+            if layout_type == '2_plus_1':
+                gs = GridSpec(2, 2, figure=self.figure)
+                ax1 = self.figure.add_subplot(gs[0, 0])
+                ax2 = self.figure.add_subplot(gs[0, 1])
+                ax3 = self.figure.add_subplot(gs[1, :])
+                self.axes = [ax1, ax2, ax3]
+        elif isinstance(self.drawing_params['axes'], tuple):
             self.axes = self.figure.subplots(*self.drawing_params['axes'])
         else:
             self.axes = self.figure.subplots(1, 1)
@@ -42,6 +51,7 @@ class GenericGraphWidget(QWidget):
         else:
             plot_motifs(data, None, self.axes)
         self.figure.subplots_adjust(wspace=self.drawing_params.get('wspace', 0.5), hspace=self.drawing_params.get('hspace', 0.5))
+        self.figure.tight_layout()
         self.canvas.draw()
         self.loading_container.setVisible(False)
         self.canvas.setVisible(True)
@@ -92,10 +102,8 @@ class MotifsWidget(QWidget):
             self.axes = self.figure.subplots(*self.drawing_params['axes'])
         else:
             self.axes = self.figure.subplots(1, 1)
-        if not self.drawing_function == plot_motifs:
-            self.drawing_function(self.axes, data, **self.drawing_params.get('extra_params', {}))
-        else:
-            plot_motifs(data, None, self.axes)
+
+        plot_motifs(ax = self.axes, motifs = data, title="Motifs", save_name=None)
         self.figure.subplots_adjust(wspace=self.drawing_params.get('wspace', 0.5),
                                     hspace=self.drawing_params.get('hspace', 0.5))
         self.canvas.draw()
@@ -120,6 +128,66 @@ class MotifsWidget(QWidget):
         self.repaint()
         self.hypergraph = hypergraph
 
+class CentralityWidget(QWidget):
+    def __init__(self, hypergraph, parent=None):
+        super(CentralityWidget, self).__init__(parent)
+        self.hypergraph = hypergraph
+        self.thread = None
+        self.node_tab = QTableWidget(self)
+        self.edge_tab = QTableWidget(self)
+        self.layout = QHBoxLayout()
+        self.layout.addWidget(self.node_tab)
+        self.layout.addWidget(self.edge_tab)
+        self.loading_container = LoadingScreen()
+        self.loading_container.setParent(self)
+        self.layout.addWidget(self.loading_container)
+        self.setLayout(self.layout)
+        self.update_hypergraph(self.hypergraph)
+
+    def draw_graph(self, data):
+        self.loading_container.setVisible(False)
+        nodes_values, edges_values = data[0], data[1]
+        curr_index = 0
+        self.node_tab.clear()
+        self.node_tab.setColumnCount(3)
+        self.node_tab.setHorizontalHeaderLabels(['Node', 'Betweenness centrality', 'Closeness centrality'])
+        self.node_tab.setRowCount(len(nodes_values))
+        self.node_tab.horizontalHeader().setStretchLastSection(True)
+        self.node_tab.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+        for node, b_cent, c_cent in nodes_values:
+            self.node_tab.setItem(curr_index, 0, QTableWidgetItem(str(node)))
+            self.node_tab.setItem(curr_index, 1, QTableWidgetItem(str(round(b_cent,3))))
+            self.node_tab.setItem(curr_index, 2, QTableWidgetItem(str(round(c_cent, 3))))
+            curr_index+=1
+
+        curr_index = 0
+        self.edge_tab.clear()
+        self.edge_tab.setColumnCount(3)
+        self.edge_tab.setHorizontalHeaderLabels(['Edge', 'Betweenness centrality', 'Closeness centrality'])
+        self.edge_tab.setRowCount(len(edges_values))
+        self.edge_tab.horizontalHeader().setStretchLastSection(True)
+        self.edge_tab.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+        for edge, b_cent, c_cent in edges_values:
+            self.edge_tab.setItem(curr_index, 0, QTableWidgetItem(str(edge)))
+            self.edge_tab.setItem(curr_index, 1, QTableWidgetItem(str(round(b_cent, 3))))
+            self.edge_tab.setItem(curr_index, 2, QTableWidgetItem(str(round(c_cent, 3))))
+            curr_index += 1
+        self.node_tab.setVisible(True)
+        self.edge_tab.setVisible(True)
+        self.update()
+
+    def update_hypergraph(self, hypergraph):
+        self.node_tab.setVisible(False)
+        self.edge_tab.setVisible(False)
+        self.loading_container.setVisible(True)
+        self.hypergraph = hypergraph
+        self.thread = StatsWorker(self.hypergraph, calculate_centrality_pool)
+        self.thread.progress.connect(self.draw_graph)
+        self.thread.start()
+
+
 class StatsWorker(QThread):
     progress = pyqtSignal(list)
     def __init__(self, hypergraph, function, parent=None):
@@ -129,4 +197,4 @@ class StatsWorker(QThread):
     def run(self):
         with multiprocessing.Pool(processes=1, maxtasksperchild=1) as pool:
             result = pool.apply(self.function, args=(self.hypergraph, ))
-            self.progress.emit(result)
+            self.progress.emit(list(result))
