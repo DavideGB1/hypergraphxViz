@@ -7,6 +7,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QWidget, QTabWidget, QVBoxLayout
 
 from hypergraphx import Hypergraph, TemporalHypergraph, DirectedHypergraph
+from hypergraphx.viz.interactive_view.aboutmepage.aboutme import AboutMePage
 from hypergraphx.viz.interactive_view.editing_view.modify_hypergraph_menu import ModifyHypergraphMenu
 from hypergraphx.viz.interactive_view.drawing_view.drawing_view import HypergraphDrawingWidget
 from hypergraphx.viz.interactive_view.stats_view.stats_view import HypergraphStatsWidget
@@ -62,6 +63,9 @@ class MainView(QWidget):
                     QTabWidget#MainTab QTabBar::tab:selected:hover {
                         background-color: white;
                     }
+                    AboutMePage {
+                        background-color: white;
+                    }
                 """)
         self.central_tab.setDocumentMode(True)
         self.drawing_tab = HypergraphDrawingWidget(hypergraph = self.hypergraph, parent=self)
@@ -74,7 +78,7 @@ class MainView(QWidget):
         self.modify_hypergraph_tab.updated_hypergraph.connect(self.update_hypergraph)
         editing_icon = QIcon("icons/edit.svg")
         self.central_tab.addTab(self.modify_hypergraph_tab, editing_icon, "Hypergraph Editing")
-        self.about_me = QWidget(parent=self)
+        self.about_me = AboutMePage(parent=self)
         info_icon = QIcon("icons/info.svg")
         self.central_tab.addTab(self.about_me, info_icon, "About Me")
 

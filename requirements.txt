@@ -10,7 +10,6 @@ seaborn~=0.13.2
 hypergraphx~=1.7.3
 setuptools~=68.2.0
 PyQt5~=5.15.11
-QtRangeSlider~=0.1.5
 numba~=0.60.0
 tqdm~=4.66.5
 superqt~=0.6.7
