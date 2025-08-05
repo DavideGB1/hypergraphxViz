@@ -77,6 +77,12 @@ class HypergraphDrawingWidget(QMainWindow):
         self.central_widget.setLayout(self.stacked)
         self.setCentralWidget(self.central_widget)
 
+        self.aggregation_options = {
+            "use_simplification": False,
+            "aggregation_threshold": 0.85,
+            "use_polygonal_simplification": False
+        }
+
         self.toolbar = NavigationToolbar(parent=self, canvas=self.canvas)
         home_icon = QIcon("icons/home.svg")
         self.toolbar._actions['home'].setIcon(home_icon)
@@ -174,7 +180,8 @@ class HypergraphDrawingWidget(QMainWindow):
             self.community_model,
             self.community_algorithm,
             self.community_options_dict,
-            self.use_last
+            self.use_last,
+            self.aggregation_options
         )
 
         self.thread.progress.connect(self.drawn)
@@ -308,6 +315,7 @@ class HypergraphDrawingWidget(QMainWindow):
         self.algorithm_options_dict = input_dictionary["algorithm_options"]
         self.graphic_options = input_dictionary["graphic_options"]
         self.extra_attributes = input_dictionary["extra_attributes"]
+        self.aggregation_options = input_dictionary["aggregation_options"]
         if input_dictionary["redraw"]:
             self.plot()
 

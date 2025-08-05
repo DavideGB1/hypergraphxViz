@@ -1,65 +1,47 @@
 import matplotlib.pyplot as plt
 import networkx as nx
 
-from hypergraphx.representations.projections import clique_projection
+from hypergraphx import Hypergraph
+from hypergraphx.representations.projections import (
+    bipartite_projection,
+    clique_projection,
+)
 
+def draw_bipartite_old(h: Hypergraph, pos=None, ax=None, align="vertical", **kwargs):
+    """
+    Draws a bipartite graph representation of the hypergraph.
+    Parameters
+    ----------
+    h : Hypergraph.
+        The hypergraph to be projected.
+    pos : dict.
+        A dictionary with nodes as keys and positions as values.
+    ax : matplotlib.axes.Axes.
+        The axes to draw the graph on.
+    kwargs : dict.
+        Keyword arguments to be passed to networkx.draw_networkx.
+    align : str.
+        The alignment of the nodes. Can be 'vertical' or 'horizontal'.
 
-def find_triplets(list):
-    triplets = []
-    for i in range(len(list)):
-        for j in range(i + 1, len(list)):
-            for k in range(j + 1, len(list)):
-                triplets.append([list[i], list[j], list[k]])
-    return triplets
+    Returns
+    -------
+    ax : matplotlib.axes.Axes.
+        The axes the graph was drawn on.
+    """
+    g, id_to_obj = bipartite_projection(h)
 
+    if pos is None:
+        pos = nx.bipartite_layout(
+            g, nodes=[n for n, d in g.nodes(data=True) if d["bipartite"] == 0]
+        )
 
-def draw_SC(
-    HG,
-    pos=None,
-    link_color="black",
-    hyperlink_color_by_order={2: "r", 3: "orange", 4: "green"},
-    link_width=2,
-    node_size=150,
-    node_color="#5494DA",
-    with_labels=False,
-    ax=None,
-):
+    if ax is None:
+        ax = plt.gca()
 
-    G = clique_projection(HG, keep_isolated=True)
-    if pos == None:
-        pos = nx.spring_layout(G)
-    for h_edge in HG.get_edges():
-        if len(h_edge) > 2:
+    nx.draw_networkx(g, pos=pos, ax=ax, **kwargs)
+    return ax
 
-            order = len(h_edge) - 1
-
-            if order >= 5:
-                alpha = 0.1
-            else:
-                alpha = 0.5
-
-            if order not in hyperlink_color_by_order.keys():
-                hyperlink_color_by_order[order] = "Black"
-            color = hyperlink_color_by_order[order]
-
-            x_coor = []
-            y_coor = []
-            triplets = find_triplets(h_edge)
-            for triplet in triplets:
-                for node in triplet:
-                    x_coor.append(pos[node][0])
-                    y_coor.append(pos[node][1])
-                # print(triplet)
-
-                plt.fill(x_coor, y_coor, alpha=alpha, c=color)
-
-    nx.draw(
-        G,
-        pos=pos,
-        with_labels=with_labels,
-        node_color=node_color,
-        edge_color=link_color,
-        width=link_width,
-        node_size=node_size,
-        ax=ax,
-    )
+h = Hypergraph([(6,7,8,9),(7,8,15),(8,9,14),(3,6),(1,2,3),(4,5,6),(5,24,25),(23,24,25),(24,26),(23,27)])
+draw_bipartite_old(h)
+plt.savefig("bipartite_old.svg")
+plt.show()

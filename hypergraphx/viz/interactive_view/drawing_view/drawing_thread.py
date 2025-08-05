@@ -14,9 +14,11 @@ from hypergraphx.viz.draw_projections import _compute_extra_node_drawing_data, _
     _compute_clique_drawing_data
 from hypergraphx.viz.draw_radial import _compute_radial_layout
 from hypergraphx.viz.draw_sets import _compute_set_layout
+from hypergraphx.viz.simplification_methods.agglomerative_simplification import agglomerative_simplification
+from hypergraphx.viz.simplification_methods.polygonal_symplification import polygonal_simplification, unstrangle_edges
 
 
-def create_figure(draw_function, hypergraph, dictionary):
+def create_figure(draw_function, hypergraph, dictionary, dummy_nodes):
     # Support
     def normalize_centrality(centrality):
         """
@@ -55,6 +57,8 @@ def create_figure(draw_function, hypergraph, dictionary):
         case "Adjacency Factor (t=2)":
             centrality = hypergraph.adjacency_factor(t=2)
     centrality = normalize_centrality(centrality)
+    if dummy_nodes is None:
+        dummy_nodes = []
     if draw_function == "Sets":
         result = _compute_set_layout(
             hypergraph= hypergraph,
@@ -72,7 +76,7 @@ def create_figure(draw_function, hypergraph, dictionary):
             scale = dictionary["algorithm_options_dict"]["scale_factor"],
             rounding_radius_size = dictionary["extra_attributes"]["rounding_radius_factor"],
             polygon_expansion_factor = dictionary["extra_attributes"]["polygon_expansion_factor"],
-            dummy_nodes = [],
+            dummy_nodes = dummy_nodes,
         )
     elif draw_function == "PAOH":
         result = calculate_paoh_layout(
@@ -198,7 +202,7 @@ def run_community_detection(hypergraph, algorithm, community_options):
 class PlotWorker(QThread):
     progress = pyqtSignal(list)
 
-    def __init__(self, draw_function, hypergraph, input_dictionary, model, community_algorithm, community_options, use_last, parent=None):
+    def __init__(self, draw_function, hypergraph, input_dictionary, model, community_algorithm, community_options, use_last, aggregation_options, parent=None):
         super(PlotWorker, self).__init__(parent)
         self.hypergraph = hypergraph
         self.draw_function = draw_function
@@ -207,12 +211,21 @@ class PlotWorker(QThread):
         self.use_last = use_last
         self.community_algorithm = community_algorithm
         self.community_options = community_options
+        self.aggregation_options = aggregation_options
         self._is_cancelled = False
+        self.dummy_nodes = None
 
     def run(self):
         try:
             if self._is_cancelled:
                 return
+            if self.aggregation_options["use_simplification"]:
+                self.hypergraph = agglomerative_simplification(self.hypergraph, self.aggregation_options["aggregation_threshold"])
+                if self.aggregation_options["use_polygonal_simplification"]:
+                    self.hypergraph = polygonal_simplification(self.hypergraph)
+                self.hypergraph = agglomerative_simplification(self.hypergraph, self.aggregation_options["aggregation_threshold"])
+                if self.aggregation_options["use_polygonal_simplification"] and self.draw_function == "Sets":
+                    self.hypergraph, self.dummy_nodes = unstrangle_edges(self.hypergraph)
 
             if not self.use_last:
                 with multiprocessing.Pool(processes=1, maxtasksperchild=1) as pool:
@@ -227,7 +240,7 @@ class PlotWorker(QThread):
                 return
 
             with multiprocessing.Pool(processes=1, maxtasksperchild=1) as pool:
-                results = pool.apply(create_figure, args=(self.draw_function, self.hypergraph, self.input_dictionary))
+                results = pool.apply(create_figure, args=(self.draw_function, self.hypergraph, self.input_dictionary, self.dummy_nodes))
 
             if self._is_cancelled:
                 return

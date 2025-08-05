@@ -9,6 +9,7 @@ from hypergraphx.viz.interactive_view.drawing_options.clustering_options import 
     MTOptionsWidget, MMSBMOptionsWidget
 from hypergraphx.viz.interactive_view.drawing_options.drawing_options import SetOptionsWidget, RadialOptionsWidget, \
     PAOHOptionsWidget, ExtraNodeOptionsWidget, BipartiteOptionsWidget, CliqueOptionsWidget
+from hypergraphx.viz.interactive_view.drawing_view.aggregation_widget import AggregationWidget
 from hypergraphx.viz.interactive_view.graphic_options.derived_graphic_options import create_graphic_options_widget
 
 
@@ -180,6 +181,11 @@ class DrawingOptionsDockWidget(QDockWidget):
         self.tab.addTab(self.community_options_tab, "Community")
         self.tab.setTabEnabled(self.tab.indexOf(self.community_options_tab), False)
         self.tab.setTabVisible(self.tab.indexOf(self.community_options_tab), False)
+        self.aggregation_options_tab = AggregationWidget(self)
+        self.tab.addTab(self.aggregation_options_tab, "Aggregation")
+        if self.hypergraph_type != "normal":
+            self.tab.setTabEnabled(self.tab.indexOf(self.aggregation_options_tab), False)
+            self.tab.setTabVisible(self.tab.indexOf(self.aggregation_options_tab), False)
 
         self.tab.setObjectName("OptionsTabs")
         self.vbox.addWidget(self.tab)
@@ -255,7 +261,6 @@ class DrawingOptionsDockWidget(QDockWidget):
                 self.graphic_options_tab.setCurrentIndex(2)
             else:
                 self.graphic_options_tab.setCurrentIndex(0)
-
 
     def __weighted_options(self):
         self.heaviest_weight_vbox = QVBoxLayout()
@@ -368,6 +373,7 @@ class DrawingOptionsDockWidget(QDockWidget):
                 ["No Centrality", "Degree Centrality", "Betweenness Centrality"])
         self.centrality_combobox.currentTextChanged.connect(self.__update_centrality)
         self.centrality_vbox.addWidget(self.centrality_combobox)
+
     def __update_hypergraph_centrality_options(self):
         self.centrality_combobox.clear()
         if self.hypergraph_type != "directed":
@@ -519,6 +525,13 @@ class DrawingOptionsDockWidget(QDockWidget):
         self.__update_hypergraph_drawing_options()
         self.__update_hypergraph_centrality_options()
         self.__create_graphic_options_widgets()
+        if self.hypergraph_type != "normal":
+            self.tab.setTabEnabled(self.tab.indexOf(self.aggregation_options_tab), False)
+            self.tab.setTabVisible(self.tab.indexOf(self.aggregation_options_tab), False)
+        else:
+            self.tab.setTabEnabled(self.tab.indexOf(self.aggregation_options_tab), True)
+            self.tab.setTabVisible(self.tab.indexOf(self.aggregation_options_tab), True)
+
         self.change_weighted_options()
 
     def redraw(self):
@@ -541,11 +554,20 @@ class DrawingOptionsDockWidget(QDockWidget):
             self.algorithm_options_dict["sort_nodes_by"] = False
         else:
             self.algorithm_options_dict["sort_nodes_by"] = True
-
-        self.update_value.emit({"%_heaviest_edges": heaviest_value,"centrality": self.centrality_combobox.currentText(),
-                                "community_detection_algorithm": cda,
-                                "drawing_options":self.drawing_combobox.currentText() ,"use_last": self.use_last, "algorithm_options":self.algorithm_options_dict,
-                                "graphic_options": self.graphic_options,"extra_attributes": self.extra_attributes,
-                                "community_options": self.community_options_dict, "weight_influence": weight_influence, "redraw": self.redraw_flag})
+        update_dict = {
+            "%_heaviest_edges": heaviest_value,
+            "centrality": self.centrality_combobox.currentText(),
+            "community_detection_algorithm": cda,
+            "drawing_options":self.drawing_combobox.currentText(),
+            "use_last": self.use_last,
+            "algorithm_options":self.algorithm_options_dict,
+            "graphic_options": self.graphic_options,
+            "extra_attributes": self.extra_attributes,
+            "community_options": self.community_options_dict,
+            "weight_influence": weight_influence,
+            "aggregation_options": self.aggregation_options_tab.get_options(),
+            "redraw": self.redraw_flag
+        }
+        self.update_value.emit(update_dict )
         self.redraw_flag = False
         self.use_last = False
