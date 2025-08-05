@@ -16,23 +16,24 @@ def polygonal_simplification(
     while len(edge2_adj3) > 0 or len(edge3_adj2) > 0:
         edges = hypergraph.get_edges()
         nodes = hypergraph.get_nodes()
-        for problem in edge2_adj3:
-            edge1, edge2 = set(problem[0]), set(problem[1])
-            intersection = edge1.intersection(edge2)
-            hypergraph.remove_edge(edge1)
-            hypergraph.remove_edge(edge2)
-            new_edge1 = [x for x in edge1 if x not in intersection]
-            new_edge1.append(str(intersection))
-            try:
-                hypergraph.add_edge(tuple(new_edge1))
-            except TypeError:
-                print(f"Error with {new_edge1}")
-                break
-            new_edge2 = [x for x in edge2 if x not in intersection]
-            new_edge2.append(str(intersection))
-            hypergraph.add_edge(tuple(new_edge2))
-        if print_log:
-            print(f"Solve edge2_adj3 in iteration: {iteration}")
+        #Neeed to be fixed
+        #for problem in edge2_adj3:
+        #    edge1, edge2 = set(problem[0]), set(problem[1])
+        #    intersection = edge1.intersection(edge2)
+        #    hypergraph.remove_edge(edge1)
+        #    hypergraph.remove_edge(edge2)
+        #    new_edge1 = [x for x in edge1 if x not in intersection]
+        #    new_edge1.append(str(intersection))
+        #    try:
+        #        hypergraph.add_edge(tuple(new_edge1))
+        #    except TypeError:
+        #        print(f"Error with {new_edge1}")
+        #        break
+        #    new_edge2 = [x for x in edge2 if x not in intersection]
+        #    new_edge2.append(str(intersection))
+        #    hypergraph.add_edge(tuple(new_edge2))
+        #if print_log:
+        #    print(f"Solve edge2_adj3 in iteration: {iteration}")
         for problem in edge3_adj2:
             edge1, edge2, edge3 = set(problem[0]), set(problem[1]), set(problem[2])
             intersection = edge1.intersection(edge2.intersection(edge3))
