@@ -103,7 +103,12 @@ class HypergraphDrawingWidget(QMainWindow):
         self.slider.update_value.connect(self.new_slider_value)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.slider)
 
-        self.drawing_options_widget = DrawingOptionsDockWidget(n_nodes=self.hypergraph.num_nodes(),
+        hypergraph_type = "normal"
+        if isinstance(self.hypergraph, DirectedHypergraph):
+            hypergraph_type = "directed"
+        if isinstance(self.hypergraph, TemporalHypergraph):
+            hypergraph_type = "temporal"
+        self.drawing_options_widget = DrawingOptionsDockWidget(weighted= self.hypergraph.is_weighted(), hypergraph_type=hypergraph_type,n_nodes=self.hypergraph.num_nodes(),
                                                                parent=self)
         self.drawing_options_widget.setTitleBarWidget(QWidget())
         suggested_width = self.drawing_options_widget.sizeHint().width()
@@ -192,7 +197,13 @@ class HypergraphDrawingWidget(QMainWindow):
                 graphicOptions=self.graphic_options.copy()
             )
         elif self.current_function == "PAOH":
-            draw_paoh_from_data(ax=self.figure.gca(), data=value_list[0],graphicOptions=self.graphic_options.copy())
+            draw_paoh_from_data(
+                ax=self.figure.gca(),
+                data=value_list[0],
+                graphicOptions=self.graphic_options.copy(),
+                axis_labels_size= self.extra_attributes["axis_labels_size"],
+                nodes_name_size = self.extra_attributes["nodes_name_size"]
+            )
         elif self.current_function == "Radial":
             _draw_radial_elements(
                 ax=self.figure.gca(),
@@ -227,6 +238,8 @@ class HypergraphDrawingWidget(QMainWindow):
                 draw_labels=self.algorithm_options_dict["draw_labels"],
                 graphicOptions=self.graphic_options.copy()
             )
+        if self.current_function != "PAOH":
+            self.figure.gca().axis('off')
         self.figure.tight_layout()
         self.canvas.draw()
         self.change_focus()

@@ -139,9 +139,8 @@ def draw_paoh_from_data(
         graphicOptions: GraphicOptions,
         y_label: str = "Nodes",
         x_label: str = "Edges",
-        time_font_size: int = 18,
-        time_separation_line_color: str = "#000000",
-        time_separation_line_width: int = 4,
+        axis_labels_size: int = 30,
+        nodes_name_size: int = 25,
         **kwargs
 ) -> None:
     """
@@ -171,13 +170,13 @@ def draw_paoh_from_data(
 
     idx = 0
     idx_timestamp = 0
-
+    max_timestamp = len(timestamps_layout) - 1
     # Main drawing cycle
     for timestamp_group in timestamps_layout:
         if isTemporal:
             ts_key = sorted(timestamp_mapping.keys())[idx_timestamp]
-            ax.text(idx - 0.45, max_node_y - 0.175, f"Time: {ts_key}",
-                    fontsize=time_font_size, **kwargs)
+            ax.text(idx - 0.45, max_node_y + 0.15, f"Epoch: {ts_key}",
+                    fontsize=graphicOptions.time_font_size, **kwargs)
 
         for column_set in timestamp_group:
             for edge in sorted(column_set):
@@ -210,28 +209,31 @@ def draw_paoh_from_data(
                                 markersize=graphicOptions.node_size[node] / 20, **kwargs)
                 else:
                     for node in edge:
-                        if u is None:
-                            ax.plot(idx, node_mapping[node], marker=graphicOptions.node_shape[node],
-                                    color=graphicOptions.node_color[node],
-                                    markeredgecolor=graphicOptions.node_facecolor[node],
-                                    markersize=graphicOptions.node_size[node] / 20, **kwargs)
-                        else:
-                            wedge_sizes, wedge_colors = _get_node_community(community_mapping, node, u,
-                                                                            community_colors, 0.1)
-                            _draw_node_community(ax, node, (idx, node_mapping[node]),
-                                                 wedge_sizes, wedge_colors, graphicOptions, 20, **kwargs)
+                        ax.plot(idx, node_mapping[node], marker=graphicOptions.node_shape[node],
+                                color=graphicOptions.node_color[node],
+                                markeredgecolor=graphicOptions.node_facecolor[node],
+                                markersize=graphicOptions.node_size[node] / 20, **kwargs)
             idx += 0.5
 
-        if isTemporal:
-            ax.plot([idx, idx], [-0.5, max_node_y], color=time_separation_line_color,
-                    linewidth=time_separation_line_width, **kwargs)
+        if u is not None:
+            for node in hypergraph.get_nodes():
+                wedge_sizes, wedge_colors = _get_node_community(community_mapping, node, u,
+                                                            community_colors, 0.1)
+                _draw_node_community(ax, node, (-0.35, node_mapping[node]),
+                                 wedge_sizes, wedge_colors, graphicOptions, 20, **kwargs)
+
+        if isTemporal and idx_timestamp != max_timestamp:
+            ax.plot([idx, idx], [-0.5, max_node_y], color=graphicOptions.time_separation_line_color,
+                    linewidth=graphicOptions.time_separation_line_size, **kwargs)
             idx_timestamp += 1
             idx += 0.5
 
     # Finalize axis options
-    ax.set_ylabel(y_label)
-    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label, fontsize = axis_labels_size )
+    ax.set_xlabel(x_label, fontsize = axis_labels_size )
     ax.set_xticks([])
+    ax.tick_params(axis='both', which='major', labelsize=nodes_name_size)
+
     ax.set_xlim([-0.5, final_idx_width])
     ax.set_ylim([-0.5, len(sorted_nodes) - 0.5])
     ax.set_yticks(range(len(sorted_nodes)))
@@ -251,9 +253,8 @@ def draw_PAOH(
         sorting_mapping: dict = None,
         y_label: str = "Nodes",
         x_label: str = "Edges",
-        time_font_size: int = 18,
-        time_separation_line_color: str = "#000000",
-        time_separation_line_width: int = 4,
+        axis_labels_size: int = 30,
+        nodes_name_size: int = 25,
         ax: Optional[plt.Axes] = None,
         figsize: tuple[float, float] = (10, 10),
         dpi: int = 300,
@@ -291,10 +292,9 @@ def draw_PAOH(
         data=calculation_data,
         y_label=y_label,
         x_label=x_label,
-        time_font_size=time_font_size,
-        time_separation_line_color=time_separation_line_color,
-        time_separation_line_width=time_separation_line_width,
         graphicOptions=graphicOptions,
+        axis_labels_size = axis_labels_size,
+        nodes_name_size = nodes_name_size,
         **kwargs
     )
 

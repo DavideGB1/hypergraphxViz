@@ -1,3 +1,4 @@
+import colorsys
 import math
 import random
 from typing import Optional, Any
@@ -9,7 +10,7 @@ from networkx import kamada_kawai_layout, spring_layout
 from scipy.spatial import ConvexHull
 
 from hypergraphx import Hypergraph
-from hypergraphx.representations.projections import extra_node_projection
+from hypergraphx.representations.projections import extra_node_projection, clique_projection
 from hypergraphx.viz.__graphic_options import GraphicOptions
 from hypergraphx.viz.__support import __filter_hypergraph, _get_node_community, \
     _draw_node_community, _get_community_info, draw_networkx_edge_labels_clone
@@ -140,6 +141,50 @@ class __vector:
         self.ny = self.y / self.length
         self.ang = math.atan2(self.ny, self.nx)
 
+def modifica_colore(hex_color, modifica_saturazione=0, modifica_luminosita=0):
+    """
+    Modifica la saturazione e la luminosità di un colore esadecimale.
+
+    Args:
+        hex_color (str): Il colore di partenza in formato esadecimale (es. '#RRGGBB').
+        modifica_saturazione (float): Valore da aggiungere alla saturazione (tra -1.0 e 1.0).
+        modifica_luminosita (float): Valore da aggiungere alla luminosità (tra -1.0 e 1.0).
+
+    Returns:
+        str: Il nuovo colore in formato esadecimale.
+    """
+    # Rimuove il '#' iniziale se presente
+    if hex_color.startswith('#'):
+        hex_color = hex_color[1:]
+
+    # Converte l'esadecimale in RGB
+    try:
+        r = int(hex_color[0:2], 16)
+        g = int(hex_color[2:4], 16)
+        b = int(hex_color[4:6], 16)
+    except ValueError:
+        raise ValueError("Formato colore esadecimale non valido.")
+
+    # Normalizza i valori RGB (da 0-255 a 0-1)
+    r_norm, g_norm, b_norm = r / 255.0, g / 255.0, b / 255.0
+
+    # Converte da RGB a HLS (Hue, Lightness, Saturation)
+    h, l, s = colorsys.rgb_to_hls(r_norm, g_norm, b_norm)
+
+    # Applica le modifiche a saturazione e luminosità, mantenendole nell'intervallo [0, 1]
+    nuova_saturazione = max(0, min(1, s + modifica_saturazione))
+    nuova_luminosita = max(0, min(1, l + modifica_luminosita))
+
+    # Riconverte da HLS a RGB
+    r_nuovo, g_nuovo, b_nuovo = colorsys.hls_to_rgb(h, nuova_luminosita, nuova_saturazione)
+
+    # Converte i nuovi valori RGB (0-1) in interi (0-255)
+    r_int, g_int, b_int = int(r_nuovo * 255), int(g_nuovo * 255), int(b_nuovo * 255)
+
+    # Formatta il nuovo colore in esadecimale
+    nuovo_hex = f'#{r_int:02x}{g_int:02x}{b_int:02x}'
+
+    return nuovo_hex
 
 def _compute_set_layout(
         hypergraph: Hypergraph,
@@ -174,7 +219,7 @@ def _compute_set_layout(
 
     # Extract node positions
     if pos is None:
-        g, _ = extra_node_projection(hypergraph)
+        g = clique_projection(hypergraph)
         if hypergraph.is_weighted():
             for edge in g.edges():
                 weight = g.get_edge_data(edge[0], edge[1])['weight']
@@ -188,9 +233,9 @@ def _compute_set_layout(
 
     # Set default hyperedge colors
     if hyperedge_color_by_order is None:
-        hyperedge_color_by_order = {2: "#FCB07E", 3: "#048BA8", 4: "#99C24D", 5: "#BC2C1A", 6: "#2F1847"}
+        hyperedge_color_by_order = {2: "#FC7D2A", 3: "#0094B4", 4: "#6CA500FF", 5: "#CE1700", 6: "#621AAE"}
     if hyperedge_facecolor_by_order is None:
-        hyperedge_facecolor_by_order = {2: "#FCB07E", 3: "#048BA8", 4: "#99C24D", 5: "#BC2C1A", 6: "#2F1847"}
+        hyperedge_facecolor_by_order = {2: "#fcbf97", 3: "#6DC7DB", 4: "#BDE17B", 5: "#D8796D", 6: "#AB7BDC"}
 
     # Create a NetworkX graph for binary interactions
     G = nx.Graph()
@@ -222,6 +267,10 @@ def _compute_set_layout(
             points_with_orig.sort(key=lambda p: np.arctan2(p[1] - y_c, p[0] - x_c))
 
             order = len(hye) - 1 - sum(1 for node in hye if node in dummy_nodes)
+            if order not in hyperedge_color_by_order.keys():
+                color = "#" + "%06x" % random.randint(0, 0xFFFFFF)
+                hyperedge_color_by_order.setdefault(order, modifica_colore(color, modifica_luminosita=-0.2))
+                hyperedge_facecolor_by_order.setdefault(order, modifica_colore(color, modifica_saturazione=-0.3, modifica_luminosita=0.2))
             color = hyperedge_color_by_order.setdefault(order, "#" + "%06x" % random.randint(0, 0xFFFFFF))
             facecolor = hyperedge_facecolor_by_order.setdefault(order, "#" + "%06x" % random.randint(0, 0xFFFFFF))
 
@@ -425,4 +474,3 @@ def draw_sets(
 
     # Return the computed positions, maintaining original behavior.
     return computed_data["pos"]
-

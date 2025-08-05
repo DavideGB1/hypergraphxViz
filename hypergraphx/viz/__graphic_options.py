@@ -64,6 +64,11 @@ class GraphicOptions:
             label_size: Optional[int] = 10,
             node_size: Optional[int | dict] = 300,
             weight_size: Optional[int] = 20,
+
+            time_font_size: int = 18,
+            time_separation_line_color: str = "#000000",
+            time_separation_line_size: int = 4,
+
             default_node_shape: Optional[str] = "o",
             default_node_color: Optional[str] = "#1f78b4",
             default_node_facecolor: Optional[str] = "#000000",
@@ -75,6 +80,10 @@ class GraphicOptions:
             default_label_color: Optional[str] = "#000000",
             default_node_size: Optional[int] = 300,
             default_weight_size: Optional[int] = 20,
+
+            default_time_font_size: int = 18,
+            default_time_separation_line_color: str = "#000000",
+            default_time_separation_line_size: int = 4,
     ):
         self.node_size = node_size
         self.in_edge_color = in_edge_color
@@ -91,6 +100,9 @@ class GraphicOptions:
         self.default_label_size = default_label_size
         self.default_label_color = default_label_color
         self.default_weight_size = default_weight_size
+        self.default_time_font_size = default_time_font_size
+        self.default_time_separation_line_color = default_time_separation_line_color
+        self.default_time_separation_line_size = default_time_separation_line_size
 
         self.node_shape = node_shape
         self.node_color = node_color
@@ -102,6 +114,10 @@ class GraphicOptions:
         self.label_size = label_size
         self.label_color = label_color
         self.weight_size = weight_size
+
+        self.time_font_size = time_font_size
+        self.time_separation_line_color = time_separation_line_color
+        self.time_separation_line_size = time_separation_line_size
         #Checks if all the colors have a valid HEX value
         hex_color_regex = r"^#[0-9a-fA-F]{6}$"
         for attr, value in vars(self).items():

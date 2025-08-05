@@ -1,4 +1,5 @@
-from PyQt5.QtWidgets import QDialog, QPlainTextEdit, QVBoxLayout, QLabel, QPushButton, QDialogButtonBox, QDoubleSpinBox
+from PyQt5.QtWidgets import QDialog, QPlainTextEdit, QVBoxLayout, QLabel, QPushButton, QDialogButtonBox, QDoubleSpinBox, \
+    QSpinBox
 
 
 class RandomGraphDialog(QDialog):
@@ -9,7 +10,7 @@ class RandomGraphDialog(QDialog):
         self.num_nodes = 1
         self.edges_dictionary = {}
 
-        self.n_nodes_spinbox = QDoubleSpinBox()
+        self.n_nodes_spinbox = QSpinBox()
         self.edges_input_text = QPlainTextEdit()
         self.edges_display_text = QPlainTextEdit()
 

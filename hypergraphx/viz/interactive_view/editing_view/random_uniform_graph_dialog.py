@@ -1,13 +1,13 @@
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QDialogButtonBox, QDoubleSpinBox
+from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QDialogButtonBox, QDoubleSpinBox, QSpinBox
 
 
 class RandomUniformGraphDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Generate Random Uniform Hypergraph")
-        self.n_nodes_spinbox = QDoubleSpinBox()
-        self.size_spinbox = QDoubleSpinBox()
-        self.n_edges_spinbox = QDoubleSpinBox()
+        self.n_nodes_spinbox = QSpinBox()
+        self.size_spinbox = QSpinBox()
+        self.n_edges_spinbox = QSpinBox()
 
         self._setup_ui()
 

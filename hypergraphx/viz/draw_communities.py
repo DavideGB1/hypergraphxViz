@@ -1,12 +1,14 @@
 from typing import Optional, Tuple, Union
 
+import matplotlib
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-
+import seaborn as sns
 from hypergraphx import Hypergraph
+from hypergraphx.communities.hy_sc.model import HySC
+from hypergraphx.communities.hypergraph_mt.model import HypergraphMT
 from hypergraphx.representations.projections import clique_projection
-from hypergraphx.viz.__support import extract_pie_properties
 
 
 def draw_communities(
@@ -17,7 +19,7 @@ def draw_communities(
     ax: Optional[plt.Axes] = None,
     pos: Optional[dict] = None,
     edge_color: str = "lightgrey",
-    edge_width: float = 0.3,
+    edge_width: float = 3,
     threshold_group: float = 0.1,
     wedge_color: str = "lightgrey",
     wedge_width: float = 1.5,
@@ -25,13 +27,13 @@ def draw_communities(
     label_size: float = 10,
     label_col: str = "black",
     node_size: Union[None, float, int, dict] = None,
-    c_node_size: float = 0.004,
+    c_node_size: float = 0.05,
     title: Optional[str] = None,
     title_size: float = 15,
     seed: int = 20,
     scale: int = 2,
     iterations: int = 100,
-    opt_dist: float = 0.2,
+    opt_dist: float = 0.4,
 ):
     """Visualize the node memberships of a hypergraph. Nodes are colored according to their memberships,
     which can be either hard- or soft-membership, and the node size is proportional to the degree in the hypergraph.
@@ -118,3 +120,55 @@ def draw_communities(
             ax.axis("equal")
             plt.axis("off")
     plt.tight_layout()
+
+
+def extract_pie_properties(
+    i: int, u: np.array, colors: dict, threshold: float = 0.01
+) -> Tuple[np.array, np.array]:
+    """Given a node, it extracts the wedge sizes and the respective colors for the pie chart
+    that represents its membership.
+
+    Parameters
+    ----------
+    i: node id.
+    u: membership matrix.
+    colors: dictionary of colors, where key represent the group id and values are colors.
+    threshold: threshold for node membership.
+
+    Returns
+    -------
+    wedge_sizes: wedge sizes.
+    wedge_colors: sequence of colors through which the pie chart will cycle.
+    """
+    valid_groups = np.where(u[i] > threshold)[0]
+    wedge_sizes = u[i][valid_groups]
+    wedge_colors = [colors[k] for k in valid_groups]
+    return wedge_sizes, wedge_colors
+
+h = Hypergraph([(6,7,8,9),(7,8,15),(8,9,14),(3,6),(1,2,3),(4,5,6),(5,24,25),(23,24,25),(24,26),(23,27)])
+K = 5  # number of communities
+seed = 20  # random seed
+n_realizations = 10  # number of realizations with different random initialization
+max_iter = 500  # maximum number of EM iteration steps before aborting
+check_convergence_every = 1 # number of steps in between every convergence check
+normalizeU = False  # if True, then the membership matrix u is normalized such that every row sums to 1
+baseline_r0 = False  # if True, then for the first iteration u is initialized around the solution of the Hypergraph Spectral Clustering
+verbose = False  # flag to print details
+
+model = HypergraphMT(
+    n_realizations=n_realizations,
+    max_iter=max_iter,
+    check_convergence_every=check_convergence_every,
+    verbose=verbose
+)
+u_HypergraphMT, w_HypergraphMT, _ = model.fit(h,
+                                               K=K,
+                                               seed=seed,
+                                               normalizeU=normalizeU,
+                                               baseline_r0=baseline_r0
+                                              )
+cmap = sns.color_palette("Paired", desat=0.7)
+col = {k: matplotlib.colors.to_hex(cmap[k*2], keep_alpha=False) for k in np.arange(K)}
+draw_communities(h, u_HypergraphMT, col)
+plt.savefig("old_draw_communities.svg")
+plt.show()

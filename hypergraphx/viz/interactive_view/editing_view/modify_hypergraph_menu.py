@@ -254,27 +254,30 @@ class ModifyHypergraphMenu(QMainWindow):
                 curr_row += 1
 
     def __remove_row(self):
-        if self.vertical_tab.currentWidget().use_nodes:
-            try:
-                self.actual_hypergraph.remove_node(self.vertical_tab.currentWidget().currentItem().text(), True)
-            except KeyError:
-                self.actual_hypergraph.remove_node(int(self.vertical_tab.currentWidget().currentItem().text()), True)
-        else:
-            if isinstance(self.actual_hypergraph, Hypergraph):
-                self.actual_hypergraph.remove_edge(eval(self.vertical_tab.currentWidget().currentItem().text()))
-            elif isinstance(self.actual_hypergraph, DirectedHypergraph):
-                row = self.vertical_tab.currentWidget().selectedItems()[0].row()
-                in_edge = eval(self.vertical_tab.currentWidget().item(row, 0).text())
-                out_edge = eval(self.vertical_tab.currentWidget().item(row, 1).text())
-                edge = (in_edge, out_edge)
-                self.actual_hypergraph.remove_edge(edge)
-            elif isinstance(self.actual_hypergraph, TemporalHypergraph):
-                row = self.vertical_tab.currentWidget().selectedItems()[0].row()
-                edge = eval(self.vertical_tab.currentWidget().item(row, 0).text())
-                time = int(self.vertical_tab.currentWidget().item(row, 1).text())
-                self.actual_hypergraph.remove_edge(edge, time)
-        self.vertical_tab.currentWidget().remove_row()
-        self.update_hypergraph()
+        if self.vertical_tab.currentWidget().currentItem() is not None:
+            if self.vertical_tab.currentWidget().use_nodes:
+                for item in self.vertical_tab.currentWidget().selectedItems():
+                    row = item.row()
+                    try:
+                        self.actual_hypergraph.remove_node(self.vertical_tab.currentWidget().item(row, 0).text(), True)
+                    except KeyError:
+                        self.actual_hypergraph.remove_node(int(self.vertical_tab.currentWidget().item(row, 0).text()), True)
+            else:
+                for item in self.vertical_tab.currentWidget().selectedItems():
+                    row = item.row()
+                    if isinstance(self.actual_hypergraph, Hypergraph):
+                        self.actual_hypergraph.remove_edge(eval(self.vertical_tab.currentWidget().item(row, 0).text()))
+                    elif isinstance(self.actual_hypergraph, DirectedHypergraph):
+                        in_edge = eval(self.vertical_tab.currentWidget().item(row, 0).text())
+                        out_edge = eval(self.vertical_tab.currentWidget().item(row, 1).text())
+                        edge = (in_edge, out_edge)
+                        self.actual_hypergraph.remove_edge(edge)
+                    elif isinstance(self.actual_hypergraph, TemporalHypergraph):
+                        edge = eval(self.vertical_tab.currentWidget().item(row, 0).text())
+                        time = int(self.vertical_tab.currentWidget().item(row, 1).text())
+                        self.actual_hypergraph.remove_edge(edge, time)
+            self.vertical_tab.currentWidget().remove_row()
+            self.update_hypergraph()
 
     def __add_row(self):
         """
@@ -407,8 +410,8 @@ class ModifyHypergraphMenu(QMainWindow):
         if dialog.exec() == QDialog.Accepted:
             values = dialog.get_values()
             try:
-                self.hypergraph = random_hypergraph(
-                    num_nodes=values["num_nodes"],
+                self.actual_hypergraph = random_hypergraph(
+                    num_nodes=int(values["num_nodes"]),
                     num_edges_by_size=values["edges_by_size"]
                 )
                 self.update_hypergraph()
@@ -423,10 +426,10 @@ class ModifyHypergraphMenu(QMainWindow):
         if dialog.exec() == QDialog.Accepted:
             values = dialog.get_values()
             try:
-                self.hypergraph = random_uniform_hypergraph(
-                    values["num_nodes"],
-                    values["edge_size"],
-                    values["num_edges"]
+                self.actual_hypergraph = random_uniform_hypergraph(
+                    int(values["num_nodes"]),
+                    int(values["edge_size"]),
+                    int(values["num_edges"])
                 )
                 gc.collect()
                 self.update_hypergraph()

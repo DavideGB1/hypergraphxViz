@@ -156,40 +156,14 @@ class DrawingOptionsDockWidget(QDockWidget):
 
         self.tab.addTab(self.drawing_options_stack, "Algorithm")
 
-        self.graphic_options= GraphicOptions()
+        self.graphic_options = GraphicOptions()
         self.graphic_options_widgets = dict()
         self.graphic_options_tab = QStackedWidget(self)
-        self.graphic_options_widgets["Sets"] = create_graphic_options_widget(
-            layout_type="Sets",graphic_options = self.graphic_options,
-            extra_attributes= self.__extra_options("Sets", self.hypergraph_type),parent=self
-        )
-        self.graphic_options_widgets["Radial"] = create_graphic_options_widget(
-            layout_type="Radial",graphic_options = self.graphic_options,
-            extra_attributes= self.__extra_options("Radial", self.hypergraph_type),parent=self
-        )
-        self.graphic_options_widgets["PAOH"] = create_graphic_options_widget(
-            layout_type="PAOH",graphic_options = self.graphic_options,
-            extra_attributes= self.__extra_options("PAOH", self.hypergraph_type),parent=self
-        )
-        self.graphic_options_widgets["Extra-Node"] = create_graphic_options_widget(
-            layout_type="Extra-Node",graphic_options = self.graphic_options,
-            extra_attributes= self.__extra_options("Extra-Node", self.hypergraph_type),parent=self
-        )
-        self.graphic_options_widgets["Bipartite"] = create_graphic_options_widget(
-            layout_type="Bipartite",graphic_options = self.graphic_options,
-            extra_attributes= self.__extra_options("Bipartite", self.hypergraph_type),parent=self
-        )
-        self.graphic_options_widgets["Clique"] = create_graphic_options_widget(
-            layout_type="Clique",graphic_options = self.graphic_options,
-            extra_attributes= self.__extra_options("Clique", self.hypergraph_type),parent=self
-        )
-        self.graphic_options_tab.setStyleSheet("""
-                QStackedWidget {
-                background-color: white;}
-        """)
+        self.graphic_options_tab.setStyleSheet("QStackedWidget { background-color: white; }")
         for widget in self.graphic_options_widgets.values():
             self.graphic_options_tab.addWidget(widget)
             widget.modified_options.connect(self.__update_graphic_options)
+        self.__create_graphic_options_widgets()
 
         self.tab.addTab(self.graphic_options_tab, "Graphic")
 
@@ -204,6 +178,7 @@ class DrawingOptionsDockWidget(QDockWidget):
             self.community_options_tab.addWidget(widget)
             widget.modified_options.connect(self.__update_community_options)
         self.tab.addTab(self.community_options_tab, "Community")
+        self.tab.setTabEnabled(self.tab.indexOf(self.community_options_tab), False)
         self.tab.setTabVisible(self.tab.indexOf(self.community_options_tab), False)
 
         self.tab.setObjectName("OptionsTabs")
@@ -226,7 +201,7 @@ class DrawingOptionsDockWidget(QDockWidget):
         self.setWidget(scroll_area)
         self.setFeatures(QDockWidget.NoDockWidgetFeatures)
         self.__changes_drawing_algorithm()
-        
+
     @staticmethod
     def __extra_options(val, hypergraph_type):
         """
@@ -236,19 +211,52 @@ class DrawingOptionsDockWidget(QDockWidget):
         if val == "Radial":
             extra_attributes["radius_scale_factor"] = 1.0
             extra_attributes["font_spacing_factor"] = 1.5
-        elif val == "PAOH" and hypergraph_type == "temporal":
-            extra_attributes["time_font_size"] = 18
-            extra_attributes["time_separation_line_color"] = "#000000"
-            extra_attributes["time_separation_line_size"] = 4
+        if val == "PAOH":
+            extra_attributes["axis_labels_size"] = 30
+            extra_attributes["nodes_name_size"] = 25
         elif val == "Sets":
             extra_attributes["hyperedge_alpha"] = 0.8
             extra_attributes["rounding_radius_factor"] = 0.1
             extra_attributes["polygon_expansion_factor"] = 1.8
-        if hypergraph_type == "directed":
-            extra_attributes["in_edge_color"] = "green"
-            extra_attributes["out_edge_color"] = "red"
         return extra_attributes
-            
+
+    def __create_graphic_options_widgets(self):
+        """
+        Clears and recreates all graphic options widgets based on the current
+        hypergraph type and weighted status.
+        """
+        # Clear existing widgets
+        while self.graphic_options_tab.count() > 0:
+            widget = self.graphic_options_tab.widget(0)
+            self.graphic_options_tab.removeWidget(widget)
+            widget.deleteLater()
+        self.graphic_options_widgets.clear()
+
+        # Define layout types
+        layout_types = ["Sets", "Radial", "PAOH", "Extra-Node", "Bipartite", "Clique"]
+
+        # Recreate widgets with current properties
+        for layout in layout_types:
+            widget = create_graphic_options_widget(
+                layout_type=layout,
+                graphic_options=self.graphic_options,
+                extra_attributes=self.__extra_options(layout, self.hypergraph_type),
+                weighted=self.weighted,
+                hypergraph_type=self.hypergraph_type,
+                parent=self
+            )
+            if widget:
+                self.graphic_options_widgets[layout] = widget
+                self.graphic_options_tab.addWidget(widget)
+                widget.modified_options.connect(self.__update_graphic_options)
+            if self.hypergraph_type == "directed":
+                self.graphic_options_tab.setCurrentIndex(3)
+            elif self.hypergraph_type == "temporal":
+                self.graphic_options_tab.setCurrentIndex(2)
+            else:
+                self.graphic_options_tab.setCurrentIndex(0)
+
+
     def __weighted_options(self):
         self.heaviest_weight_vbox = QVBoxLayout()
         self.heaviest_edges_spin_box = QDoubleSpinBox(self)
@@ -338,7 +346,7 @@ class DrawingOptionsDockWidget(QDockWidget):
         self.vbox.addWidget(self.weight_influence_vbox_widget)
 
     def change_weighted_options(self):
-        if self.weighted:
+        if self.weighted and self.drawing_combobox.currentText() != "PAOH":
             self.weight_influence_vbox_widget.setVisible(True)
             self.heaviest_weight_vbox_widget.setVisible(True)
         else:
@@ -380,7 +388,7 @@ class DrawingOptionsDockWidget(QDockWidget):
         self.drawing_options_widgets["PAOH"].space_optimization_btn.setChecked(False)
         self.use_last = True
         self.update()
-        
+
     def __create_community_detection_combobox(self):
         self.community_combobox = QComboBox(parent=self)
         self.community_combobox.addItems(["None", "Hypergraph Spectral Clustering","Hypergraph-MT", "Hy-MMSBM"])
@@ -389,10 +397,11 @@ class DrawingOptionsDockWidget(QDockWidget):
 
     def __change_community_detection_algorithm(self):
         """
-        Changes the community detection algorithm settings based on the user's selection 
+        Changes the community detection algorithm settings based on the user's selection
         from a combobox and dynamically updates the GUI.
         """
         if self.community_combobox.currentText() == "None":
+            self.tab.setTabEnabled(self.tab.indexOf(self.community_options_tab), False)
             self.tab.setTabVisible(self.tab.indexOf(self.community_options_tab), False)
         else:
             current_algorithm_name = self.community_combobox.currentText()
@@ -400,9 +409,10 @@ class DrawingOptionsDockWidget(QDockWidget):
                 widget_to_show = self.community_options_widgets[current_algorithm_name]
                 self.community_options_tab.setCurrentWidget(widget_to_show)
 
+            self.tab.setTabEnabled(self.tab.indexOf(self.community_options_tab), True)
             self.tab.setTabVisible(self.tab.indexOf(self.community_options_tab), True)
         self.update()
-        
+
     def __update_community_options(self, dictionary):
         """
         Updates the community options with the provided dictionary and triggers an update.
@@ -414,7 +424,7 @@ class DrawingOptionsDockWidget(QDockWidget):
         """
         self.community_options_dict.update(dictionary)
         self.update()
-        
+
     def __create_drawing_combobox(self):
         """
         Creates and initializes a QComboBox widget for selecting drawing algorithms.
@@ -423,7 +433,7 @@ class DrawingOptionsDockWidget(QDockWidget):
         self.__update_hypergraph_drawing_options()
         self.drawing_combobox.currentTextChanged.connect(self.__changes_drawing_algorithm)
         self.drawing_vbox.addWidget(self.drawing_combobox)
-        
+
     def __changes_drawing_algorithm(self):
         """
         Updates the drawing algorithm options and configurations based on the selected parameters.
@@ -443,7 +453,7 @@ class DrawingOptionsDockWidget(QDockWidget):
             widget_to_show = self.graphic_options_widgets[current_algorithm_name]
             self.graphic_options_tab.setCurrentWidget(widget_to_show)
             self.graphic_options, self.extra_attributes = widget_to_show.get_data()
-
+        self.change_weighted_options()
         self.update()
 
     def __update_graphic_options(self, new_options):
@@ -474,10 +484,10 @@ class DrawingOptionsDockWidget(QDockWidget):
         except KeyError:
             self.use_last = True
         self.update()
-        
+
     def __update_hypergraph_drawing_options(self):
         """
-        Updates the options available in the drawing combobox based on the type of hypergraph 
+        Updates the options available in the drawing combobox based on the type of hypergraph
         and other associated properties.
         """
         self.drawing_combobox.clear()
@@ -501,9 +511,14 @@ class DrawingOptionsDockWidget(QDockWidget):
         if not self.hypergraph_type == "normal":
             self.community_label.setVisible(False)
             self.community_combobox.setVisible(False)
+        else:
+            self.community_label.setVisible(True)
+            self.community_combobox.setVisible(True)
+
         self.centrality_combobox.setCurrentText("No Centrality")
         self.__update_hypergraph_drawing_options()
         self.__update_hypergraph_centrality_options()
+        self.__create_graphic_options_widgets()
         self.change_weighted_options()
 
     def redraw(self):

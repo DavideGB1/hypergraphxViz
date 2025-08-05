@@ -15,8 +15,10 @@ class BaseGraphicOptionsWidget(QWidget):
     """
     modified_options = pyqtSignal(tuple)
 
-    def __init__(self, graphic_options: GraphicOptions, extra_attributes: dict = None, parent=None):
+    def __init__(self, graphic_options: GraphicOptions, extra_attributes: dict = None, weighted = False, hypergraph_type: str = "normal", parent=None):
         super().__init__(parent)
+        self.weighted = weighted
+        self.hypergraph_type = hypergraph_type
         container_layout = QVBoxLayout(self)
         container_layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(container_layout)

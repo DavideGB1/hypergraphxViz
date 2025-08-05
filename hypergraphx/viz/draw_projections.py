@@ -373,6 +373,7 @@ def _compute_extra_node_drawing_data(
                 pos = nx.spring_layout(G=g, pos=posEdges, iterations=iterations, weight="weight", fixed=edgeList)
             else:
                 pos = nx.spring_layout(G=g, iterations=iterations, weight="weight")
+            #pos = nx.spectral_layout(g)
 
     if clone_g is not None:
         g = clone_g
@@ -431,7 +432,7 @@ def _draw_extra_node_on_ax(
                                    edgecolors=graphicOptions.node_facecolor[edge], ax=ax, **kwargs)
         if is_weighted:
             labels = nx.get_node_attributes(g, 'weight')
-            nx.draw_networkx_labels(g, ax=ax, pos=pos, labels=labels, font_size=graphicOptions.label_size,
+            nx.draw_networkx_labels(g, ax=ax, pos=pos, labels=labels, font_size=graphicOptions.weight_size,
                                     font_color=graphicOptions.label_color, **kwargs)
     # Draw labels
     if draw_labels:

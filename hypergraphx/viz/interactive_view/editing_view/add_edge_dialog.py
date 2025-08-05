@@ -1,6 +1,6 @@
 import re
 
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QTextEdit, QPushButton, QDoubleSpinBox
+from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QTextEdit, QPushButton, QDoubleSpinBox, QSpinBox
 
 from hypergraphx.viz.interactive_view.support import numerical_hypergraph, str_to_dict, str_to_tuple
 
@@ -173,7 +173,7 @@ class AddEdgeDialog(QDialog):
             layout.addWidget(line_edit)
 
         if self.edge_type == "temporal":
-            self.time_spinbox = QDoubleSpinBox(self)
+            self.time_spinbox = QSpinBox(self)
             self.time_spinbox.setMinimum(1)
             layout.addWidget(QLabel("Time:", self))
             layout.addWidget(self.time_spinbox)
