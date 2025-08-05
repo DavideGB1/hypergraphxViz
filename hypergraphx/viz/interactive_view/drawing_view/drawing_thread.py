@@ -220,7 +220,6 @@ class PlotWorker(QThread):
             if self._is_cancelled:
                 return
             if self.aggregation_options["use_simplification"]:
-                self.hypergraph = agglomerative_simplification(self.hypergraph, self.aggregation_options["aggregation_threshold"])
                 if self.aggregation_options["use_polygonal_simplification"]:
                     self.hypergraph = polygonal_simplification(self.hypergraph)
                 self.hypergraph = agglomerative_simplification(self.hypergraph, self.aggregation_options["aggregation_threshold"])
