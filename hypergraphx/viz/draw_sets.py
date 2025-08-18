@@ -10,7 +10,7 @@ from networkx import kamada_kawai_layout, spring_layout
 from scipy.spatial import ConvexHull
 
 from hypergraphx import Hypergraph
-from hypergraphx.representations.projections import extra_node_projection, clique_projection
+from hypergraphx.representations.projections import set_projection
 from hypergraphx.viz.__graphic_options import GraphicOptions
 from hypergraphx.viz.__support import __filter_hypergraph, _get_node_community, \
     _draw_node_community, _get_community_info, draw_networkx_edge_labels_clone
@@ -202,7 +202,6 @@ def _compute_set_layout(
         rounding_radius_size,
         polygon_expansion_factor,
         pos,
-        dummy_nodes,
 ) -> dict[str, Any]:
     """
     Computes all layout and style information for the set visualization.
@@ -219,7 +218,7 @@ def _compute_set_layout(
 
     # Extract node positions
     if pos is None:
-        g = clique_projection(hypergraph)
+        g, _ = set_projection(hypergraph)
         if hypergraph.is_weighted():
             for edge in g.edges():
                 weight = g.get_edge_data(edge[0], edge[1])['weight']
@@ -228,8 +227,9 @@ def _compute_set_layout(
                 elif weight_positioning == 2:
                     g[edge[0]][edge[1]]['weight'] = 1 / weight
 
-        first_pos = kamada_kawai_layout(g, scale=scale)
-        pos = spring_layout(g, pos=first_pos if first_pos else None, iterations=iterations, k=15)
+        pos = nx.spectral_layout(g)
+        pos = kamada_kawai_layout(g, scale=scale, pos=pos)
+        pos = spring_layout(g, pos=pos if pos else None, iterations=iterations, k=15)
 
     # Set default hyperedge colors
     if hyperedge_color_by_order is None:
@@ -266,7 +266,7 @@ def _compute_set_layout(
             y_c = np.mean([p[1] for p in points_with_orig])
             points_with_orig.sort(key=lambda p: np.arctan2(p[1] - y_c, p[0] - x_c))
 
-            order = len(hye) - 1 - sum(1 for node in hye if node in dummy_nodes)
+            order = len(hye) - 1 - sum(1 for node in hye if hypergraph.get_node_metadata(node) == "dummy")
             if order not in hyperedge_color_by_order.keys():
                 color = "#" + "%06x" % random.randint(0, 0xFFFFFF)
                 hyperedge_color_by_order.setdefault(order, modifica_colore(color, modifica_luminosita=-0.2))
@@ -306,6 +306,10 @@ def _compute_set_layout(
         pos_higher = {n: (p[0], p[1] + 0.075) for n, p in pos.items()}
         edge_labels_info = (labels, pos_higher)
 
+    dummy_nodes = list()
+    for node in hypergraph.get_nodes():
+        if hypergraph.get_node_metadata(node) == "dummy":
+            dummy_nodes.append(node)
     return {
         "pos": pos, "G": G, "dummy_nodes": dummy_nodes,
         "hyperedges_to_draw": hyperedges_to_draw, "community_info": community_info,
@@ -397,7 +401,6 @@ def draw_sets(
         figsize: tuple[float, float] = (10, 10),
         dpi: int = 300,
         graphicOptions: Optional[GraphicOptions] = GraphicOptions(),
-        dummy_nodes=[],
         **kwargs) -> dict:
     """
     Draws a set projection of the hypergraph.
@@ -455,7 +458,7 @@ def draw_sets(
         hypergraph, u, k, weight_positioning, cardinality, x_heaviest,
         rounded_polygon, hyperedge_color_by_order, hyperedge_facecolor_by_order,
         hyperedge_alpha, scale, iterations, rounding_radius_size,
-        polygon_expansion_factor, pos, dummy_nodes
+        polygon_expansion_factor, pos
     )
 
     # 2. Draw the elements onto the axes.

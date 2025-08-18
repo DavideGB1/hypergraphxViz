@@ -266,6 +266,61 @@ def extra_node_projection(h: Hypergraph|DirectedHypergraph) -> [nx.Graph,list]:
 
     return g, obj_to_id
 
+def set_projection(h: Hypergraph|DirectedHypergraph) -> [nx.Graph,list]:
+    """
+    Returns a graph representation of the hypergraph using the extra-node projection method.
+    Parameters
+    ----------
+    h : Hypergraph
+        The hypergraph to be projected.
+    Returns
+    -------
+    networkx.Graph
+        The graph representation of the hypergraph.
+    """
+    g = nx.Graph()
+    id_to_obj = {}
+    obj_to_id = {}
+    idx = 0
+
+    #Add normal nodes
+    for node in h.get_nodes():
+        id_to_obj[idx] = node
+        obj_to_id[node] = idx
+        idx += 1
+        g.add_node(node,is_edge = "node")
+
+    idx = 0
+    #Manage Hyperedges
+    for edge in h.get_edges():
+        #Manage binary relations
+        if len(edge) == 2:
+            weight = 1
+            if h.is_weighted():
+                weight = h.get_weight(edge)
+            g.add_edge(edge[0], edge[1], weight=weight)
+        #Any other type of relation
+        else:
+            obj_to_id[tuple(edge)] = 'E' + str(idx)
+            id_to_obj['E' + str(idx)] = edge
+            weight = 1
+            if h.is_weighted():
+                weight = h.get_weight(edge)
+            g.add_node(obj_to_id[tuple(edge)], weight=weight, is_edge = "edge")
+            for node in edge:
+                g.add_edge(node, obj_to_id[tuple(edge)], weight=weight)
+            for i in range(len(edge) - 1):
+                    if h.is_weighted():
+                        g.add_edge(edge[i], edge[i+1], weight=h.get_weight(edge))
+                    else:
+                        g.add_edge(edge[i], edge[i+1])
+            if h.is_weighted():
+                g.add_edge(edge[-1], edge[0], weight=h.get_weight(edge))
+            else:
+                g.add_edge(edge[-1], edge[0])
+        idx += 1
+    return g, obj_to_id
+
 
 def directed_line_graph(h: DirectedHypergraph, distance="intersection", s=1, weighted=False):
     """

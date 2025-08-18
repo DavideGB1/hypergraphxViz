@@ -23,9 +23,8 @@ class BaseGraphicOptionsWidget(QWidget):
         container_layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(container_layout)
 
-        scroll_area = QScrollArea()
+        scroll_area = QScrollArea(self)
         scroll_area.setWidgetResizable(True)
-        scroll_area.setStyleSheet("QScrollArea { border: none; }")
 
         self.scroll_content_widget = QWidget()
         scroll_area.setWidget(self.scroll_content_widget)
@@ -42,14 +41,7 @@ class BaseGraphicOptionsWidget(QWidget):
         self.label_size_spinbox = None
         self.balance_checkbox = None
         self.scroll_content_widget.setObjectName("GraphicOptionsContent")
-        self.scroll_content_widget.setStyleSheet("""
-                    QWidget#GraphicOptionsContent {
-                        background-color: white;
-                        border: 1px solid #dcdcdc;
-                        border-radius: 5px;
-                        border-top-left-radius: 0px;
-                    }
-                """)
+
         self._setup_widgets()
 
     def _setup_widgets(self):
@@ -143,59 +135,6 @@ class BaseGraphicOptionsWidget(QWidget):
     def _add_balance_size_feature(self):
         """Adds checkbox and logic to balance node and label sizes."""
         self.balance_checkbox = QCheckBox("Balance Node and Label Sizes", self)
-        self.balance_checkbox.setStyleSheet(
-            """
-                QCheckBox {
-                    spacing: 10px;
-                    color: #333;
-                    font-size: 13px;
-                    padding-bottom: 3px; 
-                }
-
-                QCheckBox::indicator {
-                    width: 18px;
-                    height: 18px;
-                    border-radius: 5px;
-                }
-
-                QCheckBox::indicator:unchecked {
-                    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #F5F5F5, stop: 1 #E0E0E0);
-                    border: 1px solid #BDBDBD;
-                    border-bottom: 2px solid #B0B0B0; 
-                }
-
-                QCheckBox::indicator:unchecked:hover {
-                    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,stop: 0 #FFFFFF, stop: 1 #E8E8E8);
-                    border-color: #9E9E9E;
-                }
-
-                QCheckBox::indicator:checked {
-                    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,stop: 0 #4A89DC, stop: 1 #3A79CB);
-                    border: 1px solid #3A79CB;
-                    margin-top: 2px;
-                }
-
-                QCheckBox::indicator:checked:hover {
-                    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,stop: 0 #5D9CEC, stop: 1 #4A89DC);
-                }
-
-                QCheckBox::check-mark {
-                    subcontrol-origin: indicator;
-                    subcontrol-position: center center;
-                    image: url(data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24'><path fill='white' d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/></svg>);
-                }
-
-                QCheckBox::indicator:disabled {
-                    background: #E0E0E0;
-                    border: 1px solid #C0C0C0;
-                    border-bottom: 2px solid #BDBDBD;
-                }
-
-                QCheckBox::check-mark:disabled {
-                    image: none;
-                }
-            """
-        )
         self.balance_checkbox.setChecked(True)
         self.main_layout.addWidget(self.balance_checkbox)
 

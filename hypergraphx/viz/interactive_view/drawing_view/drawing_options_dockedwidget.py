@@ -1,3 +1,4 @@
+from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QDockWidget, QDoubleSpinBox, QLabel, QTabWidget, QComboBox, \
@@ -83,77 +84,12 @@ class DrawingOptionsDockWidget(QDockWidget):
         self.change_weighted_options()
         self.redraw_button = QPushButton("Redraw",parent=self)
         self.redraw_button.clicked.connect(self.redraw)
-        self.redraw_button.setIcon(QIcon('../icons/draw.svg'))
-        self.redraw_button.setStyleSheet("""
-            QPushButton {
-                color: white;
-                font-size: 14px;
-                font-weight: bold;
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #5D9CEC, stop: 1 #4A89DC);
-                border: 1px solid #3A79CB;
-                border-bottom: 4px solid #3A79CB;
-                border-radius: 8px;
-                padding: 6px 18px;
-                margin-bottom: 4px;
-            }
-
-            QPushButton:hover {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #6AACFF, stop: 1 #5D9CEC);
-                border-color: #4A89DC;
-                border-bottom-color: #4A89DC;
-            }
-
-            QPushButton:pressed {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #4A89DC, stop: 1 #3A79CB);
-                border-bottom: 1px solid #3A79CB;
-                margin-top: 4px;
-                margin-bottom: 0px;
-            }
-
-            QPushButton:disabled {
-                background: #B0BEC5;
-                color: #78909C;
-                border: 1px solid #90A4AE;
-                border-bottom: 4px solid #78909C;
-            }
-        """)
-
+        self.redraw_button.setIcon(QIcon('../interactive_view/icons/draw.svg'))
         self.vbox.addWidget(self.redraw_button, 0, Qt.AlignCenter)
 
         self.use_last = False
 
         self.tab = QTabWidget()
-        self.tab.setObjectName("OptionsTabs")
-        self.tab.setStyleSheet("""
-            QTabWidget#OptionsTabs QTabBar::tab {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #F5F5F5, stop: 1 #E0E0E0);
-                border: 1px solid #BDBDBD;
-                border-bottom: none;
-                border-top-left-radius: 6px;
-                border-top-right-radius: 6px;
-                padding: 4px 5px;
-                margin-right: 2px;
-                color: #444;
-                font-weight: bold;
-                font-size: 12px;
-                width: 75px;
-            }
-            
-            QTabWidget#OptionsTabs QTabBar::tab:hover:!selected {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #FFFFFF, stop: 1 #E8E8E8);
-            }
-            QTabWidget#OptionsTabs QTabBar::tab:selected {
-                background-color: white;
-                color: #005A9E;
-                border-bottom-color: transparent; 
-                margin-bottom: -1px;
-                padding-bottom: 9px;
-            }
-            
-            QTabWidget#OptionsTabs QTabBar::tab:selected:hover {
-                background-color: white;
-            }
-        """)
 
         self.tab.addTab(self.drawing_options_stack, "Algorithm")
 
@@ -202,7 +138,6 @@ class DrawingOptionsDockWidget(QDockWidget):
 
         scroll_area = QScrollArea(self)
         scroll_area.setWidgetResizable(True)
-        scroll_area.setStyleSheet("QScrollArea { border: none; }")
         scroll_area.setWidget(self.widget)
         self.setWidget(scroll_area)
         self.setFeatures(QDockWidget.NoDockWidgetFeatures)
@@ -436,6 +371,7 @@ class DrawingOptionsDockWidget(QDockWidget):
         Creates and initializes a QComboBox widget for selecting drawing algorithms.
         """
         self.drawing_combobox = QComboBox(parent=self)
+
         self.__update_hypergraph_drawing_options()
         self.drawing_combobox.currentTextChanged.connect(self.__changes_drawing_algorithm)
         self.drawing_vbox.addWidget(self.drawing_combobox)

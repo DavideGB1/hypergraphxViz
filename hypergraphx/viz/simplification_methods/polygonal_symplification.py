@@ -122,7 +122,7 @@ def find_nonplanar_structures(h:Hypergraph):
 
 def unstrangle_edges(
         hypergraph: Hypergraph
-)-> (Hypergraph,list):
+)-> Hypergraph:
     _, _, strangled_edges = find_nonplanar_structures(hypergraph)
     dummy = -1
     edges = hypergraph.get_edges()
@@ -154,5 +154,7 @@ def unstrangle_edges(
     hypergraph = Hypergraph()
     hypergraph.add_edges(edges)
     hypergraph.add_nodes(nodes)
+    for node in dummy_nodes:
+        hypergraph.set_node_metadata(node, "dummy")
 
-    return hypergraph, dummy_nodes
+    return hypergraph

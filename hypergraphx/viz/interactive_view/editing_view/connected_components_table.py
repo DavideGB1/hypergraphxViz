@@ -10,17 +10,17 @@ class ConnectedComponentsTable(QTableWidget):
     QTableWidget with custom functions ad allows to modify the hypergraph.
     """
     update_status = pyqtSignal(dict)
-    def __init__(self, hypergraph, parent = None):
+    def __init__(self, controller, parent = None):
         super(ConnectedComponentsTable, self).__init__(parent)
-        self.hypergraph = hypergraph
+        self.controller = controller
         self.components = None
-        self.set_hypergraph(hypergraph)
+        self.set_hypergraph()
         # Table will fit the screen horizontally
         self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.verticalHeader().setVisible(False)
 
-
-    def set_hypergraph(self, hypergraph):
+    def set_hypergraph(self):
         """
         Updates the table with data from the provided hypergraph object.
 
@@ -31,8 +31,7 @@ class ConnectedComponentsTable(QTableWidget):
 
         """
         self.clear()
-        self.hypergraph = hypergraph
-        self.components = connected_components(self.hypergraph)
+        self.components = self.controller.cc
         self.setRowCount(len(self.components))
         self.setColumnCount(2)
         self.setHorizontalHeaderLabels(['Component', 'In Use:'])

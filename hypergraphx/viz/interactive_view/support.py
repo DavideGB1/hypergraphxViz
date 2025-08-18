@@ -135,6 +135,16 @@ def create_canvas_with_toolbar(figure):
     canvas = FigureCanvas(figure)
     canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
     toolbar = NavigationToolbar(canvas)
+    toolbar.setStyleSheet("""
+        QToolBar {
+            background-color: #dcdcdd;
+            border-radius: 5px;
+               border-top: 1px solid #ffffff;
+            border-left: 1px solid #ffffff;
+            border-right: 1px solid #aaaaaa;
+            border-bottom: 1px solid #aaaaaa;
+        }
+    """)
     home_icon = QIcon("icons/home.svg")
     toolbar._actions['home'].setIcon(home_icon)
     back_icon = QIcon("icons/left.svg")

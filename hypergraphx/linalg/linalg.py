@@ -467,10 +467,12 @@ def temporal_adjacency_matrix(
         The dictionary of node mappings for each adjacency matrix.
     """
     temporal_adjacency_matrixes = {}
+    nodes = temporal_hypergraph.get_nodes()
     subhypergraphs = temporal_hypergraph.subhypergraph()
     mapping = dict()
     for t in subhypergraphs.keys():
         hypergraph_t = subhypergraphs[t]
+        hypergraph_t.add_nodes(nodes)
         adj_t, matrix_map = adjacency_matrix(hypergraph_t, return_mapping=True)
         if return_mapping:
             mapping[t] = matrix_map

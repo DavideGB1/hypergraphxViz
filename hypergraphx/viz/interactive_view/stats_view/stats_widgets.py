@@ -135,6 +135,10 @@ class CentralityWidget(QWidget):
         self.thread = None
         self.node_tab = QTableWidget(self)
         self.edge_tab = QTableWidget(self)
+        self.node_tab.setAlternatingRowColors(True)
+        self.edge_tab.setAlternatingRowColors(True)
+        self.node_tab.verticalHeader().setVisible(False)
+        self.edge_tab.verticalHeader().setVisible(False)
         self.layout = QHBoxLayout()
         self.layout.addWidget(self.node_tab)
         self.layout.addWidget(self.edge_tab)

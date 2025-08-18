@@ -10,6 +10,7 @@ from hypergraphx import DirectedHypergraph, TemporalHypergraph, Hypergraph
 from hypergraphx.generation import random_hypergraph
 from hypergraphx.generation.random import random_uniform_hypergraph
 from hypergraphx.readwrite.save import save_hypergraph
+from hypergraphx.viz.interactive_view.controller import HypergraphType
 from hypergraphx.viz.interactive_view.editing_view.connected_components_table import ConnectedComponentsTable
 from hypergraphx.viz.interactive_view.editing_view.hypergraph_table import HypergraphTable
 from hypergraphx.viz.interactive_view.__examples import examples_generator
@@ -22,13 +23,13 @@ from hypergraphx.viz.interactive_view.editing_view.random_uniform_graph_dialog i
 class ModifyHypergraphMenu(QMainWindow):
     updated_hypergraph = pyqtSignal(dict)
 
-    def __init__(self, hypergraph, parent=None):
+    def __init__(self, controller, parent=None):
         super(ModifyHypergraphMenu, self).__init__(parent)
         self.vertical_tab = QTabWidget(parent=parent)
+        self.controller = controller
+        self.controller.updated_hypergraph.connect(self.update_hypergraph)
         self.vertical_tab.setTabPosition(QTabWidget.West)
         self.new_cc = False
-        self.actual_hypergraph = hypergraph
-        self.hypergraph = hypergraph
 
         # Create and add the toolbars
         self.__createMainToolBar()
@@ -37,68 +38,22 @@ class ModifyHypergraphMenu(QMainWindow):
         self.addToolBar(Qt.TopToolBarArea, self.cc_toolbar)
 
         # Setup tabs
-        self.nodes_tab = HypergraphTable(self.hypergraph, nodes=True, parent=self)
-        self.edges_tab = HypergraphTable(self.hypergraph, nodes=False, parent=self)
+        self.nodes_tab = HypergraphTable(controller = self.controller, nodes=True, parent=self)
+        self.edges_tab = HypergraphTable(controller = self.controller, nodes=False, parent=self)
         self.edges_tab.update_status.connect(self.changed_weights)
 
         self.vertical_tab.addTab(self.nodes_tab, "Nodes")
         self.vertical_tab.addTab(self.edges_tab, "Edges")
 
         self.cc_tab = None
-        if isinstance(self.hypergraph, Hypergraph):
-            self.cc_tab = ConnectedComponentsTable(self.hypergraph, parent=self)
+        if self.controller.hypergraph_type == HypergraphType.NORMAL:
+            self.cc_tab = ConnectedComponentsTable(self.controller, parent=self)
             self.vertical_tab.addTab(self.cc_tab, "CC")
             self.cc_tab.update_status.connect(self.update_cc_components)
 
         # Connect the tab-changed signal to the new handler
         self.vertical_tab.currentChanged.connect(self.__on_tab_changed)
         self.vertical_tab.setObjectName("EditingTab")
-        self.vertical_tab.setStyleSheet("""
-            QTabWidget#EditingTab::pane {
-                border: 1px solid #BDBDBD;
-                background-color: white;
-                margin-left: -1px;
-            }
-
-            QTabBar::tab:first {
-                margin-top: 10px;
-            }
-
-            QTabWidget#EditingTab QTabBar::tab {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #F5F5F5, stop: 1 #E0E0E0);
-                border: 1px solid #BDBDBD;
-                border-top-left-radius: 6px;
-                border-bottom-left-radius: 6px;
-                border-top-right-radius: 6px;
-                border-bottom-right-radius: 6px;
-                padding: 5px 8px;
-                margin-bottom: 3px;
-                margin-left: 10px;
-                color: #444;
-                font-weight: bold;
-                font-size: 12px;
-                width: 30; 
-                height: 50px;
-            }
-
-            QTabWidget#EditingTab QTabBar::tab:hover:!selected {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #FFFFFF, stop: 1 #E8E8E8);
-            }
-
-            QTabWidget#EditingTab QTabBar::tab:selected {
-                background-color: white;
-                color: #005A9E;
-                border-right-color: transparent; 
-                border-top-right-radius: 0px;
-                border-bottom-right-radius: 0px;
-                margin-right: -1px;
-                padding-right: 12px; 
-            }
-
-            QTabWidget#EditingTab QTabBar::tab:selected:hover {
-                background-color: white;
-            }
-        """)
         self.setCentralWidget(self.vertical_tab)
         self.__createMenuBar()
         # Set the initial state of the toolbars
@@ -161,8 +116,7 @@ class ModifyHypergraphMenu(QMainWindow):
         """
         Load an example hypergraph
         """
-        self.actual_hypergraph = action.return_hypergraph()
-        self.update_hypergraph()
+        self.controller.change_hypergraph(action.return_hypergraph())
 
     def __createMainToolBar(self):
         """
@@ -173,9 +127,11 @@ class ModifyHypergraphMenu(QMainWindow):
         self.main_toolbar.setMovable(False)
 
         self.add_action = QAction("Add", self)
+        self.add_action.setToolTip("Add a new node/edge to the Hypergraph.")
         self.add_action.triggered.connect(self.__add_row)
 
         self.remove_action = QAction("Remove", self)
+        self.remove_action.setToolTip("Remove the selected nodes/edges from the Hypergraph.")
         self.remove_action.triggered.connect(self.__remove_row)
 
         self.main_toolbar.addAction(self.add_action)
@@ -220,7 +176,7 @@ class ModifyHypergraphMenu(QMainWindow):
         curr_row = 0
         max_index = 0
         max_len = 0
-        for component in self.cc_tab.components:
+        for component in self.controller.cc:
             if max_len < len(component):
                 max_len = len(component)
                 max_index = curr_row
@@ -231,17 +187,14 @@ class ModifyHypergraphMenu(QMainWindow):
         sub_hg = Hypergraph()
         curr_row = 0
         selected = 0
-        for component in self.cc_tab.components:
+        selected_cc = []
+        for component in self.controller.cc:
             if self.cc_tab.item(curr_row, 1).checkState() == QtCore.Qt.Checked:
                 selected += 1
-                cc_hg: Hypergraph = self.cc_tab.hypergraph.subhypergraph(component)
-                weights = None
-                if self.cc_tab.hypergraph.is_weighted():
-                    weights = cc_hg.get_weights()
-                sub_hg.add_edges(cc_hg.get_edges(), weights, cc_hg.get_all_edges_metadata())
+                selected_cc.append(component)
             curr_row += 1
         if selected > 0:
-            self.update_cc_components({"selected_components_hg": sub_hg})
+            self.controller.update_selected_ccs(selected_cc)
         else:
             QMessageBox.critical(
                 self,
@@ -256,28 +209,28 @@ class ModifyHypergraphMenu(QMainWindow):
     def __remove_row(self):
         if self.vertical_tab.currentWidget().currentItem() is not None:
             if self.vertical_tab.currentWidget().use_nodes:
+                to_remove_nodes = []
                 for item in self.vertical_tab.currentWidget().selectedItems():
-                    row = item.row()
-                    try:
-                        self.actual_hypergraph.remove_node(self.vertical_tab.currentWidget().item(row, 0).text(), True)
-                    except KeyError:
-                        self.actual_hypergraph.remove_node(int(self.vertical_tab.currentWidget().item(row, 0).text()), True)
+                    to_remove_nodes.append(self.vertical_tab.currentWidget().item(item.row(), 0).text())
+                self.controller.remove_nodes(to_remove_nodes)
             else:
+                to_remove_edges = []
                 for item in self.vertical_tab.currentWidget().selectedItems():
                     row = item.row()
-                    if isinstance(self.actual_hypergraph, Hypergraph):
-                        self.actual_hypergraph.remove_edge(eval(self.vertical_tab.currentWidget().item(row, 0).text()))
-                    elif isinstance(self.actual_hypergraph, DirectedHypergraph):
-                        in_edge = eval(self.vertical_tab.currentWidget().item(row, 0).text())
-                        out_edge = eval(self.vertical_tab.currentWidget().item(row, 1).text())
-                        edge = (in_edge, out_edge)
-                        self.actual_hypergraph.remove_edge(edge)
-                    elif isinstance(self.actual_hypergraph, TemporalHypergraph):
-                        edge = eval(self.vertical_tab.currentWidget().item(row, 0).text())
-                        time = int(self.vertical_tab.currentWidget().item(row, 1).text())
-                        self.actual_hypergraph.remove_edge(edge, time)
-            self.vertical_tab.currentWidget().remove_row()
-            self.update_hypergraph()
+                    match self.controller.hypergraph_type:
+                        case HypergraphType.NORMAL:
+                            to_remove_edges.append(eval(self.vertical_tab.currentWidget().item(row, 0).text()))
+                        case HypergraphType.DIRECTED:
+                            in_edge = eval(self.vertical_tab.currentWidget().item(row, 0).text())
+                            out_edge = eval(self.vertical_tab.currentWidget().item(row, 1).text())
+                            edge = (in_edge, out_edge)
+                            to_remove_edges.append(edge)
+                        case HypergraphType.TEMPORAL:
+                            edge = eval(self.vertical_tab.currentWidget().item(row, 0).text())
+                            time = int(self.vertical_tab.currentWidget().item(row, 1).text())
+                            to_remove_edges.append((edge, time))
+                self.controller.remove_edges(to_remove_edges)
+
 
     def __add_row(self):
         """
@@ -286,43 +239,30 @@ class ModifyHypergraphMenu(QMainWindow):
         if self.vertical_tab.currentWidget().use_nodes:
             self.add_node_func()
         else:
-            if isinstance(self.actual_hypergraph, Hypergraph):
-                self.add_edge("normal")
-            elif isinstance(self.actual_hypergraph, DirectedHypergraph):
-                self.add_edge("directed")
-            elif isinstance(self.actual_hypergraph, TemporalHypergraph):
-                self.add_edge("temporal")
+            match self.controller.hypergraph_type:
+                case HypergraphType.NORMAL:
+                    self.add_edge("normal")
+                case HypergraphType.DIRECTED:
+                    self.add_edge("directed")
+                case HypergraphType.TEMPORAL:
+                    self.add_edge("temporal")
 
     def add_node_func(self):
-        dialog = AddNodeDialog(self.actual_hypergraph, self)
+        dialog = AddNodeDialog(self.controller.get_hypergraph(), self)
         if dialog.exec() == QDialog.Accepted:
             values = dialog.get_values()
-            self.hypergraph.add_node(values["name"], values["metadata"])
-            self.update_hypergraph()
+            self.controller.add_node(values)
 
     def add_edge(self, edge_type):
         """
         Opens a dialog to add an arc of a specific type.
         """
-        dialog = AddEdgeDialog(self.actual_hypergraph, edge_type, self)
+        dialog = AddEdgeDialog(self.controller.get_hypergraph(), edge_type, self)
 
         if dialog.exec() == QDialog.Accepted:
             values = dialog.get_values()
             try:
-                if edge_type == "temporal":
-                    self.actual_hypergraph.add_edge(
-                        values["edge_data"],
-                        values["time"],
-                        values["weight"],
-                        values["metadata"]
-                    )
-                else:
-                    self.actual_hypergraph.add_edge(
-                        values["edge_data"],
-                        values["weight"],
-                        values["metadata"]
-                    )
-                self.update_hypergraph()
+                self.controller.add_edge(values)
             except Exception as e:
                 QMessageBox.critical(
                     self,
@@ -342,12 +282,7 @@ class ModifyHypergraphMenu(QMainWindow):
             return
         else:
             try:
-                if file_path.endswith(".hif.json"):
-                    self.actual_hypergraph = hypergraphx.readwrite.load_hif(file_path)
-                else:
-                    self.actual_hypergraph = hypergraphx.readwrite.load_hypergraph(file_path)
-                self.update_hypergraph()
-
+                self.controller.load_from_file(file_path)
             except (ValueError, KeyError) as e:
                 QMessageBox.critical(
                     self,
@@ -376,12 +311,11 @@ class ModifyHypergraphMenu(QMainWindow):
                 if "hgx" in selected_filter:
                     if not file_path.endswith('.hgx'):
                         file_path += '.hgx'
-                    save_hypergraph(self.hypergraph, file_path, binary=True)
-
+                    self.controller.save_to_file(file_path)
                 elif "json" in selected_filter:
                     if not file_path.endswith('.json'):
                         file_path += '.json'
-                    save_hypergraph(self.hypergraph, file_path, binary=False)
+                    self.controller.save_to_file(file_path)
                 else:
                     QMessageBox.warning(
                         self,
@@ -408,13 +342,8 @@ class ModifyHypergraphMenu(QMainWindow):
         dialog = RandomGraphDialog(self)
 
         if dialog.exec() == QDialog.Accepted:
-            values = dialog.get_values()
             try:
-                self.actual_hypergraph = random_hypergraph(
-                    num_nodes=int(values["num_nodes"]),
-                    num_edges_by_size=values["edges_by_size"]
-                )
-                self.update_hypergraph()
+                self.controller.random_graph(dialog.get_values())
             except ValueError as e:
                 QMessageBox.critical(self, "Generation Error", f"Could not generate the hypergraph.\n\nDetails: {e}")
 
@@ -424,44 +353,35 @@ class ModifyHypergraphMenu(QMainWindow):
         dialog = RandomUniformGraphDialog(self)
 
         if dialog.exec() == QDialog.Accepted:
-            values = dialog.get_values()
             try:
-                self.actual_hypergraph = random_uniform_hypergraph(
-                    int(values["num_nodes"]),
-                    int(values["edge_size"]),
-                    int(values["num_edges"])
-                )
-                gc.collect()
-                self.update_hypergraph()
+                self.controller.random_uniform_graph(dialog.get_values())
             except ValueError as e:
                 QMessageBox.critical(self, "Generation Error", f"Could not generate the hypergraph.\n\nDetails: {e}")
         gc.collect()
 
-    def update_hypergraph(self):
+    def update_hypergraph(self, values):
         """
         Refresh the view after a hypergraph change.
         This method is now safe, fast, and does not leak memory.
         Simply call the refresh methods on existing widgets.
         """
+        self.nodes_tab.set_hypergraph()
+        self.edges_tab.set_hypergraph()
         if not self.new_cc:
-            self.hypergraph = self.actual_hypergraph
-        self.nodes_tab.set_hypergraph(self.hypergraph)
-        self.edges_tab.set_hypergraph(self.hypergraph)
-        if not self.new_cc:
-            if isinstance(self.hypergraph, Hypergraph):
+            if self.controller.hypergraph_type == HypergraphType.NORMAL:
                 if self.cc_tab is None:
-                    self.cc_tab = ConnectedComponentsTable(self.hypergraph, parent=self)
+                    self.cc_tab = ConnectedComponentsTable(self.controller, parent=self)
                     self.vertical_tab.addTab(self.cc_tab, "CC")
                 else:
-                    self.cc_tab.set_hypergraph(self.hypergraph)
-                    self.vertical_tab.setTabVisible(self.vertical_tab.indexOf(self.cc_tab), True)
+                    if not values["updated_ccs"]:
+                        self.cc_tab.set_hypergraph()
+                        self.vertical_tab.setTabVisible(self.vertical_tab.indexOf(self.cc_tab), True)
             else:
                 if self.cc_tab is not None:
                     self.vertical_tab.setTabVisible(self.vertical_tab.indexOf(self.cc_tab), False)
 
         gc.collect()
         self.new_cc = False
-        self.updated_hypergraph.emit({"hypergraph": self.hypergraph})
 
     def update_cc_components(self, dictionary):
         self.hypergraph = dictionary["selected_components_hg"]
@@ -469,4 +389,4 @@ class ModifyHypergraphMenu(QMainWindow):
         self.update_hypergraph()
 
     def changed_weights(self):
-        self.updated_hypergraph.emit({"hypergraph": self.actual_hypergraph})
+        self.updated_hypergraph.emit({"hypergraph": self.controller.get_hypergraph()})

@@ -2,6 +2,7 @@ from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtGui import QDoubleValidator
 from PyQt5.QtWidgets import QStyledItemDelegate, QLineEdit, QTableWidget, QHeaderView, QTableWidgetItem
 from hypergraphx import DirectedHypergraph, TemporalHypergraph
+from hypergraphx.viz.interactive_view.controller import HypergraphType
 from hypergraphx.viz.interactive_view.support import str_to_dict, str_to_int_or_float, str_to_tuple
 
 
@@ -29,8 +30,10 @@ class HypergraphTable(QTableWidget):
     QTableWidget with custom functions ad allows to modify the hypergraph.
     """
     update_status = pyqtSignal(dict)
-    def __init__(self, hypergraph, nodes = True, parent = None):
+    def __init__(self, controller, nodes = True, parent = None):
         super(HypergraphTable, self).__init__(parent)
+        self.setAlternatingRowColors(True)
+        self.controller = controller
         self.itemChanged.connect(self.__check_new_cell_value)
         self.weight_col = 0
         self.metadata_col = 0
@@ -39,11 +42,12 @@ class HypergraphTable(QTableWidget):
         self.valid_col = 1
         self.use_nodes = nodes
         self.old_values = dict()
-        self.hypergraph = hypergraph
-        self.set_hypergraph(hypergraph)
+        self.times_list = dict()
+        self.set_hypergraph()
         # Table will fit the screen horizontally
         self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.verticalHeader().setVisible(False)
         self.setItemDelegateForColumn(0, ReadOnlyDelegate(self))
 
     def remove_row(self):
@@ -52,7 +56,7 @@ class HypergraphTable(QTableWidget):
         """
         self.removeRow(self.currentRow())
 
-    def set_hypergraph(self, hypergraph):
+    def set_hypergraph(self):
         """
         Updates the table with data from the provided hypergraph object.
 
@@ -62,7 +66,6 @@ class HypergraphTable(QTableWidget):
             The hypergraph object containing updated data to refresh the table.
 
         """
-        self.hypergraph = hypergraph
         self.loading = True
         self.itemChanged.disconnect(self.__check_new_cell_value)
         self.clearContents()
@@ -80,7 +83,7 @@ class HypergraphTable(QTableWidget):
         """
         Updates the table to display the nodes of a hypergraph and their associated metadata.
         """
-        num_row = self.hypergraph.num_nodes()
+        num_row = self.controller.get_hypergraph().num_nodes()
         num_col = 2
         self.metadata_col = 1
         self.setRowCount(num_row)
@@ -88,8 +91,8 @@ class HypergraphTable(QTableWidget):
         if self.use_nodes:
             self.setHorizontalHeaderLabels(['Name', 'Metadata'])
         curr_row = 0
-        for node in self.hypergraph.get_nodes():
-            metadata = self.hypergraph.get_node_metadata(node)
+        for node in self.controller.get_hypergraph().get_nodes():
+            metadata = self.controller.get_hypergraph().get_node_metadata(node)
             if metadata is None:
                 metadata = {}
             self.setItem(curr_row, 0, QTableWidgetItem(str(node)))
@@ -107,14 +110,14 @@ class HypergraphTable(QTableWidget):
         For each edge in the hypergraph, this method populates the table
         with edge-specific information by invoking related helper methods.
         """
-        num_row = self.hypergraph.num_edges()
+        num_row = self.controller.get_hypergraph().num_edges()
         config = self.__get_hypergraph_config()
         num_col = config["num_col"]
         idx = config["idx"]
         self.weight_col = config["weight_col"]
         self.metadata_col = config["metadata_col"]
         col_names = config["col_names"]
-        if self.hypergraph.is_weighted():
+        if self.controller.get_hypergraph().is_weighted():
             num_col += 1
             idx += 1
             self.weight_col += 1
@@ -125,7 +128,7 @@ class HypergraphTable(QTableWidget):
         self.setHorizontalHeaderLabels(col_names)
 
         curr_row = 0
-        for edge in self.hypergraph.get_edges():
+        for edge in self.controller.get_hypergraph().get_edges():
             self.__set_edge_items(curr_row, edge)
             self.__update_weight_and_delegate(curr_row, edge)
             self.__update_metadata(curr_row, edge)
@@ -151,15 +154,17 @@ class HypergraphTable(QTableWidget):
             - `col_names` (list of str): Descriptive names for each column.
 
         """
-        if isinstance(self.hypergraph, DirectedHypergraph):
-            return {"num_col": 3, "idx": 1, "weight_col": 1, "metadata_col": 2,
+        match self.controller.hypergraph_type:
+            case HypergraphType.DIRECTED:
+                return {"num_col": 3, "idx": 1, "weight_col": 1, "metadata_col": 2,
                     "col_names": ["Edge Source", "Edge Destination", "Metadata"]}
-        elif isinstance(self.hypergraph, TemporalHypergraph):
-            return {"num_col": 3, "idx": 1, "weight_col": 1, "metadata_col": 2,
+            case HypergraphType.TEMPORAL:
+                return {"num_col": 3, "idx": 1, "weight_col": 1, "metadata_col": 2,
                     "col_names": ["Edge", "Time", "Metadata"]}
-        else:
-            return {"num_col": 2, "idx": 0, "weight_col": 0, "metadata_col": 1,
+            case HypergraphType.NORMAL:
+                return {"num_col": 2, "idx": 0, "weight_col": 0, "metadata_col": 1,
                     "col_names": ["Edge", "Metadata"]}
+        return {}
 
     def __set_edge_items(self,row, edge):
         """
@@ -181,15 +186,17 @@ class HypergraphTable(QTableWidget):
           and applies a `ValidationDelegate` to column 1.
         - For other hypergraph types, the function interprets `edge` as a single value and sets it in column 0.
         """
-        if isinstance(self.hypergraph, DirectedHypergraph):
-            self.setItem(row, 0, QTableWidgetItem(str(edge[0])))
-            self.setItem(row, 1, QTableWidgetItem(str(edge[1])))
-        elif isinstance(self.hypergraph, TemporalHypergraph):
-            self.setItem(row, 0, QTableWidgetItem(str(edge[1])))
-            self.setItem(row, 1, QTableWidgetItem(str(edge[0])))
-            self.setItemDelegateForColumn(1, ValidationDelegate(self))
-        else:
-            self.setItem(row, 0, QTableWidgetItem(str(edge)))
+        match self.controller.hypergraph_type:
+            case HypergraphType.DIRECTED:
+                self.setItem(row, 0, QTableWidgetItem(str(edge[0])))
+                self.setItem(row, 1, QTableWidgetItem(str(edge[1])))
+            case HypergraphType.TEMPORAL:
+                self.setItem(row, 0, QTableWidgetItem(str(edge[1])))
+                self.setItem(row, 1, QTableWidgetItem(str(edge[0])))
+                self.times_list[row] = edge[0]
+                self.setItemDelegateForColumn(1, ValidationDelegate(self))
+            case HypergraphType.NORMAL:
+                self.setItem(row, 0, QTableWidgetItem(str(edge)))
 
     def __update_weight_and_delegate(self, row, edge):
         """
@@ -204,11 +211,11 @@ class HypergraphTable(QTableWidget):
             The edge whose weight is to be retrieved and updated in the table. The format of the edge depends on the hypergraph type.
 
         """
-        if self.hypergraph.is_weighted():
-            if isinstance(self.hypergraph, TemporalHypergraph):
-                weight = self.hypergraph.get_weight(edge[1], edge[0])
+        if self.controller.get_hypergraph().is_weighted():
+            if self.controller.hypergraph_type == HypergraphType.TEMPORAL:
+                weight = self.controller.get_hypergraph().get_weight(edge[1], edge[0])
             else:
-                weight = self.hypergraph.get_weight(edge)
+                weight = self.controller.get_hypergraph().get_weight(edge)
             self.setItem(row, self.weight_col, QTableWidgetItem(str(weight)))
             self.setItemDelegateForColumn(self.weight_col, ValidationDelegate(self))
 
@@ -224,13 +231,13 @@ class HypergraphTable(QTableWidget):
             The edge in the hypergraph for which metadata is retrieved and updated.
 
         """
-        if isinstance(self.hypergraph, TemporalHypergraph):
-            metadata = self.hypergraph.get_edge_metadata(edge[1], edge[0]) or {}
+        if self.controller.hypergraph_type == HypergraphType.TEMPORAL:
+            metadata = self.controller.get_hypergraph().get_edge_metadata(edge[1], edge[0]) or {}
         else:
-            metadata = self.hypergraph.get_edge_metadata(edge)
-        if self.hypergraph.is_weighted():
+            metadata = self.controller.get_hypergraph().get_edge_metadata(edge)
+        if self.controller.get_hypergraph().is_weighted():
             metadata.pop("weight", None)
-        if isinstance(self.hypergraph, TemporalHypergraph):
+        if self.controller.hypergraph_type == HypergraphType.TEMPORAL:
             metadata.pop("time", None)
         self.setItem(row, self.metadata_col, QTableWidgetItem(str(metadata)))
         self.old_values[row, self.metadata_col] = str(metadata)
@@ -262,9 +269,9 @@ class HypergraphTable(QTableWidget):
             return
         if item.column() == self.metadata_col:
             self.__modify_metadata(item)
-        elif item.column() == self.weight_col and self.hypergraph.is_weighted():
+        elif item.column() == self.weight_col and self.controller.get_hypergraph().is_weighted():
             self.__modify_weight(item)
-        elif item.column() == 1 and isinstance(self.hypergraph, TemporalHypergraph):
+        elif item.column() == 1 and self.controller.hypergraph_type == HypergraphType.TEMPORAL:
             self.__modify_time(item)
         self.update_status.emit({})
 
@@ -279,19 +286,20 @@ class HypergraphTable(QTableWidget):
 
         """
         weight = str_to_int_or_float(item.text())
-        if isinstance(self.hypergraph, DirectedHypergraph):
-            edge_src = str_to_tuple(self.item(item.row(), 0).text())
-            edge_trg = str_to_tuple(self.item(item.row(), 1).text())
-            edge = (edge_src, edge_trg)
-            self.hypergraph.set_weight(edge, weight)
-        elif isinstance(self.hypergraph, TemporalHypergraph):
-            row = item.row()
-            edge = str_to_tuple(self.item(row, 0).text())
-            time = int(self.item(row, 1).text())
-            self.hypergraph.set_weight(set(edge), time, weight)
-        else:
-            edge = list(str_to_tuple(self.itemAt(item.row(), 0).text()))
-            self.hypergraph.set_weight(edge, weight)
+        match self.controller.hypergraph_type:
+            case HypergraphType.DIRECTED:
+                edge_src = eval(self.item(item.row(), 0).text())
+                edge_trg = eval(self.item(item.row(), 1).text())
+                edge = (edge_src, edge_trg)
+                self.controller.modify_edge_weight(edge, weight)
+            case HypergraphType.TEMPORAL:
+                row = item.row()
+                edge = eval(self.item(row, 0).text())
+                time = int(self.item(row, 1).text())
+                self.controller.modify_edge_weight(set(edge), weight, time = time)
+            case HypergraphType.NORMAL:
+                edge = eval(self.itemAt(item.row(), 0).text())
+                self.controller.modify_edge_weight(edge, weight)
 
     def __modify_time(self, item):
         """
@@ -303,11 +311,9 @@ class HypergraphTable(QTableWidget):
             The table widget item that contains the new time value and refers to the edge being modified.
         """
         time = int(item.text())
-        edge = str_to_tuple(self.item(item.row(), 0).text())
-        self.removeRow(item.row())
-        self.hypergraph.add_edge(edge, time)
-        self.update_table(self.hypergraph)
-        self.update_status.emit({})
+        edge = eval(self.item(item.row(), 0).text())
+        self.controller.modify_edge_time(edge, self.times_list[item.row()], time)
+
 
     def __modify_metadata(self, item):
         text = item.text()
@@ -322,25 +328,26 @@ class HypergraphTable(QTableWidget):
         if self.use_nodes:
             node_str = self.item(item.row(), 0).text()
             node = str_to_int_or_float(node_str)
-            self.hypergraph.set_node_metadata(node, val)
+            self.controller.get_hypergraph().set_node_metadata(node, val)
         else:
-            if isinstance(self.hypergraph, DirectedHypergraph):
-                edge_src = str_to_tuple(self.item(item.row(), 0).text())
-                edge_trg = str_to_tuple(self.item(item.row(), 1).text())
-                edge = (edge_src, edge_trg)
-                if self.hypergraph.is_weighted():
-                    val["weight"] = self.hypergraph.get_weight(edge)
-                self.hypergraph.set_edge_metadata(edge, val)
-            elif isinstance(self.hypergraph, TemporalHypergraph):
-                row = item.row()
-                edge = str_to_tuple(self.item(row, 0).text())
-                time = int(self.item(row, 1).text())
-                if self.hypergraph.is_weighted():
-                    val["weight"] = self.hypergraph.get_weight(edge, time)
-                val["time"] = time
-                self.hypergraph.set_edge_metadata(edge, time, val)
-            else:
-                edge = str_to_tuple(self.item(item.row(), 0).text())
-                if self.hypergraph.is_weighted():
-                    val["weight"] = self.hypergraph.get_weight(edge)
-                self.hypergraph.set_edge_metadata(edge, val)
+            match self.controller.hypergraph_type:
+                case HypergraphType.DIRECTED:
+                    edge_src = eval(self.item(item.row(), 0).text())
+                    edge_trg = eval(self.item(item.row(), 1).text())
+                    edge = (edge_src, edge_trg)
+                    if self.controller.get_hypergraph().is_weighted():
+                        val["weight"] = self.controller.get_hypergraph().get_weight(edge)
+                    self.controller.get_hypergraph().set_edge_metadata(edge, val)
+                case HypergraphType.TEMPORAL:
+                    row = item.row()
+                    edge = eval(self.item(row, 0).text())
+                    time = int(self.item(row, 1).text())
+                    if self.controller.get_hypergraph().is_weighted():
+                        val["weight"] = self.controller.get_hypergraph().get_weight(edge, time)
+                    val["time"] = time
+                    self.controller.get_hypergraph().set_edge_metadata(edge, time, val)
+                case HypergraphType.NORMAL:
+                    edge = eval(self.item(item.row(), 0).text())
+                    if self.controller.get_hypergraph().is_weighted():
+                        val["weight"] = self.controller.get_hypergraph().get_weight(edge)
+                    self.controller.get_hypergraph().set_edge_metadata(edge, val)

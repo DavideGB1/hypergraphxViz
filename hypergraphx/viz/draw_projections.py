@@ -3,6 +3,7 @@ from typing import Optional, Dict, Any
 import matplotlib.pyplot as plt
 import networkx as nx
 from networkx import is_planar, planar_layout, DiGraph
+from networkx.drawing import spectral_layout
 
 from hypergraphx import Hypergraph, DirectedHypergraph
 from hypergraphx.representations.projections import (
@@ -75,10 +76,6 @@ def _draw_bipartite_on_ax(
     node_list = [x for x in g.nodes() if x.startswith('N')]
     is_directed = isinstance(hypergraph, DirectedHypergraph)
 
-    for edge in g.edges():
-        nx.draw_networkx_edges(g, pos, edgelist=[edge], ax=ax, edge_color=graphicOptions.edge_color[edge],
-                               width=graphicOptions.edge_size[edge], arrows=is_directed, **kwargs)
-
     for node in node_list:
         if u is None:
             nx.draw_networkx_nodes(g, ax=ax, pos=pos, nodelist=[node], node_shape=graphicOptions.node_shape[node],
@@ -111,6 +108,11 @@ def _draw_bipartite_on_ax(
             pos_offsetted[k_pos] = (v_pos[0], v_pos[1] + offset) if align == 'horizontal' else (v_pos[0] + offset, v_pos[1])
         nx.draw_networkx_labels(g, ax=ax, pos=pos_offsetted, labels=labels, font_size=graphicOptions.weight_size,
                                 font_color=graphicOptions.label_color)
+
+    for edge in g.edges():
+        node_size = max(graphicOptions.node_size[edge[0]],graphicOptions.node_size[edge[1]])
+        nx.draw_networkx_edges(g, pos, edgelist=[edge], ax=ax, edge_color=graphicOptions.edge_color[edge],
+                               width=graphicOptions.edge_size[edge], arrows=is_directed, node_size = node_size,**kwargs)
 
 
 @__ignore_unused_args
@@ -199,8 +201,9 @@ def _compute_clique_drawing_data(
             elif weight_positioning == 2:
                 data['weight'] = 1 / data['weight']
     if pos is None:
-        tmp_pos = nx.kamada_kawai_layout(G=g, weight="weight")
-        pos = nx.spring_layout(G=g, pos=tmp_pos, iterations=iterations, weight="weight")
+        pos = spectral_layout(G=g, weight="weight")
+        pos = nx.kamada_kawai_layout(G=g, pos=pos,weight="weight")
+        pos = nx.spring_layout(G=g, pos=pos, iterations=iterations, weight="weight")
 
 
     mapping, col = (None, None)
@@ -373,7 +376,6 @@ def _compute_extra_node_drawing_data(
                 pos = nx.spring_layout(G=g, pos=posEdges, iterations=iterations, weight="weight", fixed=edgeList)
             else:
                 pos = nx.spring_layout(G=g, iterations=iterations, weight="weight")
-            #pos = nx.spectral_layout(g)
 
     if clone_g is not None:
         g = clone_g
@@ -411,9 +413,6 @@ def _draw_extra_node_on_ax(
 
     # Draw edges and nodes
     node_list = [x for x in g.nodes() if not str(x).startswith('E')]
-    for edge in g.edges():
-        nx.draw_networkx_edges(g, pos, edgelist=[edge], ax=ax, edge_color=graphicOptions.edge_color[edge],
-                               width=graphicOptions.edge_size[edge], arrows=is_directed, **kwargs)
     for node in node_list:
         if mapping is None:
             nx.draw_networkx_nodes(g, pos, nodelist=[node], node_size=graphicOptions.node_size[node],
@@ -439,6 +438,10 @@ def _draw_extra_node_on_ax(
         labels = {n: n for n in g.nodes() if not str(n).startswith('E')}
         nx.draw_networkx_labels(g, ax=ax, pos=pos, labels=labels, font_size=graphicOptions.label_size,
                                 font_color=graphicOptions.label_color, **kwargs)
+    for edge in g.edges():
+        node_size = max(graphicOptions.node_size[edge[0]],graphicOptions.node_size[edge[1]])
+        nx.draw_networkx_edges(g, pos, edgelist=[edge], ax=ax, edge_color=graphicOptions.edge_color[edge],
+                               width=graphicOptions.edge_size[edge], arrows=is_directed, node_size = node_size, **kwargs)
 
 
 @__ignore_unused_args
@@ -538,7 +541,8 @@ def _edges_graph_creation(hyperedges_relations: dict, edgeList: list, drawing: b
     if is_planar(edges_graph):
         posEdges = nx.planar_layout(edges_graph)
     else:
-        toImprovePos = nx.kamada_kawai_layout(edges_graph)
+        pos = nx.spectral_layout(edges_graph)
+        toImprovePos = nx.kamada_kawai_layout(edges_graph, pos=pos)
         posEdges = nx.spring_layout(edges_graph, k=0.5, pos=toImprovePos, weight="weight")
 
     if drawing:

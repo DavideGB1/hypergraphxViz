@@ -1,4 +1,5 @@
 from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QDockWidget, QSlider, QLabel, QHBoxLayout, QPushButton, QWidget
 from superqt import QRangeSlider
 
@@ -36,40 +37,7 @@ class SliderDockWidget(QDockWidget):
         self.slider_hbox = QHBoxLayout()
         self.change_slider_type()
         slider_button = QPushButton("Change Slider Type", parent=self)
-        slider_button.setStyleSheet("""
-            QPushButton {
-                color: white;
-                font-size: 14px;
-                font-weight: bold;
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,stop: 0 #5D9CEC, stop: 1 #4A89DC);
-                border: 1px solid #3A79CB;
-                border-bottom: 4px solid #3A79CB;
-                border-radius: 8px;
-                padding: 6px 18px;
-                margin-bottom: 4px;
-                min-height: 25px; 
-            }
 
-            QPushButton:hover {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,stop: 0 #6AACFF, stop: 1 #5D9CEC);
-                border-color: #4A89DC;
-                border-bottom-color: #4A89DC;
-            }
-
-            QPushButton:pressed {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,stop: 0 #4A89DC, stop: 1 #3A79CB);
-                border-bottom: 1px solid #3A79CB;
-                margin-top: 4px;
-                margin-bottom: 0px;
-            }
-
-            QPushButton:disabled {
-                background: #B0BEC5;
-                color: #78909C;
-                border: 1px solid #90A4AE;
-                border-bottom: 4px solid #78909C;
-            }
-        """)
         slider_button.setChecked(True)
         slider_button.toggle()
         slider_button.clicked.connect(self.change_slider_type)
@@ -136,6 +104,7 @@ class SliderDockWidget(QDockWidget):
         else:
             self.ranged = True
             slider = QRangeSlider(Qt.Orientation.Horizontal, parent=self)
+            slider.barColor = QColor("#a5c8f2")
             slider.setMinimum(2)
             slider.setMaximum(self.max_edge)
             slider.setValue((2, self.max_edge))

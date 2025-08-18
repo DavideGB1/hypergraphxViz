@@ -7,13 +7,13 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
-from hypergraphx import Hypergraph, TemporalHypergraph, DirectedHypergraph
 from hypergraphx.viz.__graphic_options import GraphicOptions
 from hypergraphx.viz.draw_PAOH import draw_paoh_from_data
 from hypergraphx.viz.draw_projections import _draw_extra_node_on_ax, _draw_bipartite_on_ax, _draw_clique_on_ax
 from hypergraphx.viz.draw_radial import _draw_radial_elements
 from hypergraphx.viz.draw_sets import _draw_set_elements
 from hypergraphx.viz.interactive_view.community_options.__community_option_menu import CommunityOptionsDict
+from hypergraphx.viz.interactive_view.controller import HypergraphType
 from hypergraphx.viz.interactive_view.custom_widgets.loading_screen import LoadingScreen
 from hypergraphx.viz.interactive_view.custom_widgets.slider_dock_widget import SliderDockWidget
 from hypergraphx.viz.interactive_view.drawing_view.drawing_options_dockedwidget import DrawingOptionsDockWidget
@@ -21,8 +21,10 @@ from hypergraphx.viz.interactive_view.drawing_view.drawing_thread import PlotWor
 
 
 class HypergraphDrawingWidget(QMainWindow):
-    def __init__(self, hypergraph: Hypergraph | TemporalHypergraph | DirectedHypergraph, parent=None):
+    def __init__(self, controller, parent=None):
         super().__init__(parent)
+        self.controller = controller
+        self.controller.updated_hypergraph.connect(self.update_hypergraph)
         self.community_algorithm = "None"
         self.heaviest_edges_value = 1.0
         self.thread_community = None
@@ -55,12 +57,11 @@ class HypergraphDrawingWidget(QMainWindow):
         self.slider = None
         self.community_option_menu = None
         self.option_menu = None
-        self.hypergraph = hypergraph
         self.figure = Figure()
         self.drawing_options = None
         self.last_pos = dict()
         self.loading = False
-        self.slider_value = (2, self.hypergraph.max_size())
+        self.slider_value = (2, self.controller.get_hypergraph().max_size())
         # Defines Canvas and Options Toolbar
         self.setContextMenuPolicy(Qt.NoContextMenu)
 
@@ -103,18 +104,21 @@ class HypergraphDrawingWidget(QMainWindow):
 
         self.addToolBar(Qt.TopToolBarArea, self.toolbar)
 
-        self.slider = SliderDockWidget(self.hypergraph.max_size(), parent=self)
+        self.slider = SliderDockWidget(self.controller.get_hypergraph().max_size(), parent=self)
         self.slider.setTitleBarWidget(QWidget())
         self.slider.setFixedHeight(self.slider.sizeHint().height())
         self.slider.update_value.connect(self.new_slider_value)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.slider)
 
         hypergraph_type = "normal"
-        if isinstance(self.hypergraph, DirectedHypergraph):
-            hypergraph_type = "directed"
-        if isinstance(self.hypergraph, TemporalHypergraph):
-            hypergraph_type = "temporal"
-        self.drawing_options_widget = DrawingOptionsDockWidget(weighted= self.hypergraph.is_weighted(), hypergraph_type=hypergraph_type,n_nodes=self.hypergraph.num_nodes(),
+        match self.controller.hypergraph_type:
+            case HypergraphType.NORMAL:
+                hypergraph_type = "normal"
+            case HypergraphType.DIRECTED:
+                hypergraph_type = "directed"
+            case HypergraphType.TEMPORAL:
+                hypergraph_type = "temporal"
+        self.drawing_options_widget = DrawingOptionsDockWidget(weighted= self.controller.get_hypergraph().is_weighted(), hypergraph_type=hypergraph_type,n_nodes=self.controller.get_hypergraph().num_nodes(),
                                                                parent=self)
         self.drawing_options_widget.setTitleBarWidget(QWidget())
         suggested_width = self.drawing_options_widget.sizeHint().width()
@@ -123,7 +127,7 @@ class HypergraphDrawingWidget(QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, self.drawing_options_widget)
         self.use_default()
 
-    def update_hypergraph(self, hypergraph = None):
+    def update_hypergraph(self):
         """
         Updates the hypergraph instance with new data and corresponding UI components.
 
@@ -136,16 +140,16 @@ class HypergraphDrawingWidget(QMainWindow):
         """
         self.loading = True
         self.community_model = None
-        self.hypergraph = hypergraph
-        self.slider_value = (2, self.hypergraph.max_size())
-        if isinstance(self.hypergraph, Hypergraph):
-            self.drawing_options_widget.update_hypergraph(hypergraph_type = "normal", n_nodes = self.hypergraph.num_nodes(), weighted = self.hypergraph.is_weighted())
-        elif isinstance(self.hypergraph, DirectedHypergraph):
-            self.drawing_options_widget.update_hypergraph(hypergraph_type = "directed", n_nodes = self.hypergraph.num_nodes(), weighted = self.hypergraph.is_weighted())
-        elif isinstance(self.hypergraph, TemporalHypergraph):
-            self.drawing_options_widget.update_hypergraph(hypergraph_type = "temporal", n_nodes = self.hypergraph.num_nodes(), weighted = self.hypergraph.is_weighted())
+        self.slider_value = (2, self.controller.get_hypergraph().max_size())
+        match self.controller.hypergraph_type:
+            case HypergraphType.NORMAL:
+                self.drawing_options_widget.update_hypergraph(hypergraph_type = "normal", n_nodes = self.controller.get_hypergraph().num_nodes(), weighted = self.controller.get_hypergraph().is_weighted())
+            case HypergraphType.DIRECTED:
+                self.drawing_options_widget.update_hypergraph(hypergraph_type = "directed", n_nodes = self.controller.get_hypergraph().num_nodes(), weighted = self.controller.get_hypergraph().is_weighted())
+            case HypergraphType.TEMPORAL:
+                self.drawing_options_widget.update_hypergraph(hypergraph_type = "temporal", n_nodes = self.controller.get_hypergraph().num_nodes(), weighted = self.controller.get_hypergraph().is_weighted())
 
-        self.slider.update_max(self.hypergraph.max_size())
+        self.slider.update_max(self.controller.get_hypergraph().max_size())
         self.use_default()
 
     def plot(self):
@@ -175,7 +179,7 @@ class HypergraphDrawingWidget(QMainWindow):
 
         self.thread = PlotWorker(
             self.current_function,
-            self.hypergraph,
+            self.controller.get_hypergraph(),
             dictionary,
             self.community_model,
             self.community_algorithm,
@@ -340,10 +344,13 @@ class HypergraphDrawingWidget(QMainWindow):
         - If `hypergraph` is an instance of `DirectedHypergraph`, the drawing function is set to `draw_extra_node`.
         - For other types of `hypergraph`, the drawing function defaults to `draw_sets`.
         """
-        if isinstance(self.hypergraph, TemporalHypergraph):
-            self.current_function = "PAOH"
-        elif isinstance(self.hypergraph, DirectedHypergraph):
-            self.current_function = "Extra-Node"
-        else:
-            self.current_function = "Sets"
+        match self.controller.hypergraph_type:
+            case HypergraphType.TEMPORAL:
+                self.current_function = "PAOH"
+            case HypergraphType.DIRECTED:
+                self.current_function = "Extra-Node"
+            case HypergraphType.NORMAL:
+                self.current_function = "Sets"
+            case _:
+                self.current_function = "PAOH"
         self.plot()

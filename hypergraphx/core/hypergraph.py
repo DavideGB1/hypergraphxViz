@@ -284,9 +284,12 @@ class Hypergraph:
         if order is not None and size is not None:
             raise ValueError("Order and size cannot be both specified.")
         if order is None and size is None:
-            return list(
-                [self._reverse_edge_list[edge_id] for edge_id in self._adj[node]]
-            )
+            try:
+                return list(
+                    [self._reverse_edge_list[edge_id] for edge_id in self._adj[node]]
+                )
+            except KeyError:
+                pass
         else:
             if order is None:
                 order = size - 1
