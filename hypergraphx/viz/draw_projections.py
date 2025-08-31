@@ -110,8 +110,9 @@ def _draw_bipartite_on_ax(
                                 font_color=graphicOptions.label_color)
 
     for edge in g.edges():
+        color = graphicOptions.in_edge_color if isinstance(edge[1], str) and edge[1].startswith('E') else graphicOptions.out_edge_color
         node_size = max(graphicOptions.node_size[edge[0]],graphicOptions.node_size[edge[1]])
-        nx.draw_networkx_edges(g, pos, edgelist=[edge], ax=ax, edge_color=graphicOptions.edge_color[edge],
+        nx.draw_networkx_edges(g, pos, edgelist=[edge], ax=ax, edge_color=color,
                                width=graphicOptions.edge_size[edge], arrows=is_directed, node_size = node_size,**kwargs)
 
 
@@ -201,7 +202,6 @@ def _compute_clique_drawing_data(
             elif weight_positioning == 2:
                 data['weight'] = 1 / data['weight']
     if pos is None:
-        pos = spectral_layout(G=g, weight="weight")
         pos = nx.kamada_kawai_layout(G=g, pos=pos,weight="weight")
         pos = nx.spring_layout(G=g, pos=pos, iterations=iterations, weight="weight")
 
@@ -439,8 +439,9 @@ def _draw_extra_node_on_ax(
         nx.draw_networkx_labels(g, ax=ax, pos=pos, labels=labels, font_size=graphicOptions.label_size,
                                 font_color=graphicOptions.label_color, **kwargs)
     for edge in g.edges():
+        color = graphicOptions.in_edge_color if isinstance(edge[1], str) and edge[1].startswith('E') else graphicOptions.out_edge_color
         node_size = max(graphicOptions.node_size[edge[0]],graphicOptions.node_size[edge[1]])
-        nx.draw_networkx_edges(g, pos, edgelist=[edge], ax=ax, edge_color=graphicOptions.edge_color[edge],
+        nx.draw_networkx_edges(g, pos, edgelist=[edge], ax=ax, edge_color=color,
                                width=graphicOptions.edge_size[edge], arrows=is_directed, node_size = node_size, **kwargs)
 
 

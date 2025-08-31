@@ -46,16 +46,19 @@ def get_Radial_options(weighted=False, hypergraph_type: str = "normal"):
     options.extend(["radius_scale_factor", "font_spacing_factor"])
     return options
 
-def get_ExtraNode_options(weighted=False):
+def get_ExtraNode_options(weighted=False, hypergraph_type: str = "normal"):
     """Extra-Node Layout Options."""
     options = get_base_options(weighted)
+    if hypergraph_type == "directed":
+        options.extend(["in_edge_color", "out_edge_color"])
+        options.remove("edge_color")
     options.extend(get_label_options())
     options.extend(get_edge_node_options())
     return options
 
-def get_Bipartite_options(weighted=False):
+def get_Bipartite_options(weighted=False, hypergraph_type: str = "normal"):
     """Bipartite Layout Options (equal to Extra-Node)."""
-    return get_ExtraNode_options(weighted)
+    return get_ExtraNode_options(weighted, hypergraph_type)
 
 def get_Sets_options(weighted=False):
     """Sets Layout Options."""
@@ -84,12 +87,12 @@ class CliqueGraphicOptionsWidget(BaseGraphicOptionsWidget):
 
 class ExtraNodeGraphicOptionsWidget(BaseGraphicOptionsWidget):
     def _setup_widgets(self):
-        options = get_ExtraNode_options(self.weighted)
+        options = get_ExtraNode_options(self.weighted, self.hypergraph_type)
         self._create_and_add_widgets(options)
 
 class BipartiteGraphicOptionsWidget(BaseGraphicOptionsWidget):
     def _setup_widgets(self):
-        options = get_Bipartite_options(self.weighted)
+        options = get_Bipartite_options(self.weighted, self.hypergraph_type)
         self._create_and_add_widgets(options)
 
 class SetsGraphicOptionsWidget(BaseGraphicOptionsWidget):
