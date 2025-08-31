@@ -110,7 +110,10 @@ def _draw_bipartite_on_ax(
                                 font_color=graphicOptions.label_color)
 
     for edge in g.edges():
-        color = graphicOptions.in_edge_color if isinstance(edge[1], str) and edge[1].startswith('E') else graphicOptions.out_edge_color
+        if is_directed:
+            color = graphicOptions.in_edge_color if isinstance(edge[1], str) and edge[1].startswith('E') else graphicOptions.out_edge_color
+        else:
+            color = graphicOptions.edge_color[edge]
         node_size = max(graphicOptions.node_size[edge[0]],graphicOptions.node_size[edge[1]])
         nx.draw_networkx_edges(g, pos, edgelist=[edge], ax=ax, edge_color=color,
                                width=graphicOptions.edge_size[edge], arrows=is_directed, node_size = node_size,**kwargs)
@@ -439,7 +442,10 @@ def _draw_extra_node_on_ax(
         nx.draw_networkx_labels(g, ax=ax, pos=pos, labels=labels, font_size=graphicOptions.label_size,
                                 font_color=graphicOptions.label_color, **kwargs)
     for edge in g.edges():
-        color = graphicOptions.in_edge_color if isinstance(edge[1], str) and edge[1].startswith('E') else graphicOptions.out_edge_color
+        if is_directed:
+            color = graphicOptions.in_edge_color if isinstance(edge[1], str) and edge[1].startswith('E') else graphicOptions.out_edge_color
+        else:
+            color = graphicOptions.edge_color[edge]
         node_size = max(graphicOptions.node_size[edge[0]],graphicOptions.node_size[edge[1]])
         nx.draw_networkx_edges(g, pos, edgelist=[edge], ax=ax, edge_color=color,
                                width=graphicOptions.edge_size[edge], arrows=is_directed, node_size = node_size, **kwargs)
