@@ -14,6 +14,7 @@ from hypergraphx.representations.projections import set_projection
 from hypergraphx.viz.__graphic_options import GraphicOptions
 from hypergraphx.viz.__support import __filter_hypergraph, _get_node_community, \
     _draw_node_community, _get_community_info, draw_networkx_edge_labels_clone
+from hypergraphx.viz.draw_projections import __convert_temporal_to_list
 
 
 def _draw_hyperedge_set(
@@ -141,50 +142,40 @@ class __vector:
         self.ny = self.y / self.length
         self.ang = math.atan2(self.ny, self.nx)
 
-def modifica_colore(hex_color, modifica_saturazione=0, modifica_luminosita=0):
+def modify_color(hex_color, saturation_adjustment=0, lightness_adjustment=0):
     """
-    Modifica la saturazione e la luminosità di un colore esadecimale.
+    Modify color saturation and lightness.
 
     Args:
-        hex_color (str): Il colore di partenza in formato esadecimale (es. '#RRGGBB').
-        modifica_saturazione (float): Valore da aggiungere alla saturazione (tra -1.0 e 1.0).
-        modifica_luminosita (float): Valore da aggiungere alla luminosità (tra -1.0 e 1.0).
+        hex_color (str): The starting color in hexadecimal format (e.g., '#RRGGBB').
+        saturation_adjustment (float): Value to add to saturation (between -1.0 and 1.0).
+        lightness_adjustment (float): Value to add to lightness (between -1.0 and 1.0).
 
     Returns:
-        str: Il nuovo colore in formato esadecimale.
+        str: The new color in hexadecimal format.
     """
-    # Rimuove il '#' iniziale se presente
     if hex_color.startswith('#'):
         hex_color = hex_color[1:]
 
-    # Converte l'esadecimale in RGB
+    if len(hex_color) != 6:
+        raise ValueError("Invalid hexadecimal color format. Expected 6 characters after '#'.")
     try:
         r = int(hex_color[0:2], 16)
         g = int(hex_color[2:4], 16)
         b = int(hex_color[4:6], 16)
     except ValueError:
-        raise ValueError("Formato colore esadecimale non valido.")
+        raise ValueError("Invalid hexadecimal color format.")
 
-    # Normalizza i valori RGB (da 0-255 a 0-1)
     r_norm, g_norm, b_norm = r / 255.0, g / 255.0, b / 255.0
-
-    # Converte da RGB a HLS (Hue, Lightness, Saturation)
     h, l, s = colorsys.rgb_to_hls(r_norm, g_norm, b_norm)
+    new_saturation = max(0, min(1, s + saturation_adjustment))
+    new_lightness = max(0, min(1, l + lightness_adjustment))
+    r_new, g_new, b_new = colorsys.hls_to_rgb(h, new_lightness, new_saturation)
+    r_int, g_int, b_int = int(r_new * 255), int(g_new * 255), int(b_new * 255)
+    new_hex = f'#{r_int:02x}{g_int:02x}{b_int:02x}'
 
-    # Applica le modifiche a saturazione e luminosità, mantenendole nell'intervallo [0, 1]
-    nuova_saturazione = max(0, min(1, s + modifica_saturazione))
-    nuova_luminosita = max(0, min(1, l + modifica_luminosita))
+    return new_hex
 
-    # Riconverte da HLS a RGB
-    r_nuovo, g_nuovo, b_nuovo = colorsys.hls_to_rgb(h, nuova_luminosita, nuova_saturazione)
-
-    # Converte i nuovi valori RGB (0-1) in interi (0-255)
-    r_int, g_int, b_int = int(r_nuovo * 255), int(g_nuovo * 255), int(b_nuovo * 255)
-
-    # Formatta il nuovo colore in esadecimale
-    nuovo_hex = f'#{r_int:02x}{g_int:02x}{b_int:02x}'
-
-    return nuovo_hex
 
 def _compute_set_layout(
         hypergraph: Hypergraph,
@@ -269,8 +260,8 @@ def _compute_set_layout(
             order = len(hye) - 1 - sum(1 for node in hye if hypergraph.get_node_metadata(node) == "dummy")
             if order not in hyperedge_color_by_order.keys():
                 color = "#" + "%06x" % random.randint(0, 0xFFFFFF)
-                hyperedge_color_by_order.setdefault(order, modifica_colore(color, modifica_luminosita=-0.2))
-                hyperedge_facecolor_by_order.setdefault(order, modifica_colore(color, modifica_saturazione=-0.3, modifica_luminosita=0.2))
+                hyperedge_color_by_order.setdefault(order, modify_color(color, lightness_adjustment=-0.2))
+                hyperedge_facecolor_by_order.setdefault(order, modify_color(color, saturation_adjustment=-0.3, lightness_adjustment=0.2))
             color = hyperedge_color_by_order.setdefault(order, "#" + "%06x" % random.randint(0, 0xFFFFFF))
             facecolor = hyperedge_facecolor_by_order.setdefault(order, "#" + "%06x" % random.randint(0, 0xFFFFFF))
 
@@ -401,7 +392,7 @@ def draw_sets(
         figsize: tuple[float, float] = (10, 10),
         dpi: int = 300,
         graphicOptions: Optional[GraphicOptions] = GraphicOptions(),
-        **kwargs) -> dict:
+        **kwargs):
     """
     Draws a set projection of the hypergraph.
     This is a wrapper function that first computes the layout and then draws the elements.
@@ -445,35 +436,34 @@ def draw_sets(
     kwargs : dict.
         Keyword arguments to be passed to networkx.draw_networkx.
     """
-    # Initialize figure if not provided.
-    if ax is None:
-        plt.figure(figsize=figsize, dpi=dpi)
-        ax = plt.subplot(1, 1, 1)
 
     if graphicOptions is None:
         graphicOptions = GraphicOptions()
 
-    # 1. Compute all layout and style information.
-    computed_data = _compute_set_layout(
-        hypergraph, u, k, weight_positioning, cardinality, x_heaviest,
-        rounded_polygon, hyperedge_color_by_order, hyperedge_facecolor_by_order,
-        hyperedge_alpha, scale, iterations, rounding_radius_size,
-        polygon_expansion_factor, pos
-    )
-
-    # 2. Draw the elements onto the axes.
-    _draw_set_elements(
-        ax=ax,
-        data=computed_data,
-        draw_labels=draw_labels,
-        graphicOptions = graphicOptions,
-        **kwargs
-    )
-
-    # Finalize plot aesthetics.
-    ax.axis("equal")
-    ax.axis("off")
-    plt.tight_layout()
-
-    # Return the computed positions, maintaining original behavior.
-    return computed_data["pos"]
+    hypergraphs, n_times, axs_flat = __convert_temporal_to_list(hypergraph, figsize, dpi, ax)
+    for i, (time, hypergraph) in enumerate(hypergraphs.items()):
+        if n_times != 1:
+            ax = axs_flat[i]
+        else:
+            ax = axs_flat
+        computed_data = _compute_set_layout(
+            hypergraph, u, k, weight_positioning, cardinality, x_heaviest,
+            rounded_polygon, hyperedge_color_by_order, hyperedge_facecolor_by_order,
+            hyperedge_alpha, scale, iterations, rounding_radius_size,
+            polygon_expansion_factor, pos
+        )
+        _draw_set_elements(
+            ax=ax,
+            data=computed_data,
+            draw_labels=draw_labels,
+            graphicOptions=graphicOptions,
+            **kwargs
+        )
+        ax.set_aspect('auto')
+        ax.autoscale(enable=True, axis='both')
+        ax.axis("off")
+        if n_times != 1:
+            ax.set_title(f"Hypergraph at time {time}")
+    if n_times != 1:
+        for ax in axs_flat[n_times:]:
+            ax.set_visible(False)

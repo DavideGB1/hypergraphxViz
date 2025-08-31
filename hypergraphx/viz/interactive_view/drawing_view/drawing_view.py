@@ -1,4 +1,5 @@
 import gc
+import math
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
@@ -25,6 +26,7 @@ class HypergraphDrawingWidget(QMainWindow):
         super().__init__(parent)
         self.controller = controller
         self.controller.updated_hypergraph.connect(self.update_hypergraph)
+        self.controller.finished_drawing.connect(self.drawn)
         self.community_algorithm = "None"
         self.heaviest_edges_value = 1.0
         self.thread_community = None
@@ -176,80 +178,101 @@ class HypergraphDrawingWidget(QMainWindow):
             "community_model": self.community_model,
             "graphic_options": self.graphic_options
         }
+        input_values = dict()
+        input_values["dictionary"] = dictionary
+        input_values["curr_function"] = self.current_function
+        input_values["community_model"] = self.community_model
+        input_values["community_algorithm"] = self.community_algorithm
+        input_values["community_options_dict"] = self.community_options_dict
+        input_values["aggregation_options"] = self.aggregation_options
+        input_values["use_last"] = self.use_last
 
-        self.thread = PlotWorker(
-            self.current_function,
-            self.controller.get_hypergraph(),
-            dictionary,
-            self.community_model,
-            self.community_algorithm,
-            self.community_options_dict,
-            self.use_last,
-            self.aggregation_options
-        )
-
-        self.thread.progress.connect(self.drawn)
-        self.thread.finished.connect(self.on_worker_finished)
-        self.thread.start()
+        self.controller.plot_graph(input_values)
 
         self.use_last = False
 
-    def drawn(self, value_list):
-        if self.sender() is not self.thread:
-            return
-        self.graphic_options.add_centrality_factor_dict(value_list[1])
+    def drawn(self):
+        data = self.controller.drawing_result[0]
+        n_times = self.controller.drawing_result[2]
+        self.graphic_options.add_centrality_factor_dict(self.controller.drawing_result[1])
         self.figure.clf()
         gc.collect()
-        if self.current_function == "Sets":
-            _draw_set_elements(
-                ax=self.figure.gca(),
-                data = value_list[0],
-                draw_labels= self.algorithm_options_dict["draw_labels"],
-                graphicOptions=self.graphic_options.copy()
-            )
-        elif self.current_function == "PAOH":
+        if self.current_function == "PAOH":
+            ax = self.figure.add_subplot(111)
             draw_paoh_from_data(
-                ax=self.figure.gca(),
-                data=value_list[0],
+                ax=ax,
+                data=data[0],
                 graphicOptions=self.graphic_options.copy(),
-                axis_labels_size= self.extra_attributes["axis_labels_size"],
-                nodes_name_size = self.extra_attributes["nodes_name_size"]
+                axis_labels_size=self.extra_attributes["axis_labels_size"],
+                nodes_name_size=self.extra_attributes["nodes_name_size"]
             )
-        elif self.current_function == "Radial":
-            _draw_radial_elements(
-                ax=self.figure.gca(),
-                data=value_list[0],
-                draw_labels=self.algorithm_options_dict["draw_labels"],
-                font_spacing_factor = self.extra_attributes["font_spacing_factor"],
-                graphicOptions=self.graphic_options.copy()
-            )
-        elif self.current_function == "Extra-Node":
-            _draw_extra_node_on_ax(
-                ax=self.figure.gca(),
-                data=value_list[0],
-                u = self.community_model,
-                show_edge_nodes=self.algorithm_options_dict["show_edge_nodes"],
-                draw_labels=self.algorithm_options_dict["draw_labels"],
-                graphicOptions=self.graphic_options.copy()
-            )
-        elif self.current_function == "Bipartite":
-            _draw_bipartite_on_ax(
-                ax=self.figure.gca(),
-                data=value_list[0],
-                u = self.community_model,
-                draw_labels=self.algorithm_options_dict["draw_labels"],
-                align= self.algorithm_options_dict["align"],
-                graphicOptions=self.graphic_options.copy()
-            )
-        elif self.current_function == "Clique":
-            _draw_clique_on_ax(
-                ax=self.figure.gca(),
-                data=value_list[0],
-                u=self.community_model,
-                draw_labels=self.algorithm_options_dict["draw_labels"],
-                graphicOptions=self.graphic_options.copy()
-            )
-        if self.current_function != "PAOH":
+        else:
+            axs_flat = []
+            if n_times != 1:
+                n_rows = math.ceil(math.sqrt(n_times))
+                n_cols = math.ceil(n_times / n_rows)
+                for i in range(n_times):
+                    axs_flat.append(self.figure.add_subplot(n_rows, n_cols, i + 1))
+            else:
+                axs_flat.append(self.figure.add_subplot(111))
+
+            for i, (time, timed_data) in enumerate(data.items()):
+                if self.current_function == "Sets":
+                    _draw_set_elements(
+                        ax=axs_flat[i],
+                        data=timed_data,
+                        draw_labels=self.algorithm_options_dict["draw_labels"],
+                        graphicOptions=self.graphic_options.copy()
+                    )
+                elif self.current_function == "PAOH":
+                    draw_paoh_from_data(
+                        ax=axs_flat[i],
+                        data=timed_data,
+                        graphicOptions=self.graphic_options.copy(),
+                        axis_labels_size=self.extra_attributes["axis_labels_size"],
+                        nodes_name_size=self.extra_attributes["nodes_name_size"]
+                    )
+                elif self.current_function == "Radial":
+                    _draw_radial_elements(
+                        ax=axs_flat[i],
+                        data=timed_data,
+                        draw_labels=self.algorithm_options_dict["draw_labels"],
+                        font_spacing_factor=self.extra_attributes["font_spacing_factor"],
+                        graphicOptions=self.graphic_options.copy()
+                    )
+                elif self.current_function == "Extra-Node":
+                    _draw_extra_node_on_ax(
+                        ax=axs_flat[i],
+                        data=timed_data,
+                        u=self.community_model,
+                        show_edge_nodes=self.algorithm_options_dict["show_edge_nodes"],
+                        draw_labels=self.algorithm_options_dict["draw_labels"],
+                        graphicOptions=self.graphic_options.copy()
+                    )
+                elif self.current_function == "Bipartite":
+                    _draw_bipartite_on_ax(
+                        ax=axs_flat[i],
+                        data=timed_data,
+                        u=self.community_model,
+                        draw_labels=self.algorithm_options_dict["draw_labels"],
+                        align=self.algorithm_options_dict["align"],
+                        graphicOptions=self.graphic_options.copy()
+                    )
+                elif self.current_function == "Clique":
+                    _draw_clique_on_ax(
+                        ax=axs_flat[i],
+                        data=timed_data,
+                        u=self.community_model,
+                        draw_labels=self.algorithm_options_dict["draw_labels"],
+                        graphicOptions=self.graphic_options.copy()
+                    )
+                if n_times != 1:
+                    axs_flat[i].set_title(f"Hypergraph at time {time}")
+
+            if n_times != 1:
+                for ax in axs_flat[n_times:]:
+                    ax.set_visible(False)
+        if self.current_function != "PAOH" and n_times == 1:
             self.figure.gca().axis('off')
         self.figure.tight_layout()
         self.canvas.draw()
@@ -272,12 +295,6 @@ class HypergraphDrawingWidget(QMainWindow):
         else:
             self.stacked.setCurrentIndex(0)
         self.repaint()
-
-    def on_worker_finished(self):
-        if self.sender() is self.thread:
-            self.thread = None
-        if self.sender():
-            self.sender().deleteLater()
 
     def get_new_drawing_options(self, input_dictionary):
         """

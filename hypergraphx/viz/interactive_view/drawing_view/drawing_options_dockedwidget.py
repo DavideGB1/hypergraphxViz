@@ -442,7 +442,9 @@ class DrawingOptionsDockWidget(QDockWidget):
             self.drawing_combobox.addItems(["PAOH","Radial", "Extra-Node","Bipartite"])
             self.drawing_combobox.setCurrentText("Extra-Node")
         elif self.hypergraph_type == "temporal":
-            self.drawing_combobox.addItems(["PAOH"])
+            self.drawing_combobox.addItems(["Sets", "PAOH","Radial", "Extra-Node","Bipartite"])
+            if not self.weighted:
+                self.drawing_combobox.addItem("Clique")
             self.drawing_combobox.setCurrentText("PAOH")
 
     def update_hypergraph(self, hypergraph_type, n_nodes, weighted):

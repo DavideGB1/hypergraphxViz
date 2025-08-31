@@ -57,25 +57,8 @@ def create_figure(draw_function, hypergraph, dictionary):
         case "Adjacency Factor (t=2)":
             centrality = hypergraph.adjacency_factor(t=2)
     centrality = normalize_centrality(centrality)
-    if draw_function == "Sets":
-        result = _compute_set_layout(
-            hypergraph= hypergraph,
-            u=dictionary["community_model"],
-            k=dictionary["community_options_dict"]["number_communities"],
-            weight_positioning = dictionary["weight_positioning"],
-            cardinality=dictionary["slider_value"],
-            x_heaviest=dictionary["heaviest_edges_value"],
-            iterations=dictionary["algorithm_options_dict"]["iterations"],
-            pos=None,
-            rounded_polygon = dictionary["algorithm_options_dict"]["rounded_polygon"],
-            hyperedge_color_by_order = None,
-            hyperedge_facecolor_by_order  = None,
-            hyperedge_alpha = dictionary["extra_attributes"]["hyperedge_alpha"],
-            scale = dictionary["algorithm_options_dict"]["scale_factor"],
-            rounding_radius_size = dictionary["extra_attributes"]["rounding_radius_factor"],
-            polygon_expansion_factor = dictionary["extra_attributes"]["polygon_expansion_factor"],
-        )
-    elif draw_function == "PAOH":
+    output = dict()
+    if draw_function == "PAOH":
         result = calculate_paoh_layout(
             h=hypergraph,
             u=dictionary["community_model"],
@@ -87,51 +70,92 @@ def create_figure(draw_function, hypergraph, dictionary):
             sorting_mapping = centrality,
         )
         centrality = None
-    elif draw_function == "Radial":
-        result = _compute_radial_layout(
-            h=hypergraph,
-            u=dictionary["community_model"],
-            k=dictionary["community_options_dict"]["number_communities"],
-            cardinality=dictionary["slider_value"],
-            x_heaviest=dictionary["heaviest_edges_value"],
-            radius_scale_factor=dictionary["extra_attributes"]["radius_scale_factor"],
-        )
-    elif draw_function == "Extra-Node":
-        result = _compute_extra_node_drawing_data(
-            h=hypergraph,
-            cardinality=dictionary["slider_value"],
-            x_heaviest=dictionary["heaviest_edges_value"],
-            ignore_binary_relations=dictionary["algorithm_options_dict"]["ignore_binary_relations"],
-            weight_positioning=dictionary["weight_positioning"],
-            respect_planarity=dictionary["algorithm_options_dict"]["respect_planarity"],
-            iterations=dictionary["algorithm_options_dict"]["iterations"],
-            pos=None,
-            u=dictionary["community_model"],
-            k=dictionary["community_options_dict"]["number_communities"],
-            draw_edge_graph=False
-        )
-    elif draw_function == "Bipartite":
-        result = _compute_bipartite_drawing_data(
-            h=hypergraph,
-            u=dictionary["community_model"],
-            k=dictionary["community_options_dict"]["number_communities"],
-            pos = None,
-            cardinality=dictionary["slider_value"],
-            x_heaviest=dictionary["heaviest_edges_value"],
-            align=dictionary["algorithm_options_dict"]["align"],
-        )
-    elif draw_function == "Clique":
-        result = _compute_clique_drawing_data(
-            h=hypergraph,
-            cardinality=dictionary["slider_value"],
-            x_heaviest=dictionary["heaviest_edges_value"],
-            iterations=dictionary["algorithm_options_dict"]["iterations"],
-            pos=None,
-            weight_positioning = dictionary["weight_positioning"],
-            u=dictionary["community_model"],
-            k=dictionary["community_options_dict"]["number_communities"],
-        )
-    return [result,centrality]
+        output[0] = result
+        n_times = 1
+    else:
+        hypergraphs = dict()
+        if isinstance(hypergraph, TemporalHypergraph):
+            hypergraphs = hypergraph.subhypergraph()
+        else:
+            hypergraphs[0] = hypergraph
+        n_times = len(hypergraphs)
+        for time, hypergraph in hypergraphs.items():
+            if draw_function == "Sets":
+                result = _compute_set_layout(
+                    hypergraph= hypergraph,
+                    u=dictionary["community_model"],
+                    k=dictionary["community_options_dict"]["number_communities"],
+                    weight_positioning = dictionary["weight_positioning"],
+                    cardinality=dictionary["slider_value"],
+                    x_heaviest=dictionary["heaviest_edges_value"],
+                    iterations=dictionary["algorithm_options_dict"]["iterations"],
+                    pos=None,
+                    rounded_polygon = dictionary["algorithm_options_dict"]["rounded_polygon"],
+                    hyperedge_color_by_order = None,
+                    hyperedge_facecolor_by_order  = None,
+                    hyperedge_alpha = dictionary["extra_attributes"]["hyperedge_alpha"],
+                    scale = dictionary["algorithm_options_dict"]["scale_factor"],
+                    rounding_radius_size = dictionary["extra_attributes"]["rounding_radius_factor"],
+                    polygon_expansion_factor = dictionary["extra_attributes"]["polygon_expansion_factor"],
+                )
+            elif draw_function == "PAOH":
+                result = calculate_paoh_layout(
+                    h=hypergraph,
+                    u=dictionary["community_model"],
+                    k=dictionary["community_options_dict"]["number_communities"],
+                    cardinality=dictionary["slider_value"],
+                    x_heaviest=dictionary["heaviest_edges_value"],
+                    space_optimization=dictionary["algorithm_options_dict"]["space_optimization"],
+                    sort_nodes_by=dictionary["algorithm_options_dict"]["sort_nodes_by"],
+                    sorting_mapping = centrality,
+                )
+                centrality = None
+            elif draw_function == "Radial":
+                result = _compute_radial_layout(
+                    h=hypergraph,
+                    u=dictionary["community_model"],
+                    k=dictionary["community_options_dict"]["number_communities"],
+                    cardinality=dictionary["slider_value"],
+                    x_heaviest=dictionary["heaviest_edges_value"],
+                    radius_scale_factor=dictionary["extra_attributes"]["radius_scale_factor"],
+                )
+            elif draw_function == "Extra-Node":
+                result = _compute_extra_node_drawing_data(
+                    h=hypergraph,
+                    cardinality=dictionary["slider_value"],
+                    x_heaviest=dictionary["heaviest_edges_value"],
+                    ignore_binary_relations=dictionary["algorithm_options_dict"]["ignore_binary_relations"],
+                    weight_positioning=dictionary["weight_positioning"],
+                    respect_planarity=dictionary["algorithm_options_dict"]["respect_planarity"],
+                    iterations=dictionary["algorithm_options_dict"]["iterations"],
+                    pos=None,
+                    u=dictionary["community_model"],
+                    k=dictionary["community_options_dict"]["number_communities"],
+                    draw_edge_graph=False
+                )
+            elif draw_function == "Bipartite":
+                result = _compute_bipartite_drawing_data(
+                    h=hypergraph,
+                    u=dictionary["community_model"],
+                    k=dictionary["community_options_dict"]["number_communities"],
+                    pos = None,
+                    cardinality=dictionary["slider_value"],
+                    x_heaviest=dictionary["heaviest_edges_value"],
+                    align=dictionary["algorithm_options_dict"]["align"],
+                )
+            elif draw_function == "Clique":
+                result = _compute_clique_drawing_data(
+                    h=hypergraph,
+                    cardinality=dictionary["slider_value"],
+                    x_heaviest=dictionary["heaviest_edges_value"],
+                    iterations=dictionary["algorithm_options_dict"]["iterations"],
+                    pos=None,
+                    weight_positioning = dictionary["weight_positioning"],
+                    u=dictionary["community_model"],
+                    k=dictionary["community_options_dict"]["number_communities"],
+                )
+            output[time] = result
+    return [output,centrality, n_times]
 
 def run_community_detection(hypergraph, algorithm, community_options):
     """

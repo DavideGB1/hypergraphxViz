@@ -8,6 +8,7 @@ from hypergraphx.generation import random_hypergraph
 from hypergraphx.generation.random import random_uniform_hypergraph
 from hypergraphx.readwrite import save_hypergraph
 from hypergraphx.utils.cc import connected_components
+from hypergraphx.viz.interactive_view.drawing_view.drawing_thread import PlotWorker
 
 
 class HypergraphType(Enum):
@@ -17,13 +18,14 @@ class HypergraphType(Enum):
 
 class Controller(QObject):
     updated_hypergraph = pyqtSignal(dict)
-
+    finished_drawing = pyqtSignal(int)
     # constructor
     def __init__(self, hypergraph: Hypergraph | TemporalHypergraph | DirectedHypergraph):
         super().__init__()
         self.hypergraph_type = ""
         self.showed_hypergraph = None
         self.actual_hypergraph = None
+        self.thread = None
         self.change_hypergraph(hypergraph)
         self.cc = connected_components(self.actual_hypergraph)
 
@@ -52,6 +54,7 @@ class Controller(QObject):
             self.update_hypergraph()
         except Exception as e:
             raise Exception
+
     def remove_nodes(self, node_list):
         node_list = list(set(node_list))
         for node in node_list:
@@ -163,6 +166,35 @@ class Controller(QObject):
 
     def get_hypergraph(self):
         return self.showed_hypergraph
+
+    def plot_graph(self, input_values):
+        if self.thread and self.thread.isRunning():
+            self.thread.cancel()
+            self.thread.quit()
+        curr_function = input_values["curr_function"]
+        community_model = input_values["community_model"]
+        community_algorithm = input_values["community_algorithm"]
+        community_options_dict = input_values["community_options_dict"]
+        aggregation_options = input_values["aggregation_options"]
+        if self.thread and self.thread.isRunning():
+            self.thread.cancel()
+            self.thread.quit()
+        self.thread = PlotWorker(
+            curr_function,
+            self.showed_hypergraph,
+            input_values["dictionary"],
+            community_model,
+            community_algorithm,
+            community_options_dict,
+            input_values["use_last"],
+            aggregation_options
+        )
+        self.thread.progress.connect(self.calculated_positions)
+        self.thread.start()
+
+    def calculated_positions(self, value_list):
+        self.drawing_result = value_list
+        self.finished_drawing.emit(0)
 
     def update_hypergraph(self, updated_ccs = False):
         self.updated_hypergraph.emit({"hypergraph": self.showed_hypergraph, "updated_ccs": updated_ccs})

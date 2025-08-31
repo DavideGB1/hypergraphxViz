@@ -7,8 +7,9 @@ from matplotlib import pyplot as plt
 
 from hypergraphx.viz.__support import __check_edge_intersection, __filter_hypergraph, __ignore_unused_args, \
     __support_to_normal_hypergraph, _get_node_community, _draw_node_community, _get_community_info
-from hypergraphx import Hypergraph, DirectedHypergraph
+from hypergraphx import Hypergraph, DirectedHypergraph, TemporalHypergraph
 from hypergraphx.viz.__graphic_options import GraphicOptions
+from hypergraphx.viz.draw_projections import __convert_temporal_to_list
 
 
 def __radial_edge_placement_calculation(h: Hypergraph) -> (list, list):
@@ -295,27 +296,32 @@ def draw_radial_layout(
     kwargs : dict.
         Keyword arguments to be passed to the various MathPlotLib function.
     """
-    if ax is None:
-        plt.figure(figsize=figsize, dpi=dpi)
-        ax = plt.subplot(1, 1, 1)
 
     if graphicOptions is None:
         graphicOptions = GraphicOptions()
 
-    # 1. Compute all layout and style information.
-    computed_data = _compute_radial_layout(
-        h, u, k, cardinality, x_heaviest, radius_scale_factor, graphicOptions
-    )
-
-    # 2. Draw the elements onto the axes.
-    _draw_radial_elements(
-        ax,
-        computed_data,
-        draw_labels,
-        font_spacing_factor,
-        **kwargs
-    )
-
-    # Finalize plot aesthetics.
-    plt.axis("off")
-    plt.tight_layout()
+    hypergraphs, n_times, axs_flat = __convert_temporal_to_list(h, figsize, dpi, ax)
+    for i, (time, hypergraph) in enumerate(hypergraphs.items()):
+        if n_times != 1:
+            ax = axs_flat[i]
+        else:
+            ax = axs_flat
+        computed_data = _compute_radial_layout(
+            hypergraph, u, k, cardinality, x_heaviest, radius_scale_factor
+        )
+        _draw_radial_elements(
+            ax,
+            computed_data,
+            draw_labels,
+            font_spacing_factor,
+            graphicOptions,
+            **kwargs
+        )
+        ax.set_aspect('auto')
+        ax.autoscale(enable=True, axis='both')
+        ax.axis("off")
+        if n_times != 1:
+            ax.set_title(f"Hypergraph at time {time}")
+    if n_times != 1:
+        for ax in axs_flat[n_times:]:
+            ax.set_visible(False)

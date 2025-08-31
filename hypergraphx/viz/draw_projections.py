@@ -1,17 +1,39 @@
-from typing import Optional, Dict, Any
+import math
+from typing import Optional, Any
 
 import matplotlib.pyplot as plt
 import networkx as nx
 from networkx import is_planar, planar_layout, DiGraph
-from networkx.drawing import spectral_layout
 
-from hypergraphx import Hypergraph, DirectedHypergraph
+from hypergraphx import Hypergraph, DirectedHypergraph, TemporalHypergraph
 from hypergraphx.representations.projections import (
     bipartite_projection,
     clique_projection, extra_node_projection)
-from hypergraphx.viz.__support import __filter_hypergraph, __ignore_unused_args, _get_community_info, _get_node_community, \
-    _draw_node_community
 from hypergraphx.viz.__graphic_options import GraphicOptions
+from hypergraphx.viz.__support import __filter_hypergraph, __ignore_unused_args, _get_community_info, \
+    _get_node_community, \
+    _draw_node_community
+
+
+def __convert_temporal_to_list(h, figsize, dpi, ax = None):
+    hypergraphs = dict()
+    if isinstance(h, TemporalHypergraph):
+        hypergraphs = h.subhypergraph()
+    else:
+        hypergraphs[0] = h
+    n_times = len(hypergraphs)
+    n_rows = math.ceil(math.sqrt(n_times))
+    n_cols = math.ceil(n_times / n_rows)
+    if ax is None:
+        if n_times == 1:
+            fig, axs_flat = plt.subplots(figsize=figsize, dpi=dpi)
+        else:
+            fig, axs = plt.subplots(n_rows, n_cols, figsize=figsize, dpi=dpi)
+            axs_flat = axs.flat
+    else:
+        axs_flat = ax
+
+    return hypergraphs, n_times, axs_flat
 
 # =============================================================================
 # Bipartite Projection Drawing
@@ -165,18 +187,25 @@ def draw_bipartite(
     kwargs : dict.
         Keyword arguments passed to networkx.draw_networkx.
     """
-    data = _compute_bipartite_drawing_data(h, cardinality, x_heaviest, align, pos, u, k, graphicOptions)
 
-    if ax is None:
-        fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
+    hypergraphs, n_times, axs_flat = __convert_temporal_to_list(h, figsize, dpi, ax)
+    for i, (time, hypergraph) in enumerate(hypergraphs.items()):
+        if n_times != 1:
+            ax = axs_flat[i]
+        else:
+            ax = axs_flat
+        data = _compute_bipartite_drawing_data(hypergraph, cardinality, x_heaviest, align, pos, u, k)
+        _draw_bipartite_on_ax(ax, data, u, draw_labels, align, graphicOptions, **kwargs)
+        ax.set_aspect('auto')
+        ax.autoscale(enable=True, axis='both')
+        ax.axis("off")
+        if n_times !=1:
+            ax.set_title(f"Hypergraph at time {time}")
+    if n_times != 1:
+        for ax in axs_flat[n_times:]:
+            ax.set_visible(False)
 
-    _draw_bipartite_on_ax(ax, data, u, draw_labels, align, **kwargs)
-
-    ax.set_aspect('auto')
-    ax.autoscale(enable=True, axis='both')
-    ax.axis("off")
     plt.tight_layout()
-
 
 # =============================================================================
 # Clique Projection Drawing
@@ -207,7 +236,6 @@ def _compute_clique_drawing_data(
     if pos is None:
         pos = nx.kamada_kawai_layout(G=g, pos=pos,weight="weight")
         pos = nx.spring_layout(G=g, pos=pos, iterations=iterations, weight="weight")
-
 
     mapping, col = (None, None)
     if u is not None:
@@ -273,7 +301,7 @@ def draw_clique(
     figsize: tuple[float, float] = (10, 10),
     dpi: int = 300,
     graphicOptions: Optional[GraphicOptions] = GraphicOptions(),
-    **kwargs) -> dict:
+    **kwargs):
     """
     Draws a clique projection of the hypergraph.
     Parameters
@@ -309,23 +337,77 @@ def draw_clique(
     dict
         A dictionary of node positions.
     """
-    data = _compute_clique_drawing_data(h, cardinality, x_heaviest, iterations, weight_positioning, pos, u, k,graphicOptions)
 
-    if ax is None:
-        fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
+    hypergraphs, n_times, axs_flat = __convert_temporal_to_list(h, figsize, dpi, ax)
+    for i, (time, hypergraph) in enumerate(hypergraphs.items()):
+        if n_times != 1:
+            ax = axs_flat[i]
+        else:
+            ax = axs_flat
+        data = _compute_clique_drawing_data(hypergraph, cardinality, x_heaviest, iterations, pos, u, k, weight_positioning)
+        _draw_clique_on_ax(ax, data, u, draw_labels, graphicOptions, **kwargs)
+        ax.set_aspect('auto')
+        ax.autoscale(enable=True, axis='both')
+        ax.axis("off")
+        if n_times != 1:
+            ax.set_title(f"Hypergraph at time {time}")
+    if n_times != 1:
+        for ax in axs_flat[n_times:]:
+            ax.set_visible(False)
 
-    _draw_clique_on_ax(ax, data, u, draw_labels, **kwargs)
-
-    ax.set_aspect('auto')
-    ax.axis("off")
-    ax.autoscale(enable=True, axis='both')
     plt.tight_layout()
-    return data['pos']
 
 
 # =============================================================================
 # Extra-Node Projection Drawing
 # =============================================================================
+
+def _hyperedges_relations_detection(h: Hypergraph, obj_to_id: dict) -> dict:
+    """
+    Calculate the number of common nodes between pairs of hyperedges.
+    """
+    hyperedges_relations = {}
+    edges = list(h.get_edges())
+
+    for i in range(len(edges)):
+        for j in range(i + 1, len(edges)):
+            edge1, edge2 = edges[i], edges[j]
+            if len(edge1) > 2 and len(edge2) > 2:
+                id1, id2 = obj_to_id[edge1], obj_to_id[edge2]
+                if id1 != id2:
+                    common_nodes = len(set(edge1).intersection(set(edge2)))
+                    if common_nodes > 0:
+                        pair = tuple(sorted((id1, id2)))
+                        hyperedges_relations.setdefault(pair, 0)
+                        hyperedges_relations[pair] += common_nodes
+
+    return hyperedges_relations
+
+def _edges_graph_creation(hyperedges_relations: dict, edgeList: list, drawing: bool = False) -> dict:
+    """
+    Create a graph using the relations between hyperedges..
+    """
+    edges_graph = nx.Graph()
+    edges_graph.add_nodes_from(edgeList)
+
+    for edge_pair, weight in hyperedges_relations.items():
+        edges_graph.add_edge(edge_pair[0], edge_pair[1], weight=weight)
+
+    if is_planar(edges_graph):
+        posEdges = nx.planar_layout(edges_graph)
+    else:
+        pos = nx.spectral_layout(edges_graph)
+        toImprovePos = nx.kamada_kawai_layout(edges_graph, pos=pos)
+        posEdges = nx.spring_layout(edges_graph, k=0.5, pos=toImprovePos, weight="weight")
+
+    if drawing:
+        plt.figure(figsize=(12, 12))
+        nx.draw_networkx(edges_graph, pos=posEdges, with_labels=True)
+        plt.title("Hyperedge Relation Graph")
+        plt.show()
+
+    return posEdges
+
 @__ignore_unused_args
 
 def _compute_extra_node_drawing_data(
@@ -470,7 +552,7 @@ def draw_extra_node(
     figsize: tuple[float, float] = (10, 10),
     dpi: int = 300,
     graphicOptions: Optional[GraphicOptions] = GraphicOptions(),
-    **kwargs) -> dict:
+    **kwargs):
     """
     Draws an extra-node projection of the hypergraph.
     Parameters
@@ -513,71 +595,24 @@ def draw_extra_node(
         Keyword arguments passed to networkx.draw_networkx.
     Returns
     -------
-    dict
-        A dictionary of node positions.
     """
-    data = _compute_extra_node_drawing_data(h, cardinality, x_heaviest, ignore_binary_relations,
-                                            weight_positioning, respect_planarity, draw_edge_graph,
-                                            iterations, pos, u, k, graphicOptions)
-    if ax is None:
-        fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
+    hypergraphs, n_times, axs_flat = __convert_temporal_to_list(h, figsize, dpi, ax)
+    for i, (time, hypergraph) in enumerate(hypergraphs.items()):
+        if n_times != 1:
+            ax = axs_flat[i]
+        else:
+            ax = axs_flat
+        data = _compute_extra_node_drawing_data(hypergraph, cardinality, x_heaviest, ignore_binary_relations,
+                                                weight_positioning, respect_planarity,
+                                                iterations, pos, u, k, draw_edge_graph)
+        _draw_extra_node_on_ax(ax, data, u, show_edge_nodes, draw_labels, graphicOptions, **kwargs)
+        ax.set_aspect('auto')
+        ax.autoscale(enable=True, axis='both')
+        ax.axis("off")
+        if n_times != 1:
+            ax.set_title(f"Hypergraph at time {time}")
+    if n_times != 1:
+        for ax in axs_flat[n_times:]:
+            ax.set_visible(False)
 
-    _draw_extra_node_on_ax(ax, data, u, show_edge_nodes, draw_labels, **kwargs)
-
-    ax.set_aspect('auto')
-    ax.autoscale(enable=True, axis='both')
-    ax.axis("off")
     plt.tight_layout()
-    return data['pos']
-
-
-# =============================================================================
-# Internal Helpers for Extra-Node Drawing
-# =============================================================================
-
-def _edges_graph_creation(hyperedges_relations: dict, edgeList: list, drawing: bool = False) -> dict:
-    """
-    Create a graph using the relations between hyperedges..
-    """
-    edges_graph = nx.Graph()
-    edges_graph.add_nodes_from(edgeList)
-
-    for edge_pair, weight in hyperedges_relations.items():
-        edges_graph.add_edge(edge_pair[0], edge_pair[1], weight=weight)
-
-    if is_planar(edges_graph):
-        posEdges = nx.planar_layout(edges_graph)
-    else:
-        pos = nx.spectral_layout(edges_graph)
-        toImprovePos = nx.kamada_kawai_layout(edges_graph, pos=pos)
-        posEdges = nx.spring_layout(edges_graph, k=0.5, pos=toImprovePos, weight="weight")
-
-    if drawing:
-        plt.figure(figsize=(12, 12))
-        nx.draw_networkx(edges_graph, pos=posEdges, with_labels=True)
-        plt.title("Hyperedge Relation Graph")
-        plt.show()
-
-    return posEdges
-
-
-def _hyperedges_relations_detection(h: Hypergraph, obj_to_id: dict) -> dict:
-    """
-    Calculate the number of common nodes between pairs of hyperedges.
-    """
-    hyperedges_relations = {}
-    edges = list(h.get_edges())
-
-    for i in range(len(edges)):
-        for j in range(i + 1, len(edges)):
-            edge1, edge2 = edges[i], edges[j]
-            if len(edge1) > 2 and len(edge2) > 2:
-                id1, id2 = obj_to_id[edge1], obj_to_id[edge2]
-                if id1 != id2:
-                    common_nodes = len(set(edge1).intersection(set(edge2)))
-                    if common_nodes > 0:
-                        pair = tuple(sorted((id1, id2)))
-                        hyperedges_relations.setdefault(pair, 0)
-                        hyperedges_relations[pair] += common_nodes
-
-    return hyperedges_relations
