@@ -184,7 +184,12 @@ def _draw_radial_elements(
         bounds["max_x"], bounds["min_x"] = max(bounds["max_x"], vx), min(bounds["min_x"], vx)
         bounds["max_y"], bounds["min_y"] = max(bounds["max_y"], vy), min(bounds["min_y"], vy)
 
-        ax.plot(vx, vy, graphicOptions.node_shape[node], color=graphicOptions.node_color[node], markersize=graphicOptions.node_size[node] / 30,
+        if community_info:
+            mapping, col, u = community_info
+            wedge_sizes, wedge_colors = _get_node_community(mapping, node, u, col, 0.1)
+            _draw_node_community(ax, node, (vx, vy), wedge_sizes, wedge_colors, graphicOptions, 30, **kwargs)
+        else:
+            ax.plot(vx, vy, graphicOptions.node_shape[node], color=graphicOptions.node_color[node], markersize=graphicOptions.node_size[node] / 30,
                 markeredgecolor=graphicOptions.node_facecolor[node], zorder=-1, **kwargs)
         if draw_labels:
             lx, ly = vx * font_spacing_factor, vy * font_spacing_factor
@@ -218,10 +223,6 @@ def _draw_radial_elements(
                     ax.plot(vx, vy, marker=graphicOptions.node_shape[node], color=color,
                             markeredgecolor=graphicOptions.node_facecolor[node],
                             markersize=graphicOptions.node_size[node] / 30, **kwargs)
-                elif community_info:
-                    mapping, col, u = community_info
-                    wedge_sizes, wedge_colors = _get_node_community(mapping, node, u, col, 0.1)
-                    _draw_node_community(ax, node, (vx, vy), wedge_sizes, wedge_colors, graphicOptions, 30, **kwargs)
                 else:
                     ax.plot(vx, vy, graphicOptions.edge_shape[node], color=graphicOptions.edge_node_color[node],
                             markersize=graphicOptions.node_size[node] / 30,
