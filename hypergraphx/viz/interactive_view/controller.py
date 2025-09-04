@@ -63,21 +63,24 @@ class Controller(QObject):
             except KeyError:
                 self.actual_hypergraph.remove_node(int(node), True)
             except Exception:
-                raise Exception
+                pass
         self.cc = connected_components(self.actual_hypergraph)
         self.update_hypergraph()
 
     def remove_edges(self, edge_list):
         edge_list = list(set(edge_list))
         for edge in edge_list:
-            if isinstance(self.actual_hypergraph, Hypergraph):
-                self.actual_hypergraph.remove_edge(edge)
-            elif isinstance(self.actual_hypergraph, DirectedHypergraph):
-                self.actual_hypergraph.remove_edge(edge)
-            elif isinstance(self.actual_hypergraph, TemporalHypergraph):
-                edge = edge[0]
-                time = edge[1]
-                self.actual_hypergraph.remove_edge(edge, time)
+            try:
+                if isinstance(self.actual_hypergraph, Hypergraph):
+                    self.actual_hypergraph.remove_edge(edge)
+                elif isinstance(self.actual_hypergraph, DirectedHypergraph):
+                    self.actual_hypergraph.remove_edge(edge)
+                elif isinstance(self.actual_hypergraph, TemporalHypergraph):
+                    edge = edge[0]
+                    time = edge[1]
+                    self.actual_hypergraph.remove_edge(edge, time)
+            except Exception:
+                pass
         self.cc = connected_components(self.actual_hypergraph)
         self.update_hypergraph()
 
