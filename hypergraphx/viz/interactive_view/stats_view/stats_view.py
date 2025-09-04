@@ -12,7 +12,6 @@ from hypergraphx.viz.interactive_view.stats_view.stats_widgets import GenericGra
 
 
 class HypergraphStatsWidget(QMainWindow):
-    updated_hypergraph = pyqtSignal(dict)
 
     def __init__(self, controller, parent=None):
         super(HypergraphStatsWidget, self).__init__(parent)
@@ -72,6 +71,7 @@ class HypergraphStatsWidget(QMainWindow):
             self.vertical_tab.addTab(self.weight_tab, "Weights")
         gc.collect()
         self.setCentralWidget(self.vertical_tab)
+
     def update_hypergraph(self):
         if isinstance(self.controller.get_hypergraph(), Hypergraph):
             if self.motifs_tab is None:

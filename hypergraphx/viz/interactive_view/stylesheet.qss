@@ -540,3 +540,64 @@ QTableWidget::item:selected {
     background-color: #3498db;
     color: white;
 }
+
+QSpinBox {
+    background-color: white;
+    border: 1px solid #BDBDBD;
+    border-radius: 5px;
+    padding: 2px 4px 2px 4px;
+    font-size: 13px;
+    color: #333;
+    padding-left: 8px;
+    height: 30px;
+}
+
+QSpinBox:hover {
+    border-color: #5D9CEC;
+}
+
+QSpinBox:focus {
+    border-color: #4A89DC;
+}
+
+QSpinBox::up-button, QSpinBox::down-button {
+    subcontrol-origin: border;
+    width: 35px;
+    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #5D9CEC, stop: 1 #4A89DC);
+    border: 1px solid #3A79CB;
+    border-bottom: 3px solid #3A79CB;
+    border-radius: 5px;
+    margin: 1px;
+}
+
+QSpinBox::up-button {
+    subcontrol-position: top right;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+QSpinBox::down-button {
+    subcontrol-position: bottom right;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+QSpinBox::up-button:hover, QSpinBox::down-button:hover {
+    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #6AACFF, stop: 1 #5D9CEC);
+}
+
+QSpinBox::up-button:pressed, QSpinBox::down-button:pressed {
+    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #4A89DC, stop: 1 #3A79CB);
+    padding-top: 2px;
+}
+
+QSpinBox::down-arrow {
+    image: url(icons/dropdown_arrow.svg);
+    width: 14px;
+    height: 25px;
+}
+QSpinBox::up-arrow {
+    image: url(icons/dropdown_uparrow.svg);
+    width: 14px;
+    height: 25px;
+}

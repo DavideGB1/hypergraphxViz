@@ -1,5 +1,6 @@
 import multiprocessing
 
+from PyQt5 import QtWidgets
 from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QHBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView
 from matplotlib.figure import Figure
@@ -134,7 +135,9 @@ class CentralityWidget(QWidget):
         self.hypergraph = hypergraph
         self.thread = None
         self.node_tab = QTableWidget(self)
+        self.node_tab.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.edge_tab = QTableWidget(self)
+        self.edge_tab.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.node_tab.setAlternatingRowColors(True)
         self.edge_tab.setAlternatingRowColors(True)
         self.node_tab.verticalHeader().setVisible(False)
