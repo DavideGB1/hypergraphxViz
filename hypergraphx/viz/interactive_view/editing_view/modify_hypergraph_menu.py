@@ -343,7 +343,7 @@ class ModifyHypergraphMenu(QMainWindow):
 
         if dialog.exec() == QDialog.Accepted:
             try:
-                self.controller.random_graph(dialog.get_values())
+                self.controller.generate_random_hypergraph(dialog.get_values())
             except ValueError as e:
                 QMessageBox.critical(self, "Generation Error", f"Could not generate the hypergraph.\n\nDetails: {e}")
 
@@ -354,7 +354,7 @@ class ModifyHypergraphMenu(QMainWindow):
 
         if dialog.exec() == QDialog.Accepted:
             try:
-                self.controller.random_uniform_graph(dialog.get_values())
+                self.controller.generate_random_uniform_graph(dialog.get_values())
             except ValueError as e:
                 QMessageBox.critical(self, "Generation Error", f"Could not generate the hypergraph.\n\nDetails: {e}")
         gc.collect()

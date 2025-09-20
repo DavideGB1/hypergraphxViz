@@ -26,6 +26,3 @@ def agglomerative_simplification(
     h.add_edges(new_edges)
 
     return h
-
-h = Hypergraph([(1,2,3),(3,4)])
-agglomerative_simplification(h,0.8)

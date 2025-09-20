@@ -86,22 +86,22 @@ class Controller(QObject):
 
     def generate_random_hypergraph(self, values):
         try:
-            self.actual_hypergraph = random_hypergraph(
+            new_hypergraph = random_hypergraph(
                 num_nodes=int(values["num_nodes"]),
                 num_edges_by_size=values["edges_by_size"]
             )
-            self.update_hypergraph()
+            self.change_hypergraph(new_hypergraph)
         except Exception as e:
             raise Exception
 
-    def random_uniform_graph(self, values):
+    def generate_random_uniform_graph(self, values):
         try:
-            self.actual_hypergraph = random_uniform_hypergraph(
+            new_hypergraph = random_uniform_hypergraph(
                 int(values["num_nodes"]),
                 int(values["edge_size"]),
                 int(values["num_edges"])
             )
-            self.update_hypergraph()
+            self.change_hypergraph(new_hypergraph)
         except Exception as e:
             raise Exception
 
