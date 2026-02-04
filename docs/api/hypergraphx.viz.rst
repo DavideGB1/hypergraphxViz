@@ -1,8 +1,13 @@
-hypergraphx.viz package
-=======================
+🎨 Visualization
+========================================
 
 Submodules
 ----------
+
+Usage note
+----------
+
+Visualization helpers return axes/figures and do not call ``plt.show()`` by default. Use the ``show=True`` argument or call ``plt.show()`` explicitly when needed.
 
 hypergraphx.viz.draw\_communities module
 ----------------------------------------
@@ -36,10 +41,26 @@ hypergraphx.viz.draw\_projections module
    :undoc-members:
    :show-inheritance:
 
+hypergraphx.viz.draw\_motifs module
+-----------------------------------
+
+.. automodule:: hypergraphx.viz.draw_motifs
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 hypergraphx.viz.draw\_simplicial module
 ---------------------------------------
 
 .. automodule:: hypergraphx.viz.draw_simplicial
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hypergraphx.viz.plot\_motifs module
+-----------------------------------
+
+.. automodule:: hypergraphx.viz.plot_motifs
    :members:
    :undoc-members:
    :show-inheritance:
@@ -51,3 +72,9 @@ Module contents
    :members:
    :undoc-members:
    :show-inheritance:
+
+Next steps
+----------
+
+- :doc:`../quickstart`
+- :doc:`hypergraphx.core`

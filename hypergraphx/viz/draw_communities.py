@@ -1,13 +1,9 @@
 from typing import Optional, Tuple, Union
 
-import matplotlib
-import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-import seaborn as sns
+
 from hypergraphx import Hypergraph
-from hypergraphx.communities.hy_sc.model import HySC
-from hypergraphx.communities.hypergraph_mt.model import HypergraphMT
 from hypergraphx.representations.projections import clique_projection
 
 
@@ -16,10 +12,10 @@ def draw_communities(
     u: np.array,
     col: dict,
     figsize: tuple = (7, 7),
-    ax: Optional[plt.Axes] = None,
+    ax: Optional["plt.Axes"] = None,
     pos: Optional[dict] = None,
     edge_color: str = "lightgrey",
-    edge_width: float = 3,
+    edge_width: float = 0.3,
     threshold_group: float = 0.1,
     wedge_color: str = "lightgrey",
     wedge_width: float = 1.5,
@@ -27,14 +23,22 @@ def draw_communities(
     label_size: float = 10,
     label_col: str = "black",
     node_size: Union[None, float, int, dict] = None,
-    c_node_size: float = 0.05,
+    c_node_size: float = 0.004,
     title: Optional[str] = None,
     title_size: float = 15,
     seed: int = 20,
     scale: int = 2,
     iterations: int = 100,
-    opt_dist: float = 0.4,
+    opt_dist: float = 0.2,
+    show: bool = False,
 ):
+    try:
+        import matplotlib.pyplot as plt  # type: ignore
+    except ImportError as exc:  # pragma: no cover
+        raise ImportError(
+            "draw_communities requires matplotlib. Install with `pip install hypergraphx[viz]`."
+        ) from exc
+
     """Visualize the node memberships of a hypergraph. Nodes are colored according to their memberships,
     which can be either hard- or soft-membership, and the node size is proportional to the degree in the hypergraph.
     Edges are the pairwise interactions of the hypergraph clique projection.
@@ -63,6 +67,12 @@ def draw_communities(
     scale: scale factor for positions.
     iterations: maximum number of iterations taken for fixing the position with the spring layout.
     opt_dist: optimal distance between nodes.
+    show: whether to call plt.show().
+
+    Returns
+    -------
+    matplotlib.axes.Axes
+        The axes the plot was drawn on.
     """
     # Initialize figure.
     if ax is None:
@@ -78,24 +88,41 @@ def draw_communities(
         pos = nx.spring_layout(
             G, k=opt_dist, iterations=iterations, seed=seed, scale=scale
         )
+    else:
+        missing_nodes = set(G.nodes()) - set(pos.keys())
+        if missing_nodes:
+            raise ValueError("pos is missing positions for some nodes.")
 
-    # Get node degrees and node sizes.
+    nodes = list(G.nodes())
     degree = hypergraph.degree_sequence()
     if node_size is None:
-        # Proportional to the node degree.
-        node_size = {n: degree[n] * c_node_size for n in G.nodes()}
-    elif type(node_size) != np.array:
-        node_size = {n: node_size for n in G.nodes()}
+        node_size = {n: degree[n] * c_node_size for n in nodes}
+    elif isinstance(node_size, np.ndarray):
+        if len(node_size) != len(nodes):
+            raise ValueError("node_size length must match number of nodes.")
+        node_size = {n: node_size[i] for i, n in enumerate(nodes)}
+    elif not isinstance(node_size, dict):
+        node_size = {n: node_size for n in nodes}
+    else:
+        missing_sizes = set(nodes) - set(node_size.keys())
+        if missing_sizes:
+            raise ValueError("node_size is missing entries for some nodes.")
 
     # Get node mappings.
     _, mappingID2Name = hypergraph.binary_incidence_matrix(return_mapping=True)
     mappingName2ID = {n: i for i, n in mappingID2Name.items()}
+    if u.ndim != 2:
+        raise ValueError("Membership matrix must be 2D.")
+    if u.shape[0] != len(mappingID2Name):
+        raise ValueError("Membership matrix row count does not match node count.")
+    if not all(k in col for k in range(u.shape[1])):
+        raise ValueError("Color mapping does not cover all community indices.")
 
     # Plot edges.
     nx.draw_networkx_edges(G, pos, width=edge_width, edge_color=edge_color, ax=ax)
 
     # Plot nodes.
-    for n in G.nodes():
+    for n in nodes:
         wedge_sizes, wedge_colors = extract_pie_properties(
             mappingName2ID[n], u, col, threshold=threshold_group
         )
@@ -120,10 +147,13 @@ def draw_communities(
             ax.axis("equal")
             plt.axis("off")
     plt.tight_layout()
+    if show:
+        plt.show()
+    return ax
 
 
 def extract_pie_properties(
-    i: int, u: np.array, colors: dict, threshold: float = 0.01
+    i: int, u: np.array, colors: dict, threshold: float = 0.1
 ) -> Tuple[np.array, np.array]:
     """Given a node, it extracts the wedge sizes and the respective colors for the pie chart
     that represents its membership.
@@ -144,31 +174,3 @@ def extract_pie_properties(
     wedge_sizes = u[i][valid_groups]
     wedge_colors = [colors[k] for k in valid_groups]
     return wedge_sizes, wedge_colors
-
-h = Hypergraph([(6,7,8,9),(7,8,15),(8,9,14),(3,6),(1,2,3),(4,5,6),(5,24,25),(23,24,25),(24,26),(23,27)])
-K = 5  # number of communities
-seed = 20  # random seed
-n_realizations = 10  # number of realizations with different random initialization
-max_iter = 500  # maximum number of EM iteration steps before aborting
-check_convergence_every = 1 # number of steps in between every convergence check
-normalizeU = False  # if True, then the membership matrix u is normalized such that every row sums to 1
-baseline_r0 = False  # if True, then for the first iteration u is initialized around the solution of the Hypergraph Spectral Clustering
-verbose = False  # flag to print details
-
-model = HypergraphMT(
-    n_realizations=n_realizations,
-    max_iter=max_iter,
-    check_convergence_every=check_convergence_every,
-    verbose=verbose
-)
-u_HypergraphMT, w_HypergraphMT, _ = model.fit(h,
-                                               K=K,
-                                               seed=seed,
-                                               normalizeU=normalizeU,
-                                               baseline_r0=baseline_r0
-                                              )
-cmap = sns.color_palette("Paired", desat=0.7)
-col = {k: matplotlib.colors.to_hex(cmap[k*2], keep_alpha=False) for k in np.arange(K)}
-draw_communities(h, u_HypergraphMT, col)
-plt.savefig("old_draw_communities.svg")
-plt.show()

@@ -1,5 +1,5 @@
-hypergraphx.communities package
-===============================
+🧑‍🤝‍🧑 Communities
+========================================
 
 Subpackages
 -----------
@@ -20,3 +20,9 @@ Module contents
    :members:
    :undoc-members:
    :show-inheritance:
+
+Next steps
+----------
+
+- :doc:`../quickstart`
+- :doc:`hypergraphx.core`

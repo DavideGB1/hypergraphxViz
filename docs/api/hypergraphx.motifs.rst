@@ -1,13 +1,13 @@
-hypergraphx.motifs package
-==========================
+🧬 Motifs
+========================================
 
 Submodules
 ----------
 
-hypergraphx.motifs.approx\_motifs module
-----------------------------------------
+hypergraphx.motifs.directed\_motifs module
+------------------------------------------
 
-.. automodule:: hypergraphx.motifs.approx_motifs
+.. automodule:: hypergraphx.motifs.directed_motifs
    :members:
    :undoc-members:
    :show-inheritance:
@@ -35,3 +35,9 @@ Module contents
    :members:
    :undoc-members:
    :show-inheritance:
+
+Next steps
+----------
+
+- :doc:`../quickstart`
+- :doc:`hypergraphx.core`

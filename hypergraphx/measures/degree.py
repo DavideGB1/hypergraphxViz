@@ -6,9 +6,15 @@ from hypergraphx import (
     TemporalHypergraph,
     MultiplexHypergraph,
 )
+from hypergraphx.exceptions import InvalidParameterError
 
 
-def degree(hg: Hypergraph|DirectedHypergraph|TemporalHypergraph, node, order=None, size=None):
+def degree(
+    hg: Hypergraph | DirectedHypergraph | TemporalHypergraph,
+    node,
+    order=None,
+    size=None,
+):
     """
     Computes the degree of a node in the hypergraph.
 
@@ -29,7 +35,7 @@ def degree(hg: Hypergraph|DirectedHypergraph|TemporalHypergraph, node, order=Non
         The degree of the node.
     """
     if order is not None and size is not None:
-        raise ValueError("Order and size cannot be both specified.")
+        raise InvalidParameterError("Order and size cannot be both specified.")
     if order is None and size is None:
         return len(hg.get_incident_edges(node))
     elif size is not None:
@@ -38,7 +44,9 @@ def degree(hg: Hypergraph|DirectedHypergraph|TemporalHypergraph, node, order=Non
         return len(hg.get_incident_edges(node, order=order))
 
 
-def degree_sequence(hg: Hypergraph|DirectedHypergraph|TemporalHypergraph, order=None, size=None):
+def degree_sequence(
+    hg: Hypergraph | DirectedHypergraph | TemporalHypergraph, order=None, size=None
+):
     """
     Computes the degree sequence of the hypergraph.
 
@@ -57,7 +65,7 @@ def degree_sequence(hg: Hypergraph|DirectedHypergraph|TemporalHypergraph, order=
         The degree sequence of the hypergraph. The keys are the nodes and the values are the degrees.
     """
     if order is not None and size is not None:
-        raise ValueError("Order and size cannot be both specified.")
+        raise InvalidParameterError("Order and size cannot be both specified.")
     if size is not None:
         order = size - 1
     if order is None:
@@ -95,7 +103,9 @@ def degree_correlation(hg: "Hypergraph") -> np.ndarray:
     return matrix_degree_corr
 
 
-def degree_distribution(hg: Hypergraph|DirectedHypergraph|TemporalHypergraph, order=None, size=None):
+def degree_distribution(
+    hg: Hypergraph | DirectedHypergraph | TemporalHypergraph, order=None, size=None
+):
     """
     Computes the degree distribution of the hypergraph.
 
@@ -114,7 +124,7 @@ def degree_distribution(hg: Hypergraph|DirectedHypergraph|TemporalHypergraph, or
         The degree distribution of the hypergraph. The keys are the degrees and the values are the number of nodes with that degree.
     """
     if order is not None and size is not None:
-        raise ValueError("Order and size cannot be both specified.")
+        raise InvalidParameterError("Order and size cannot be both specified.")
     if size is not None:
         order = size - 1
     if order is None:
@@ -129,3 +139,18 @@ def degree_distribution(hg: Hypergraph|DirectedHypergraph|TemporalHypergraph, or
         degree_dist[deg] += 1
 
     return degree_dist
+
+
+def node_degree(hg, node, order=None, size=None):
+    """Alias for degree(hg, node, order, size)."""
+    return degree(hg, node, order=order, size=size)
+
+
+def node_degree_sequence(hg, order=None, size=None):
+    """Alias for degree_sequence(hg, order, size)."""
+    return degree_sequence(hg, order=order, size=size)
+
+
+def node_degree_distribution(hg, order=None, size=None):
+    """Alias for degree_distribution(hg, order, size)."""
+    return degree_distribution(hg, order=order, size=size)

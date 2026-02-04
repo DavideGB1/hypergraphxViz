@@ -1,5 +1,5 @@
-hypergraphx.measures package
-============================
+📏 Measures
+========================================
 
 Submodules
 ----------
@@ -44,6 +44,14 @@ hypergraphx.measures.sub\_hypergraph\_centrality module
    :undoc-members:
    :show-inheritance:
 
+hypergraphx.measures.reducibility module
+----------------------------------------
+
+.. automodule:: hypergraphx.measures.reducibility
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 
@@ -51,3 +59,9 @@ Module contents
    :members:
    :undoc-members:
    :show-inheritance:
+
+Next steps
+----------
+
+- :doc:`../quickstart`
+- :doc:`hypergraphx.core`

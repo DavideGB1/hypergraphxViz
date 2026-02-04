@@ -3,7 +3,13 @@ from hypergraphx import Hypergraph, DirectedHypergraph
 from hypergraphx.measures.edge_similarity import intersection, jaccard_similarity
 
 
-def bipartite_projection(h: Hypergraph):
+def bipartite_projection(
+    h: Hypergraph,
+    *,
+    node_order=None,
+    edge_order=None,
+    return_obj_to_id: bool = False,
+):
     """
     Returns a bipartite graph representation of the hypergraph.
 
@@ -11,55 +17,56 @@ def bipartite_projection(h: Hypergraph):
     ----------
     h : Hypergraph
         The hypergraph to be projected.
+    node_order : list, optional (keyword-only)
+        Explicit node iteration order to make the node-id mapping deterministic.
+        If None, uses `h.get_nodes()` order.
+    edge_order : list, optional (keyword-only)
+        Explicit edge iteration order to make the edge-id mapping deterministic.
+        If None, uses `h.get_edges()` order.
+    return_obj_to_id : bool, optional (keyword-only)
+        If True, also return the reverse mapping `obj_to_id`.
 
     Returns
     -------
-    networkx.Graph
-        The bipartite graph representation of the hypergraph.
+    tuple
+        `(g, id_to_obj)` where:
+        - `g` is a `networkx.Graph` with node ids like `"N0"` and `"E0"`
+        - `id_to_obj` maps node ids to original objects (node labels and edge tuples)
 
+        If `return_obj_to_id=True`, returns `(g, id_to_obj, obj_to_id)`.
+
+    Notes
+    -----
+    This function is deterministic given `node_order` and `edge_order`.
+    Without them, the mapping depends on the insertion/iteration order of `h`.
     """
     g = nx.Graph()
     id_to_obj = {}
     obj_to_id = {}
     idx = 0
 
-    for node in h.get_nodes():
+    nodes = h.get_nodes() if node_order is None else list(node_order)
+    for node in nodes:
         id_to_obj["N" + str(idx)] = node
         obj_to_id[node] = "N" + str(idx)
         idx += 1
         g.add_node(obj_to_id[node], bipartite=0)
 
     idx = 0
-    isDirected = False
-    if isinstance(h, DirectedHypergraph):
-        isDirected = True
-        g = g.to_directed()
-    for edge in h.get_edges():
-        original_edge = edge
-        if isDirected:
-            compressed_edge = []
-            for node in edge[0]:
-                compressed_edge.append(node)
-            for node in edge[1]:
-                compressed_edge.append(node)
-            edge = compressed_edge
-        else:
-            edge = tuple(sorted(edge))
-        obj_to_id[tuple(edge)] = 'E' + str(idx)
-        id_to_obj['E' + str(idx)] = edge
-        weight = 1
-        if h.is_weighted():
-            weight = h.get_weight(original_edge)
-        g.add_node(obj_to_id[tuple(edge)], bipartite=1,weight=weight)
-        if isDirected:
-            for node in original_edge[0]:
-                g.add_edge(obj_to_id[node], obj_to_id[tuple(edge)], weight=weight)
-            for node in original_edge[1]:
-                g.add_edge(obj_to_id[tuple(edge)], obj_to_id[node], weight=weight)
-        else:
-            for node in original_edge:
-                g.add_edge(obj_to_id[node], obj_to_id[tuple(edge)], weight=weight)
+
+    edges = h.get_edges() if edge_order is None else list(edge_order)
+    for edge in edges:
+        edge_key = h._normalize_edge(edge)
+        obj_to_id[edge_key] = "E" + str(idx)
+        id_to_obj["E" + str(idx)] = edge_key
         idx += 1
+        g.add_node(obj_to_id[edge_key], bipartite=1)
+
+        for node in edge_key:
+            g.add_edge(obj_to_id[edge_key], obj_to_id[node])
+
+    if return_obj_to_id:
+        return g, id_to_obj, obj_to_id
     return g, id_to_obj
 
 
@@ -105,15 +112,19 @@ def clique_projection(h: Hypergraph, keep_isolated=False):
     for edge in h.get_edges():
         for i in range(len(edge) - 1):
             for j in range(i + 1, len(edge)):
-                if h.is_weighted():
-                    g.add_edge(edge[i], edge[j],weight = h.get_weight(edge) )
-                else:
-                    g.add_edge(edge[i], edge[j])
+                g.add_edge(edge[i], edge[j])
 
     return g
 
 
-def line_graph(h: Hypergraph, distance="intersection", s=1, weighted=False):
+def line_graph(
+    h: Hypergraph,
+    distance="intersection",
+    s=1,
+    weighted=False,
+    *,
+    edge_order=None,
+):
     """
     Returns a line graph of the hypergraph.
 
@@ -127,15 +138,22 @@ def line_graph(h: Hypergraph, distance="intersection", s=1, weighted=False):
         The threshold for the distance function.
     weighted : bool
         Whether the line graph should be weighted or not.
+    edge_order : list, optional (keyword-only)
+        Explicit edge iteration order to make the returned `id_to_edge` mapping deterministic.
+        If None, uses `h.get_edges()` order.
 
     Returns
     -------
-    networkx.Graph
-        The line graph of the hypergraph.
+    tuple
+        `(g, id_to_edge)` where:
+        - `g` is a `networkx.Graph` whose nodes are edge-ids `0..m-1`
+        - `id_to_edge` maps those ids back to hyperedges
 
     Notes
     -----
     Computing the line graph can be very expensive for large hypergraphs.
+    This function is deterministic given `edge_order`. Without it, edge-id assignment
+    depends on the insertion/iteration order of `h`.
 
     Example
     -------
@@ -157,7 +175,7 @@ def line_graph(h: Hypergraph, distance="intersection", s=1, weighted=False):
         if distance == "jaccard":
             return jaccard_similarity(a, b)
 
-    edges = h.get_edges()
+    edges = h.get_edges() if edge_order is None else list(edge_order)
     nodes = h.get_nodes()
     adj = {}
 
@@ -168,9 +186,9 @@ def line_graph(h: Hypergraph, distance="intersection", s=1, weighted=False):
     id_to_edge = {}
     cont = 0
     for e in edges:
-        e = tuple(sorted(e))
-        edge_to_id[e] = cont
-        id_to_edge[cont] = e
+        edge_key = h._normalize_edge(e)
+        edge_to_id[edge_key] = cont
+        id_to_edge[cont] = edge_key
         cont += 1
 
     g = nx.Graph()
@@ -181,148 +199,30 @@ def line_graph(h: Hypergraph, distance="intersection", s=1, weighted=False):
     for n in adj:
         for i in range(len(adj[n]) - 1):
             for j in range(i + 1, len(adj[n])):
-                k = tuple(sorted((edge_to_id[adj[n][i]], edge_to_id[adj[n][j]])))
+                id_i = edge_to_id[adj[n][i]]
+                id_j = edge_to_id[adj[n][j]]
+                k = frozenset((id_i, id_j))
                 e_i = set(adj[n][i])
                 e_j = set(adj[n][j])
                 if k not in vis:
                     w = _distance(e_i, e_j)
                     if w >= s:
                         if weighted:
-                            g.add_edge(
-                                edge_to_id[adj[n][i]], edge_to_id[adj[n][j]], weight=w
-                            )
+                            g.add_edge(id_i, id_j, weight=w)
                         else:
-                            g.add_edge(
-                                edge_to_id[adj[n][i]], edge_to_id[adj[n][j]], weight=1
-                            )
+                            g.add_edge(id_i, id_j, weight=1)
                     vis[k] = True
     return g, id_to_edge
 
-def extra_node_projection(h: Hypergraph|DirectedHypergraph) -> [nx.Graph,list]:
-    """
-    Returns a graph representation of the hypergraph using the extra-node projection method.
-    Parameters
-    ----------
-    h : Hypergraph
-        The hypergraph to be projected.
-    Returns
-    -------
-    networkx.Graph
-        The graph representation of the hypergraph.
-    """
-    g = nx.Graph()
-    id_to_obj = {}
-    obj_to_id = {}
-    idx = 0
 
-    #Add normal nodes
-    for node in h.get_nodes():
-        id_to_obj[idx] = node
-        obj_to_id[node] = idx
-        idx += 1
-        g.add_node(node,is_edge = "node")
-
-    idx = 0
-    binary_edges = list()
-    isDirected = False
-    if isinstance(h, DirectedHypergraph):
-        g = g.to_directed()
-        isDirected = True
-    #Manage Hyperedges
-    for edge in h.get_edges():
-        original_edge = edge
-        if isDirected:
-            compressed_edge = []
-            for node in edge[0]:
-                compressed_edge.append(node)
-            for node in edge[1]:
-                compressed_edge.append(node)
-            edge = compressed_edge
-        else:
-            edge = tuple(sorted(edge))
-        #Manage binary relations
-        if len(edge) == 2:
-            weight = 1
-            if h.is_weighted():
-                weight = h.get_weight(edge)
-            g.add_edge(edge[0], edge[1], weight=weight)
-        #Any other type of relation
-        else:
-            obj_to_id[tuple(edge)] = 'E' + str(idx)
-            id_to_obj['E' + str(idx)] = edge
-            weight = 1
-            if h.is_weighted():
-                weight = h.get_weight(original_edge)
-            g.add_node(obj_to_id[tuple(edge)], weight=weight, is_edge = "edge")
-            if isDirected:
-                for node in original_edge[0]:
-                    g.add_edge(node,obj_to_id[tuple(edge)], weight=weight)
-                for node in original_edge[1]:
-                    g.add_edge(obj_to_id[tuple(edge)],node, weight=weight)
-            else:
-                for node in original_edge:
-                    g.add_edge(node,obj_to_id[tuple(edge)], weight=weight)
-        idx += 1
-
-    return g, obj_to_id
-
-def set_projection(h: Hypergraph|DirectedHypergraph) -> [nx.Graph,list]:
-    """
-    Returns a graph representation of the hypergraph using the extra-node projection method.
-    Parameters
-    ----------
-    h : Hypergraph
-        The hypergraph to be projected.
-    Returns
-    -------
-    networkx.Graph
-        The graph representation of the hypergraph.
-    """
-    g = nx.Graph()
-    id_to_obj = {}
-    obj_to_id = {}
-    idx = 0
-
-    #Add normal nodes
-    for node in h.get_nodes():
-        id_to_obj[idx] = node
-        obj_to_id[node] = idx
-        idx += 1
-        g.add_node(node,is_edge = "node")
-
-    idx = 0
-    #Manage Hyperedges
-    for edge in h.get_edges():
-        #Manage binary relations
-        if len(edge) == 2:
-            weight = 1
-            if h.is_weighted():
-                weight = h.get_weight(edge)
-            g.add_edge(edge[0], edge[1], weight=weight)
-        #Any other type of relation
-        else:
-            obj_to_id[tuple(edge)] = 'E' + str(idx)
-            id_to_obj['E' + str(idx)] = edge
-            weight = 1
-            if h.is_weighted():
-                weight = h.get_weight(edge)
-            g.add_node(obj_to_id[tuple(edge)], weight=weight, is_edge = "edge")
-            for node in edge:
-                g.add_edge(node, obj_to_id[tuple(edge)], weight=weight)
-            for i in range(len(edge) - 1):
-                    if h.is_weighted():
-                        g.add_edge(edge[i], edge[i+1], weight=h.get_weight(edge))
-                    else:
-                        g.add_edge(edge[i], edge[i+1])
-            if h.is_weighted():
-                g.add_edge(edge[-1], edge[0], weight=h.get_weight(edge))
-            else:
-                g.add_edge(edge[-1], edge[0])
-        idx += 1
-    return g, obj_to_id
-
-
-def directed_line_graph(h: DirectedHypergraph, distance="intersection", s=1, weighted=False):
+def directed_line_graph(
+    h: DirectedHypergraph,
+    distance="intersection",
+    s=1,
+    weighted=False,
+    *,
+    edge_order=None,
+):
     """
     Returns a line graph of the directed hypergraph.
 
@@ -336,15 +236,22 @@ def directed_line_graph(h: DirectedHypergraph, distance="intersection", s=1, wei
         The threshold for the distance function.
     weighted : bool
         Whether the line graph should be weighted or not.
+    edge_order : list, optional (keyword-only)
+        Explicit edge iteration order to make the returned `id_to_edge` mapping deterministic.
+        If None, uses `h.get_edges()` order.
 
     Returns
     -------
-    networkx.Graph
-        The line graph of the hypergraph.
+    tuple
+        `(g, id_to_edge)` where:
+        - `g` is a `networkx.DiGraph` whose nodes are edge-ids `0..m-1`
+        - `id_to_edge` maps those ids back to directed hyperedges
 
     Notes
     -----
     Computing the line graph can be very expensive for large hypergraphs.
+    This function is deterministic given `edge_order`. Without it, edge-id assignment
+    depends on the insertion/iteration order of `h`.
 
     Example
     -------
@@ -366,7 +273,7 @@ def directed_line_graph(h: DirectedHypergraph, distance="intersection", s=1, wei
         if distance == "jaccard":
             return jaccard_similarity(a, b)
 
-    edges = h.get_edges()
+    edges = h.get_edges() if edge_order is None else list(edge_order)
     edge_to_id = {}
     id_to_edge = {}
     cont = 0
@@ -378,16 +285,16 @@ def directed_line_graph(h: DirectedHypergraph, distance="intersection", s=1, wei
     g = nx.DiGraph()
     g.add_nodes_from([i for i in range(len(h))])
 
-    for edge1 in h.get_edges():
-        for edge2 in h.get_edges():
+    for edge1 in edges:
+        for edge2 in edges:
             if edge1 != edge2:
                 source = set(edge1[1])
                 target = set(edge2[0])
                 w = _distance(source, target)
                 if w >= s:
                     if weighted:
-                        g.add_edge(edge_to_id[edge1],edge_to_id[edge2], weight=w)
+                        g.add_edge(edge_to_id[edge1], edge_to_id[edge2], weight=w)
                     else:
-                        g.add_edge( edge_to_id[edge1],edge_to_id[edge2] )
+                        g.add_edge(edge_to_id[edge1], edge_to_id[edge2])
 
     return g, id_to_edge

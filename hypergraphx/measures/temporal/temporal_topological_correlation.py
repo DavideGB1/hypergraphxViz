@@ -1,13 +1,23 @@
 import itertools
+import logging
 from collections import Counter
 from time import sleep
 
 import networkx as nx
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
+
+try:
+    from tqdm import tqdm  # type: ignore
+except ImportError:  # pragma: no cover
+
+    def tqdm(it, **kwargs):
+        return it
+
 
 from hypergraphx.representations import projections
+
+logger = logging.getLogger(__name__)
 
 
 def _to_df(H):
@@ -66,7 +76,7 @@ def compute_all_edges_shortest_path(
 
     if graph_distance is None:
         if verbose:
-            print(
+            logger.info(
                 "Computing node shortest path distance of the aggregated projected network..."
             )
         # Compute node shortest path distances for the aggregated projected network
@@ -74,10 +84,10 @@ def compute_all_edges_shortest_path(
             projections.clique_projection(H_agg)
         )
         if verbose:
-            print("Complete!")
+            logger.info("Complete!")
 
     if verbose:
-        print(
+        logger.info(
             "Computing topological distance of hyperlinks path distance of the higher order aggregated network..."
         )
 
@@ -104,7 +114,7 @@ def compute_all_edges_shortest_path(
                     ]
     assert len(edge_dic_distance) == E**2
     if verbose:
-        print("Complete!")
+        logger.info("Complete!")
 
     return edge_dic_distance
 
@@ -128,12 +138,12 @@ def get_mean_distance_events(H, order, edge_distance=None, cross_order=False):
     cnt_ev1 = Counter()
 
     if cross_order:
-        size = Counter([edge[1] for edge in H.get_edges()])
+        size = Counter([edge for edge in H.get_edges()])
         # events of order d
-        size_order = {edge: size[edge] for edge in size.keys() if len(edge) == order}
+        size_order = {edge: size[edge] for edge in size.keys() if len(edge[1]) == order}
         # events of order d'
         size_other_order = {
-            edge: size[edge] for edge in size.keys() if len(edge) != order
+            edge: size[edge] for edge in size.keys() if len(edge[1]) != order
         }
         for x, y in itertools.product(
             list(size_order.keys()), list(size_other_order.keys())
@@ -147,7 +157,7 @@ def get_mean_distance_events(H, order, edge_distance=None, cross_order=False):
         )
 
     else:
-        size = Counter([edge[1] for edge in H.get_edges() if len(edge[1]) == order])
+        size = Counter([edge for edge in H.get_edges() if len(edge[1]) == order])
         for x, y in itertools.combinations(list(size.keys()), 2):
             # Compute distances between hyperlinks of same order once and update counts with the product of their weights
             cnt_ev1.update({edge_distance[(x, y)]: size[x] * size[y]})
@@ -375,7 +385,6 @@ def topological_temporal_distance_same_order(
             ref_list = list(df.timestamp.unique())
 
         for ref_time in ref_list:
-
             # Introduce delta_t_low as the previous element in dt_list.
             # If delta_t is the first element, then delta_t_low=0
             if p == 0:
@@ -385,7 +394,6 @@ def topological_temporal_distance_same_order(
             t_cnt += 1
 
             if ref_time <= max_time:
-
                 # To speed up computation, update the cnt_dist dynamically.
                 # At each consecutive delta_t in dt_list, update the counter including the couples of events
                 # with temporal delay delta_t', such that delta_t_low <= delta_t' < delta_t. Each couple is computed once.
@@ -541,7 +549,7 @@ def topological_temporal_cond_distance(
         min_val_idx = min(enumerate(avg_cond_top_dist_sr), key=lambda x: x[1])[0]
         avg_cond_top_dist_sr = avg_cond_top_dist_sr.iloc[min_val_idx:]
         if len(avg_cond_top_dist_sr) < 3:
-            print("fit with too few data points")
+            logger.info("fit with too few data points")
         coef = np.polyfit(
             np.log(avg_cond_top_dist_sr.index), avg_cond_top_dist_sr.values, 1
         )

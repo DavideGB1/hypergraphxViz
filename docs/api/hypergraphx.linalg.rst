@@ -1,5 +1,5 @@
-hypergraphx.linalg package
-==========================
+🧮 Linear Algebra
+========================================
 
 Submodules
 ----------
@@ -19,3 +19,9 @@ Module contents
    :members:
    :undoc-members:
    :show-inheritance:
+
+Next steps
+----------
+
+- :doc:`../quickstart`
+- :doc:`hypergraphx.core`

@@ -1,9 +1,10 @@
 import json
+import logging
 
 from hypergraphx import Hypergraph
 
 
-def load_hif(path: str) -> Hypergraph:
+def read_hif(path: str) -> Hypergraph:
     """
     Load a hypergraph from a HIF file.
 
@@ -26,7 +27,7 @@ def load_hif(path: str) -> Hypergraph:
         data = json.loads(file.read())
 
     if "type" not in data:
-        print("No hypergraph type - assume undirected")
+        logging.getLogger(__name__).warning("No hypergraph type - assume undirected")
         data["type"] = "undirected"
 
     if data["type"] == "undirected" or data["type"] == "asc":
@@ -90,7 +91,7 @@ def load_hif(path: str) -> Hypergraph:
     return H
 
 
-def save_hif(H: Hypergraph, path: str):
+def write_hif(H: Hypergraph, path: str):
     """
     Save a hypergraph to a HIF file.
 

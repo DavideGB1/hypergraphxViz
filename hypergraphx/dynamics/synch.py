@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.linalg import eigh
@@ -9,6 +10,13 @@ from hypergraphx.dynamics.utils import (
     sprott_algorithm_multi,
 )
 from hypergraphx.linalg.linalg import compute_multiorder_laplacian
+
+logger = logging.getLogger(__name__)
+
+
+def _log(*args, **kwargs):
+    message = " ".join(str(a) for a in args)
+    logger.info(message)
 
 
 def MSF(
@@ -22,6 +30,9 @@ def MSF(
     integration_step=0.01,
     C=5,
     verbose=True,
+    *,
+    seed: int | None = None,
+    rng: np.random.Generator | None = None,
 ):
     """
     Evaluates the Master Stability Function
@@ -48,10 +59,13 @@ def MSF(
     -------
     MSF: MSF evaluated over the interval of values selected.
     """
+    if rng is not None and seed is not None:
+        raise ValueError("Provide only one of seed= or rng=.")
+    rng = rng if rng is not None else np.random.default_rng(seed)
 
     # Here we make sure to be on the system attractor
     if verbose:
-        print("Getting to the attractor...")
+        _log("Getting to the attractor...")
     sol = solve_ivp(
         fun=F,
         t_span=[0.0, integration_time],
@@ -64,16 +78,16 @@ def MSF(
 
     # Integrating the dynamics of the perturbation using Sprott's algorithm
     dim = len(X0)
-    Eta0 = np.random.random(size=(dim,)) * 1e-9
+    Eta0 = rng.random(size=(dim,)) * 1e-9
     Eta0_norm = np.linalg.norm(Eta0)
     Y0 = np.concatenate((X0, Eta0))
 
     if verbose:
-        print("Evaluating the Master Stability Function...")
+        _log("Evaluating the Master Stability Function...")
     MSF = np.zeros(shape=len(interval))
     for i, alpha in enumerate(interval):
         if verbose:
-            print("alpha = " + str(alpha))
+            _log("alpha = " + str(alpha))
         MSF[i] = sprott_algorithm(
             alpha,
             C,
@@ -103,6 +117,9 @@ def MSF_multi_coupling(
     integration_step=0.01,
     C=5,
     verbose=True,
+    *,
+    seed: int | None = None,
+    rng: np.random.Generator | None = None,
 ):
     """
     Evaluates the Master Stability Function for the higher-order all-to-all network
@@ -132,10 +149,13 @@ def MSF_multi_coupling(
     -------
     MSF: MSF evaluated over the interval of values selected.
     """
+    if rng is not None and seed is not None:
+        raise ValueError("Provide only one of seed= or rng=.")
+    rng = rng if rng is not None else np.random.default_rng(seed)
 
     # Here we make sure to be on the system attractor
     if verbose:
-        print("Getting to the attractor...")
+        _log("Getting to the attractor...")
     sol = solve_ivp(
         fun=F,
         t_span=[0.0, integration_time],
@@ -148,16 +168,16 @@ def MSF_multi_coupling(
 
     # Integrating the dynamics of the perturbation using Sprott's algorithm
     dim = len(X0)
-    Eta0 = np.random.random(size=(dim,)) * 1e-9
+    Eta0 = rng.random(size=(dim,)) * 1e-9
     Eta0_norm = np.linalg.norm(Eta0)
     Y0 = np.concatenate((X0, Eta0))
 
     if verbose:
-        print("Evaluating the Master Stability Function...")
+        _log("Evaluating the Master Stability Function...")
     MSF = np.zeros(shape=len(interval))
     for i, alpha in enumerate(interval):
         if verbose:
-            print("alpha = " + str(alpha))
+            _log("alpha = " + str(alpha))
         MSF[i] = sprott_algorithm_multi(
             alpha,
             C,
@@ -192,12 +212,17 @@ def higher_order_MSF(
     integration_step=0.01,
     C=5,
     verbose=True,
+    *,
+    seed: int | None = None,
+    rng: np.random.Generator | None = None,
 ):
-
     N = hypergraph.num_nodes()
+    if rng is not None and seed is not None:
+        raise ValueError("Provide only one of seed= or rng=.")
+    rng = rng if rng is not None else np.random.default_rng(seed)
 
     # If the coupling is natural, we evaluate a single-parameter MSF for this scenario
-    natural_coupling = is_natural_coupling(JHs, dim, verbose)
+    natural_coupling = is_natural_coupling(JHs, dim, verbose, rng=rng)
     if natural_coupling and diffusive_like:
         multiorder_laplacian = compute_multiorder_laplacian(
             hypergraph, sigmas, order_weighted=True, degree_weighted=False
@@ -205,7 +230,7 @@ def higher_order_MSF(
         spectrum = eigh(multiorder_laplacian.toarray(), eigvals_only=True)
 
         if verbose:
-            print("Starting the evaluation of the Master Stability Function...")
+            _log("Starting the evaluation of the Master Stability Function...")
         master_stability_function = MSF(
             F,
             JF,
@@ -217,10 +242,11 @@ def higher_order_MSF(
             integration_step,
             C,
             verbose,
+            rng=rng,
         )
 
         if verbose:
-            print(
+            _log(
                 "Starting the evaluation of the Lyapunov exponents for the Laplacian eigenvalues..."
             )
         hon_master_stability_function = MSF(
@@ -234,6 +260,7 @@ def higher_order_MSF(
             integration_step,
             C,
             verbose,
+            rng=rng,
         )
 
         return master_stability_function, hon_master_stability_function, spectrum
@@ -255,6 +282,7 @@ def higher_order_MSF(
             integration_step,
             C,
             verbose,
+            rng=rng,
         )
 
         hon_master_stability_function = MSF_multi_coupling(
@@ -270,11 +298,12 @@ def higher_order_MSF(
             integration_step,
             C,
             verbose,
+            rng=rng,
         )
 
         return master_stability_function, hon_master_stability_function, [sigmas[0] * N]
 
     # If the coupling is not natural and the hypergraph is not all-to-all, no MSF can be calculated
-    print("No Master Stability Function can be evaluated for this system.")
+    _log("No Master Stability Function can be evaluated for this system.")
 
     return None

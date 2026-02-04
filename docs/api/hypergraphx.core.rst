@@ -1,45 +1,52 @@
-hypergraphx.core package
-========================
+🧩 Core
+========================================
 
 Submodules
 ----------
 
-hypergraphx.core.hypergraph module
+hypergraphx.core.undirected module
 ----------------------------------
 
-.. automodule:: hypergraphx.core.hypergraph
+.. automodule:: hypergraphx.core.undirected
    :members:
    :undoc-members:
    :show-inheritance:
 
-hypergraphx.core.meta\_handler module
--------------------------------------
+hypergraphx.core.base module
+---------------------------------------
 
-.. automodule:: hypergraphx.core.meta_handler
+.. automodule:: hypergraphx.core.base
    :members:
    :undoc-members:
    :show-inheritance:
 
-hypergraphx.core.multiplex\_hypergraph module
----------------------------------------------
-
-.. automodule:: hypergraphx.core.multiplex_hypergraph
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-hypergraphx.core.temporal\_hypergraph module
+hypergraphx.core.directed module
 --------------------------------------------
 
-.. automodule:: hypergraphx.core.temporal_hypergraph
+.. automodule:: hypergraphx.core.directed
    :members:
    :undoc-members:
    :show-inheritance:
 
-Module contents
----------------
+hypergraphx.core.multiplex module
+---------------------------------------------
 
-.. automodule:: hypergraphx.core
+.. automodule:: hypergraphx.core.multiplex
    :members:
    :undoc-members:
    :show-inheritance:
+
+hypergraphx.core.temporal module
+--------------------------------------------
+
+.. automodule:: hypergraphx.core.temporal
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Next steps
+----------
+
+- :doc:`../quickstart`
+- :doc:`hypergraphx.measures`
+- :doc:`hypergraphx.representations`

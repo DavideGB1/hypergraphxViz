@@ -1,7 +1,12 @@
 from typing import Optional, Tuple
 
+import logging
 import numpy as np
-from sklearn.cluster import KMeans
+
+try:
+    from sklearn.cluster import KMeans  # type: ignore
+except ImportError:  # pragma: no cover
+    KMeans = None
 
 from hypergraphx import Hypergraph
 from hypergraphx.linalg.linalg import binary_incidence_matrix, incidence_matrix
@@ -107,14 +112,9 @@ class HySC:
         # TODO: is there a better way to get the weighted sizes?
         self.hye_size_weighted = self.incidence.sum(axis=1)
 
-        # Isolated nodes.
-        self.isolates = np.where(self.incidence._getnnz(1) == 0)[
-            0
-        ]  # TODO: implement it as a core method
-        # Non-isolated nodes.
-        self.non_isolates = np.where(self.incidence._getnnz(1) != 0)[
-            0
-        ]  # TODO: implement it as a core method
+        node_order = list(hypergraph.get_mapping().classes_)
+        self.isolates = hypergraph.isolates(node_order=node_order)
+        self.non_isolates = hypergraph.non_isolates(node_order=node_order)
 
     def _extract_laplacian(self, weighted_L: bool = False) -> None:
         # Check for division by zero and handle isolated nodes
@@ -155,6 +155,11 @@ class HySC:
         -------
         X_pred: membership matrix.
         """
+        if KMeans is None:
+            raise ImportError(
+                "HySC requires scikit-learn. Install hypergraphx with the appropriate extra "
+                "(e.g. `pip install hypergraphx[ml]`) or install scikit-learn manually."
+            )
         y_pred = KMeans(
             n_clusters=self.K, random_state=seed, n_init=self.n_realizations
         ).fit_predict(X)
@@ -167,5 +172,6 @@ class HySC:
         """Save the results in a .npz file."""
         outfile = self.out_folder + "theta" + self.end_file
         np.savez_compressed(outfile + ".npz", u=self.u)
-        print(f'\nInferred parameters saved in: {outfile + ".npz"}')
-        print('To load: theta=np.load(filename), then e.g. theta["u"]')
+        logger = logging.getLogger(__name__)
+        logger.info("Inferred parameters saved in: %s", outfile + ".npz")
+        logger.info('To load: theta=np.load(filename), then e.g. theta["u"]')

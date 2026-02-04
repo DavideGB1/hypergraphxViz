@@ -1,125 +1,157 @@
-<img src="logo/logo.png" width="500" title="HGX logo">
+<img src="assets/logo/logo.png" width="420" alt="HGX logo" />
 
-:page_facing_up: **[Paper](https://arxiv.org/pdf/2303.15356.pdf)** | :paperclip:
-*[Docs](https://hypergraphx.readthedocs.io/en/latest/#)* | :computer: 
-*[Tutorials](https://github.com/HGX-Team/hypergraphx/tree/master/tutorials)* | :floppy_disk: 
-*[Data](https://github.com/HGX-Team/data)* | :bug: [Report bug](https://github.com/HGX-Team/hypergraphx/issues)
-| :email: **[Reach us](mailto:quintino.lotito@unitn.it)**
------
+**Hypergraphx** (HGX) is a Python library for the analysis of real-world complex systems with **group interactions**. It provides a comprehensive suite of tools to construct, visualize, and analyze **hypergraphs** with weighted, directed, temporal, and multiplex interactions. HGX aims to provide, as a single source, a wide range of tools for higher‑order data: conversions across representations, measures of higher‑order organization, filtering and sparsification, generative models, and dynamical processes from contagion to synchronization. The framework is general and designed to be user‑friendly and accessible.
 
+[![Docs](https://img.shields.io/badge/Docs-Read%20the%20Docs-4b9ce2?logo=readthedocs&logoColor=white)](https://hypergraphx.readthedocs.io/) [![Paper](https://img.shields.io/badge/Paper-arXiv-b31b1b?logo=arxiv&logoColor=white)](https://arxiv.org/abs/2303.15356) [![Tutorials](https://img.shields.io/badge/Tutorials-GitHub-24292f?logo=github&logoColor=white)](https://github.com/HGX-Team/hypergraphx/tree/master/tutorials) ![PyPI](https://img.shields.io/pypi/v/hypergraphx?label=PyPI&color=1f8b4c) ![Downloads](https://img.shields.io/pypi/dm/hypergraphx?label=Downloads&color=6c5ce7) [![Issues](https://img.shields.io/badge/Issues-GitHub-24292f?logo=github&logoColor=white)](https://github.com/HGX-Team/hypergraphx/issues) [![Data](https://img.shields.io/badge/Data-GitHub-24292f?logo=github&logoColor=white)](https://github.com/HGX-Team/data) ![License](https://img.shields.io/badge/License-BSD%203--Clause-3d3d3d) ![Code style](https://img.shields.io/badge/code%20style-black-000000) [![Contact](https://img.shields.io/badge/Contact-Email-6c5ce7?logo=gmail&logoColor=white)](mailto:quintino.lotito@unitn.it)
 
-**HGX** is a Python library for the analysis of real-world complex systems with **group interactions** and provides a
-comprehensive suite of tools and algorithms for constructing, visualizing, and analyzing **hypergraphs**. <br> The
-library is designed to be user-friendly and accessible, with a wide range of functionalities that can be applied to a
-diverse set of applications and use cases.
+## 🧭 Menu
 
-## Disclaimer
+- [What are higher-order networks?](#-what-are-higher-order-networks)
+- [Quick start](#-quick-start)
+- [Library highlights](#-library-highlights)
+- [Tutorials and data](#-tutorials-and-data)
+- [The HGX team](#-the-hgx-team)
+- [Acknowledgments](#-acknowledgments)
+- [Citing HGX](#-citing-hgx)
+- [Contributing](#-contributing)
+- [License](#-license)
+- [Other resources](#-other-resources)
 
-* We welcome early feedback, discussions, ideas and contributions.
+## 🌐 What are higher-order networks?
 
-## News
+Networks capture pairwise (dyadic) interactions. But many real systems involve groups of three or more units acting together: cellular networks, drug recombination, brain networks, face‑to‑face interactions, collaboration teams. Hypergraphs model these **higher‑order interactions** directly, with hyperedges that connect any number of nodes.
 
-* 2023-03-28: HGX is now available!
+<img src="assets/images/hypergraph.png" width="350" alt="Hypergraph example" />
 
-## Table of contents
+## 🚀 Quick start
 
-- [What are higher-order networks?](#what-are-higher-order-networks)
-- [What is hypergraphx?](#what-is-hypergraphx)
-- [Library highlights](#library-highlights)
-- [Quick start](#quick-start)
-    * [Installation](#installation)
-- [Tutorials](#tutorials)
-- [Data](#data)
-- [The HGX team](#the-hgx-team)
-    * [Project coordinators](#project-coordinators)
-    * [Core members](#core-members)
-    * [Collaborators](#collaborators)
-- [Contributing](#contributing)
-- [Citing HGX](#citing-hgx)
-- [License](#license)
-- [Other resources](#other-resources)
+### Install
 
-## What are higher-order networks?
-
-In the last few decades, networks have emerged as the natural tool to model a wide variety of natural, social and
-man-made systems.
-Networks, collections of nodes and links connecting pairs of them, are able to capture dyadic interactions only.
-However, in many real-world systems units interact in groups of three or more. Systems with non-dyadic interactions are
-ubiquitous, with examples ranging from cellular networks, drug recombination, structural and functional brain networks,
-human and animal face-to-face interactions, and collaboration networks. These higher-order interactions can be naturally
-described by alternative mathematical structures such as hypergraphs, where hyperedges connect groups of nodes of
-arbitrary size.
-
-<img src="images/hypergraph.png" width="350" title="Hypergraph example">
-
-## What is hypergraphx?
-HGX aims to provide, as a single source, a comprehensive suite of tools and algorithms for constructing, storing, analysing and visualizing systems with
-higher-order interactions.
-These include different ways to convert data across distinct higher-order representations, a large variety of measures
-of higher-order organization at the local and the mesoscale, statistical filters to sparsify higher-order data, a wide
-array of static and dynamic generative models, an implementation of different dynamical processes, from epidemics to
-diffusion and synchronization, with higher-order interactions, and more.
-Our computational framework is general, and allows to analyse hypergraphs with weighted, directed, signed, temporal and
-multiplex group interactions.
-Beyond experts in the field, we hope that our library will make higher-order network analysis accessible to everyone
-interested in exploring the higher-order dimension of relational data.
-
-## Library highlights
-
-* HGX allows to store **higher-order data** as **hypergraphs** and to **convert** them to bipartite networks, maximal
-  simplicial complexes, higher-order line graphs, dual hypergraphs, and clique-expansion graphs.
-* It provides simple tools to characterize basic **node and hyperedge statistics**, such as hyperdegree distributions,
-  correlations and assortativity, at the level of the whole higher-order network and of the individual nodes.
-* Our library provides a variety of **higher-order centrality measures** for nodes and hyperedges, based on
-  participation in different subhypergraphs, on spectral approaches, and on shortest paths and betweenness flows.
-* HGX implements **higher-order motif analysis**. It also provides an approximated algorithm for motif analysis based on
-  hyperedge sampling, able to speed up computations by orders of magnitudes with only a minimal compromise in accuracy.
-* Our library provides spectral method to recover **hard communities**, generative models to extract **overlapping
-  communities** and to **infer hyperedges**, methods to capture **assortative and disassortative community structure**
-  and **core-periphery organization** in higher-order systems.
-* We implement a variety of different tools to **filter** the most informative higher-order interactions, based on
-  extracting statistically validated hypergraphs and identifying significant maximally interacting node groups.
-* HGX offers a **synthetic hypergraph samplers library**, implementing various models such as Erdős-Rényi, scale-free,
-  configuration and community-based models. It also includes a higher-order activity-driven model for temporal group
-  interactions.
-* We provide functions to simulate and analyze several **dynamical process on higher-order networks**, including
-  synchronization, social contagion and random walks.
-* HGX is highly flexible. It allows to store and analyze hypergraphs with a **rich set of features associated with
-  hyperedges**, including interactions of different intensity, directions, sign, that vary in time or belong to
-  different layers of a multiplex system.
-* Our library provides different **visualization tools** to gain visual insights into the higher-order organization of
-  real-world systems.
-
-## Quick start
-
-### Installation
-
-```
+```bash
 pip install hypergraphx
 ```
 
-or, if you really want the latest updates
+Latest (from GitHub):
 
-```
+```bash
 pip install hypergraphx@git+https://github.com/HGX-Team/hypergraphx
 ```
 
-## Tutorials
+### Create a hypergraph
 
-You can find tutorials covering a variety of use
-cases [here](https://github.com/HGX-Team/hypergraphx/tree/master/tutorials).
+```python
+from hypergraphx import Hypergraph
 
-## Data
-
-Higher-order datasets are available in our [data repository](https://github.com/HGX-Team/data).
-
-## Citing HGX
-
-If you use HGX or related data in your paper, please cite:
-
+H = Hypergraph(edge_list=[(1, 2, 3), (2, 4)])
+print(H.num_nodes(), H.num_edges())
+print(H.get_neighbors(2))
 ```
+
+### Add weights and metadata
+
+```python
+H = Hypergraph(
+    edge_list=[("A", "B"), ("B", "C")],
+    weighted=True,
+    weights=[1.2, 0.7],
+    node_metadata={"A": {"role": "source"}},
+    edge_metadata=[{"type": "interaction"}, {"type": "interaction"}],
+)
+
+print(H.get_weight(("A", "B")))
+print(H.get_node_metadata("A"))
+```
+
+### Convert and analyze
+
+```python
+line_graph = H.to_line_graph()
+print(line_graph.number_of_nodes())
+```
+
+### Linear algebra (matrices)
+
+```python
+from hypergraphx.linalg import laplacian_matrix_by_order
+
+# Node-indexed incidence + node mapping (row index -> node label)
+B, node_map = H.binary_incidence_matrix(return_mapping=True)
+
+# Node-indexed adjacency (CSR by default)
+A = H.adjacency_matrix()
+
+# Order-specific Laplacian + mapping
+L2, node_map = laplacian_matrix_by_order(H, order=2, return_mapping=True)
+
+# Example: a few smallest eigenvalues
+from scipy.sparse.linalg import eigsh
+
+eigs = eigsh(L2, k=5, which="SM", return_eigenvectors=False)
+print(eigs)
+```
+
+### Temporal interactions (at a glance)
+
+```python
+from hypergraphx import TemporalHypergraph
+
+T = TemporalHypergraph()
+T.add_edge(("A", "B"), time=1)
+T.add_edge(("A", "B", "C"), time=2)
+print(T.get_edges(time_window=(1, 3)))
+```
+
+## 🧰 Library highlights
+
+- **Representations and transforms**: hypergraphs, bipartite networks, line graphs, clique expansions, duals.
+- **Measures and statistics**: degrees, correlations, assortativity, motifs, and mesoscale structure.
+- **Centrality and motifs**: spectral approaches, shortest paths, betweenness flows, motif sampling.
+- **Communities and inference**: hard and overlapping communities, assortative/disassortative structure.
+- **Filtering**: statistically validated hypergraphs and significant interacting groups.
+- **Generative models**: Erdos-Renyi, scale-free, configuration, community-based, temporal activity-driven.
+- **Dynamics**: synchronization, social contagion, random walks, diffusion.
+- **Rich semantics**: weighted, directed, temporal, multiplex, signed interactions.
+
+## 📎 Tutorials and data
+
+If you are new to higher‑order networks, start with the introductory notebooks. The tutorials cover:
+- building hypergraphs from data
+- computing measures and centralities
+- filtering and sampling
+- community detection and inference
+- temporal and multiplex workflows
+
+Tutorials: https://github.com/HGX-Team/hypergraphx/tree/master/tutorials
+
+Datasets: https://github.com/HGX-Team/data
+
+## 👥 The HGX team
+
+Project coordinators
+- Quintino Francesco Lotito (lead developer) · 🐦 [Twitter](https://twitter.com/FraLotito) · 🐙 [GitHub](https://github.com/FraLotito)
+- Federico Battiston (project coordinator) · 🔗 [Website](https://people.ceu.edu/federico_battiston) · 🐦 [Twitter](https://twitter.com/fede7j) · 🐙 [GitHub](https://github.com/fede7j)
+
+Contributors
+- Lorenzo Betti · 🐦 [Twitter](https://x.com/LoreBetti) · 🐙 [GitHub](https://github.com/Loreb92)
+- Alberto Ceria · 🐦 [Twitter](https://twitter.com/cerialbo)
+- Davide Colosimo
+- Martina Contisciani · 🐦 [Twitter](https://twitter.com/mcontisc) · 🐙 [GitHub](https://github.com/mcontisc)
+- Caterina De Bacco · 🔗 [Website](https://www.cdebacco.com/) · 🐙 [GitHub](https://github.com/cdebacco)
+- Leonardo Di Gaetano · 🐦 [Twitter](https://twitter.com/leodigaetano) · 🐙 [GitHub](https://github.com/LeonardoDiGaetano)
+- Helcio Felippe · 🐦 [Twitter](https://x.com/juniorfelippe)
+- Luca Gallo · 🐦 [Twitter](https://twitter.com/l_gajo) · 🐙 [GitHub](https://github.com/lgajo)
+- Alec Kirkley · 🔗 [Website](https://aleckirkley.com/) · 🐦 [Twitter](https://x.com/captainkirk1041) · 🐙 [GitHub](https://github.com/aleckirkley)
+- Alberto Montresor · 🔗 [Website](http://cricca.disi.unitn.it/montresor/)
+- Federico Musciotto · 🐦 [Twitter](https://twitter.com/musci8) · 🐙 [GitHub](https://github.com/musci8)
+- Berné Nortier · 🐙 [GitHub](https://github.com/joanne-b-nortier)
+- Nicolò Ruggeri · 🔗 [Website](https://nickruggeri.github.io/) · 🐦 [Twitter](https://twitter.com/NikRuggeri) · 🐙 [GitHub](https://github.com/nickruggeri)
+- Alberto Vendramini
+
+## 🧾 Citing HGX
+
+```bibtex
 @article{lotito2023hypergraphx,
-    author = {Lotito, Quintino Francesco and Contisciani, Martina and De Bacco, Caterina and Di Gaetano, Leonardo and Gallo, Luca and Montresor, Alberto and Musciotto, Federico and Ruggeri, Nicolò and Battiston, Federico},
+    author = {Lotito, Quintino Francesco and Contisciani, Martina and De Bacco, Caterina and Di Gaetano, Leonardo and Gallo, Luca and Montresor, Alberto and Musciotto, Federico and Ruggeri, Nicolo and Battiston, Federico},
     title = "{Hypergraphx: a library for higher-order network analysis}",
     journal = {Journal of Complex Networks},
     volume = {11},
@@ -134,48 +166,7 @@ If you use HGX or related data in your paper, please cite:
 }
 ```
 
-## The HGX team
-
-### Project coordinators
-
-* Quintino Francesco Lotito (lead developer) -
-  quintino.lotito@unitn.it - <a title="Twitter, Apache License 2.0 &lt;http://www.apache.org/licenses/LICENSE-2.0&gt;, via Wikimedia Commons" href="https://twitter.com/FraLotito"><img width="16" alt="Twitter-logo" src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Logo_of_Twitter.svg"></a> <a title="GitHub, MIT &lt;http://opensource.org/licenses/mit-license.php&gt;, via Wikimedia Commons" href="https://github.com/FraLotito"><img width="16" alt="Octicons-mark-github" src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Octicons-mark-github.svg/512px-Octicons-mark-github.svg.png"></a>
-* Federico Battiston (project coordinator) -
-  battistonf@ceu.edu <a title="Icons8, MIT &lt;http://opensource.org/licenses/mit-license.php&gt;, via Wikimedia Commons" href="https://people.ceu.edu/federico_battiston"><img width="16" alt="Icons8 flat link" src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Icons8_flat_link.svg/512px-Icons8_flat_link.svg.png"></a> <a title="Twitter, Apache License 2.0 &lt;http://www.apache.org/licenses/LICENSE-2.0&gt;, via Wikimedia Commons" href="https://twitter.com/fede7j"><img width="16" alt="Twitter-logo" src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Logo_of_Twitter.svg"></a> <a title="GitHub, MIT &lt;http://opensource.org/licenses/mit-license.php&gt;, via Wikimedia Commons" href="https://github.com/fede7j"><img width="16" alt="Octicons-mark-github" src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Octicons-mark-github.svg/512px-Octicons-mark-github.svg.png"></a>
-
-### Core members
-
-* Martina Contisciani -
-  martina.contisciani@tuebingen.mpg.de <a title="Twitter, Apache License 2.0 &lt;http://www.apache.org/licenses/LICENSE-2.0&gt;, via Wikimedia Commons" href="https://twitter.com/mcontisc"><img width="16" alt="Twitter-logo" src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Logo_of_Twitter.svg"></a> <a title="GitHub, MIT &lt;http://opensource.org/licenses/mit-license.php&gt;, via Wikimedia Commons" href="https://github.com/mcontisc"><img width="16" alt="Octicons-mark-github" src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Octicons-mark-github.svg/512px-Octicons-mark-github.svg.png"></a>
-* Caterina De Bacco -
-  caterina.debacco@tuebingen.mpg.de <a title="Icons8, MIT &lt;http://opensource.org/licenses/mit-license.php&gt;, via Wikimedia Commons" href="https://www.cdebacco.com/"><img width="16" alt="Icons8 flat link" src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Icons8_flat_link.svg/512px-Icons8_flat_link.svg.png"></a> <a title="GitHub, MIT &lt;http://opensource.org/licenses/mit-license.php&gt;, via Wikimedia Commons" href="https://github.com/cdebacco"><img width="16" alt="Octicons-mark-github" src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Octicons-mark-github.svg/512px-Octicons-mark-github.svg.png"></a>
-* Leonardo Di Gaetano -
-  leonardo.digaetano.96@gmail.com <a title="Twitter, Apache License 2.0 &lt;http://www.apache.org/licenses/LICENSE-2.0&gt;, via Wikimedia Commons" href="https://twitter.com/leodigaetano"><img width="16" alt="Twitter-logo" src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Logo_of_Twitter.svg"></a> <a title="GitHub, MIT &lt;http://opensource.org/licenses/mit-license.php&gt;, via Wikimedia Commons" href="https://github.com/LeonardoDiGaetano"><img width="16" alt="Octicons-mark-github" src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Octicons-mark-github.svg/512px-Octicons-mark-github.svg.png"></a>
-* Luca Gallo -
-  luca.gallo@uni-corvinus.hu - <a title="Twitter, Apache License 2.0 &lt;http://www.apache.org/licenses/LICENSE-2.0&gt;, via Wikimedia Commons" href="https://twitter.com/l_gajo"><img width="16" alt="Twitter-logo" src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Logo_of_Twitter.svg"></a> <a title="GitHub, MIT &lt;http://opensource.org/licenses/mit-license.php&gt;, via Wikimedia Commons" href="https://github.com/lgajo"><img width="16" alt="Octicons-mark-github" src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Octicons-mark-github.svg/512px-Octicons-mark-github.svg.png"></a>
-* Alberto Montresor -
-  alberto.montresor@unitn.it <a title="Icons8, MIT &lt;http://opensource.org/licenses/mit-license.php&gt;, via Wikimedia Commons" href="http://cricca.disi.unitn.it/montresor/"><img width="16" alt="Icons8 flat link" src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Icons8_flat_link.svg/512px-Icons8_flat_link.svg.png"></a>
-* Federico Musciotto -
-  federico.musciotto@unipa.it <a title="Twitter, Apache License 2.0 &lt;http://www.apache.org/licenses/LICENSE-2.0&gt;, via Wikimedia Commons" href="https://twitter.com/musci8"><img width="16" alt="Twitter-logo" src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Logo_of_Twitter.svg"></a> <a title="GitHub, MIT &lt;http://opensource.org/licenses/mit-license.php&gt;, via Wikimedia Commons" href="https://github.com/musci8"><img width="16" alt="Octicons-mark-github" src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Octicons-mark-github.svg/512px-Octicons-mark-github.svg.png"></a>
-* Nicolò Ruggeri -
-  nicolo.ruggeri@tuebingen.mpg.de <a title="Icons8, MIT &lt;http://opensource.org/licenses/mit-license.php&gt;, via Wikimedia Commons" href="https://nickruggeri.github.io/"><img width="16" alt="Icons8 flat link" src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Icons8_flat_link.svg/512px-Icons8_flat_link.svg.png"></a> <a title="Twitter, Apache License 2.0 &lt;http://www.apache.org/licenses/LICENSE-2.0&gt;, via Wikimedia Commons" href="https://twitter.com/NikRuggeri"><img width="16" alt="Twitter-logo" src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Logo_of_Twitter.svg"></a> <a title="GitHub, MIT &lt;http://opensource.org/licenses/mit-license.php&gt;, via Wikimedia Commons" href="https://github.com/nickruggeri"><img width="16" alt="Octicons-mark-github" src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Octicons-mark-github.svg/512px-Octicons-mark-github.svg.png"></a>
-
-### Collaborators
-
-* Lorenzo
-  Betti <a title="Twitter, Apache License 2.0 &lt;http://www.apache.org/licenses/LICENSE-2.0&gt;, via Wikimedia Commons" href="https://x.com/LoreBetti"><img width="16" alt="Twitter-logo" src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Logo_of_Twitter.svg"></a> <a title="GitHub, MIT &lt;http://opensource.org/licenses/mit-license.php&gt;, via Wikimedia Commons" href="https://github.com/Loreb92"><img width="16" alt="Octicons-mark-github" src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Octicons-mark-github.svg/512px-Octicons-mark-github.svg.png"></a>
-* Alberto
-  Ceria <a title="Twitter, Apache License 2.0 &lt;http://www.apache.org/licenses/LICENSE-2.0&gt;, via Wikimedia Commons" href="https://twitter.com/cerialbo"><img width="16" alt="Twitter-logo" src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Logo_of_Twitter.svg"></a>
-* Davide Colosimo
-* Helcio
-  Felippe <a title="Twitter, Apache License 2.0 &lt;http://www.apache.org/licenses/LICENSE-2.0&gt;, via Wikimedia Commons" href="https://x.com/juniorfelippe"><img width="16" alt="Twitter-logo" src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Logo_of_Twitter.svg"></a>
-* Alec
-  Kirkley <a title="Icons8, MIT &lt;http://opensource.org/licenses/mit-license.php&gt;, via Wikimedia Commons" href="https://aleckirkley.com/"><img width="16" alt="Icons8 flat link" src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Icons8_flat_link.svg/512px-Icons8_flat_link.svg.png"></a> <a title="Twitter, Apache License 2.0 &lt;http://www.apache.org/licenses/LICENSE-2.0&gt;, via Wikimedia Commons" href="https://x.com/captainkirk1041"><img width="16" alt="Twitter-logo" src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Logo_of_Twitter.svg"></a> <a title="GitHub, MIT &lt;http://opensource.org/licenses/mit-license.php&gt;, via Wikimedia Commons" href="https://github.com/aleckirkley"><img width="16" alt="Octicons-mark-github" src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Octicons-mark-github.svg/512px-Octicons-mark-github.svg.png"></a>
-* Berné
-  Nortier <a title="GitHub, MIT &lt;http://opensource.org/licenses/mit-license.php&gt;, via Wikimedia Commons" href="https://github.com/joanne-b-nortier"><img width="16" alt="Octicons-mark-github" src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Octicons-mark-github.svg/512px-Octicons-mark-github.svg.png"></a>
-* Alberto Vendramini
-
-## Contributing
+## 🤝 Contributing
 
 HGX is a collaborative project and we welcome suggestions and contributions. If you are interested in contributing to
 HGX or have any questions about our project, please do not hesitate to reach out to us.
@@ -205,35 +196,12 @@ HGX or have any questions about our project, please do not hesitate to reach out
 - Talk about how HGX has been useful for your research problem
 - Engage in a discussion with the core members of the library
 
-## License
+## 📜 License
 
-Released under the 3-Clause BSD license (
-see [LICENSE.md](https://github.com/HGX-Team/hypergraphx/blob/master/LICENSE.md))
+Released under the 3-Clause BSD license. See [LICENSE.md](LICENSE.md).
 
-HGX contains copied or modified code from third sources. The licenses of such code sources can be found in
-our [license file](https://github.com/HGX-Team/hypergraphx/blob/master/LICENSE.md)
-
-## Other resources
-
-#### Python
-
-- [ASH](https://github.com/GiulioRossetti/ASH)
-- [HyperNetX](https://github.com/pnnl/HyperNetX)
-- [Reticula](https://github.com/reticula-network/reticula)
-- [XGI](https://github.com/ComplexGroupInteractions/xgi)
-
-#### Julia
-
-- [HyperGraphs.jl](https://github.com/lpmdiaz/HyperGraphs.jl)
-- [SimpleHypergraphs.jl](https://github.com/pszufe/SimpleHypergraphs.jl)
-
-#### R
-
-- [hyperG](https://cran.r-project.org/web/packages/HyperG/index.html)
-
-## Acknowledgments
+## 🙏 Acknowledgments
 
 This project is supported by the Air Force Office of Scientific Research under award number FA8655-22-1-7025.
 
-
-
+HGX contains copied or modified code from third sources. The licenses of such code sources can be found in [LICENSE.md](LICENSE.md).

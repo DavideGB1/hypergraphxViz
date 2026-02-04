@@ -1,13 +1,13 @@
-hypergraphx.communities.core\_periphery package
-===============================================
+🧑‍🤝‍🧑 Core-Periphery
+========================================
 
 Submodules
 ----------
 
-hypergraphx.communities.core\_periphery.core\_periphery module
---------------------------------------------------------------
+hypergraphx.communities.core\_periphery.model module
+----------------------------------------------------
 
-.. automodule:: hypergraphx.communities.core_periphery.core_periphery
+.. automodule:: hypergraphx.communities.core_periphery.model
    :members:
    :undoc-members:
    :show-inheritance:

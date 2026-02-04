@@ -1,13 +1,13 @@
-hypergraphx.utils package
-=========================
+🧰 Utilities
+========================================
 
 Submodules
 ----------
 
-hypergraphx.utils.cc module
----------------------------
+hypergraphx.utils.components module
+-----------------------------------
 
-.. automodule:: hypergraphx.utils.cc
+.. automodule:: hypergraphx.utils.components
    :members:
    :undoc-members:
    :show-inheritance:
@@ -28,10 +28,10 @@ hypergraphx.utils.labeling module
    :undoc-members:
    :show-inheritance:
 
-hypergraphx.utils.visits module
--------------------------------
+hypergraphx.utils.traversal module
+----------------------------------
 
-.. automodule:: hypergraphx.utils.visits
+.. automodule:: hypergraphx.utils.traversal
    :members:
    :undoc-members:
    :show-inheritance:
@@ -43,3 +43,9 @@ Module contents
    :members:
    :undoc-members:
    :show-inheritance:
+
+Next steps
+----------
+
+- :doc:`../quickstart`
+- :doc:`hypergraphx.core`

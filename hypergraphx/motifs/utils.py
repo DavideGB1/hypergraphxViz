@@ -142,7 +142,6 @@ def _motifs_standard(edges, N, visited):
             labeling[labeled_motif] += 1
 
     def graph_extend(sub, ext, v, n_sub):
-
         if len(sub) == N:
             count_motif(sub)
             return
@@ -393,6 +392,21 @@ def power_set(A):
 
 
 def _is_connected(edges, N):
+    """
+    Check if a graph represented by a list of edges is connected.
+
+    Parameters
+    ----------
+    edges : list
+        A list of edges, where each edge is represented as a list of nodes.
+    N : int
+        The total number of nodes in the graph.
+
+    Returns
+    -------
+    bool
+        True if the graph is connected, False otherwise.
+    """
     nodes = set(itertools.chain(*edges))
     if not edges:
         return False
@@ -509,7 +523,6 @@ def generate_motifs(N):
 
 
 def _directed_motifs_ho_full(edges, N):
-
     mapping = {}
     T = {}
     for e in edges:
@@ -577,7 +590,6 @@ def _directed_motifs_ho_full(edges, N):
             mapping[rappr] = 1
 
     for e in edges:
-
         if (
             len(set(list(e[0]) + list(e[1]))) == N
             and not tuple(sorted(set(list(e[0]) + list(e[1])))) in visited
@@ -677,7 +689,6 @@ def _directed_motifs_ho_not_full(edges, N, visited):
             mapping[rappr] = 1
 
     for e in edges:
-
         if (
             len(set(list(e[0]) + list(e[1]))) == N - 1
             and len(list(e[0]) + list(e[1])) == N - 1
@@ -782,7 +793,6 @@ def directed_diff_sum(observed: list, null_models: list):
 
 
 def directed_avg(motifs):
-
     m = {}
     for i in range(len(motifs)):
         for j in range(len(motifs[i])):
