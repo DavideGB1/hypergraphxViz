@@ -105,10 +105,14 @@ class ModifyHypergraphMenu(QMainWindow):
                 lambda checked, current_action=action: self.__load_hypergraph_from_action(current_action)
             )
             example_menu.addAction(action)
+        load_from_website_action = QAction("Load from Online Database", self)
+        load_from_website_action.triggered.connect(self.random_graph)
+
         toolbar.addAction(load_action)
         toolbar.addAction(save_action)
         toolbar.addMenu(generate_menu)
         toolbar.addMenu(example_menu)
+        toolbar.addAction(load_from_website_action)
 
         self.setMenuBar(toolbar)
 

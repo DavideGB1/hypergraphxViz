@@ -2,9 +2,6 @@ from PyQt5 import QtCore
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QTableWidget, QHeaderView, QTableWidgetItem
 
-from hypergraphx.utils.cc import connected_components
-
-
 class ConnectedComponentsTable(QTableWidget):
     """
     QTableWidget with custom functions ad allows to modify the hypergraph.

@@ -1,5 +1,7 @@
 import networkx as nx
+from matplotlib import pyplot as plt
 
+from hypergraphx import Hypergraph
 from hypergraphx.representations.projections import clique_projection
 
 

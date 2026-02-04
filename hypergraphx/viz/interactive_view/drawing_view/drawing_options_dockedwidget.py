@@ -106,14 +106,16 @@ class DrawingOptionsDockWidget(QDockWidget):
 
         self.community_options_widgets = dict()
         self.community_options_tab = QStackedWidget(self)
-
+        self.community_options_storage = dict()
         self.community_options_widgets["Hypergraph Spectral Clustering"] = SpectralClusteringOptionsWidget(self)
         self.community_options_widgets["Hypergraph-MT"] = MTOptionsWidget(self)
         self.community_options_widgets["Hy-MMSBM"] = MMSBMOptionsWidget(self)
-        for widget in self.community_options_widgets.values():
+        for name, widget in self.community_options_widgets.items():
             widget.set_max_communities(self.n_nodes)
             self.community_options_tab.addWidget(widget)
             widget.modified_options.connect(self.__update_community_options)
+            self.community_options_storage[name] = widget.get_options()
+
         self.tab.addTab(self.community_options_tab, "Community")
         self.tab.setTabEnabled(self.tab.indexOf(self.community_options_tab), False)
         self.tab.setTabVisible(self.tab.indexOf(self.community_options_tab), False)
@@ -363,7 +365,9 @@ class DrawingOptionsDockWidget(QDockWidget):
         dictionary : dict
             A dictionary containing new or updated community options to be merged with the existing options.
         """
-        self.community_options_dict.update(dictionary)
+        current_algo = self.community_combobox.currentText()
+        if current_algo in self.community_options_storage:
+            self.community_options_storage[current_algo].update(dictionary)
         self.update()
 
     def __create_drawing_combobox(self):
@@ -487,6 +491,7 @@ class DrawingOptionsDockWidget(QDockWidget):
             cda = self.community_combobox.currentText()
         except Exception:
             cda = "None"
+        current_community_opts = self.community_options_storage.get(cda, {})
 
         if self.centrality_combobox.currentText() == "No Centrality":
             self.algorithm_options_dict["sort_nodes_by"] = False
@@ -501,7 +506,7 @@ class DrawingOptionsDockWidget(QDockWidget):
             "algorithm_options":self.algorithm_options_dict,
             "graphic_options": self.graphic_options,
             "extra_attributes": self.extra_attributes,
-            "community_options": self.community_options_dict,
+            "community_options": current_community_opts,
             "weight_influence": weight_influence,
             "aggregation_options": self.aggregation_options_tab.get_options(),
             "redraw": self.redraw_flag

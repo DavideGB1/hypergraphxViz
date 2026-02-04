@@ -3,8 +3,8 @@ import pandas as pd
 
 from hypergraphx import TemporalHypergraph
 from hypergraphx.measures.s_centralities import s_betweenness_averaged, s_closeness_averaged, \
-    s_closeness_nodes_averaged, s_betweenness_nodes_averaged, s_betweenness, s_closeness, s_closeness_nodes, \
-    s_betweenness_nodes
+    s_betweenness_nodes_averaged, s_betweenness, s_closeness, s_closeness_nodes, \
+    s_betweenness_nodes, s_closenness_nodes_averaged
 from hypergraphx.motifs import compute_motifs
 from hypergraphx.viz.interactive_view.support import generate_key
 import seaborn as sns
@@ -81,7 +81,7 @@ def calculate_centrality_pool(hypergraph):
     betweenness_func_edge = s_betweenness_averaged if is_temporal else s_betweenness
     closeness_func_edge = s_closeness_averaged if is_temporal else s_closeness
     betweenness_func_node = s_betweenness_nodes_averaged if is_temporal else s_betweenness_nodes
-    closeness_func_node = s_closeness_nodes_averaged if is_temporal else s_closeness_nodes
+    closeness_func_node = s_closenness_nodes_averaged if is_temporal else s_closeness_nodes
 
     edge_betweenness = betweenness_func_edge(hypergraph)
     edge_closeness = closeness_func_edge(hypergraph)

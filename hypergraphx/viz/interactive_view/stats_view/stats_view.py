@@ -64,7 +64,7 @@ class HypergraphStatsWidget(QMainWindow):
             self.weight_tab = GenericGraphWidget(
                 hypergraph=self.controller.get_hypergraph(),
                 drawing_function=draw_weight,
-                drawing_params={'axes': (1, 1), 'calculation_function': calculate_weight_distribution},
+                drawing_params={'axes': (1, 2), 'calculation_function': calculate_weight_distribution},
                 title="Weight",
                 parent=self.vertical_tab
             )

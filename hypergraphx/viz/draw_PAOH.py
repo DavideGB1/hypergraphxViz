@@ -1,7 +1,6 @@
 from typing import Optional, Any, Dict
 import matplotlib.pyplot as plt
-from hypergraphx import Hypergraph, DirectedHypergraph
-from hypergraphx.core.temporal_hypergraph import TemporalHypergraph
+from hypergraphx import Hypergraph, DirectedHypergraph, TemporalHypergraph
 from hypergraphx.viz.__graphic_options import GraphicOptions
 from hypergraphx.viz.__support import (__ignore_unused_args, __filter_hypergraph, __check_edge_intersection,
                                        __support_to_normal_hypergraph, _get_community_info, _get_node_community,

@@ -4,19 +4,24 @@ from hypergraphx.measures.edge_similarity import intersection, jaccard_similarit
 
 
 def bipartite_projection(
-    h: Hypergraph,
-    *,
-    node_order=None,
-    edge_order=None,
-    return_obj_to_id: bool = False,
+        h: Hypergraph | DirectedHypergraph,
+        *,
+        mode: str = "bipartite",  # "bipartite" o "extra_node"
+        node_order=None,
+        edge_order=None,
+        return_obj_to_id: bool = False,
 ):
     """
-    Returns a bipartite graph representation of the hypergraph.
+    Returns a bipartite or extra-node graph representation of the hypergraph.
 
     Parameters
     ----------
-    h : Hypergraph
+    h : Hypergraph | DirectedHypergraph
         The hypergraph to be projected.
+    mode : str, optional (keyword-only)
+        Projection mode:
+        - "bipartite": All hyperedges become extra nodes (traditional bipartite)
+        - "extra_node": Only hyperedges of order ≥3 become extra nodes, binary edges remain as edges
     node_order : list, optional (keyword-only)
         Explicit node iteration order to make the node-id mapping deterministic.
         If None, uses `h.get_nodes()` order.
@@ -30,40 +35,116 @@ def bipartite_projection(
     -------
     tuple
         `(g, id_to_obj)` where:
-        - `g` is a `networkx.Graph` with node ids like `"N0"` and `"E0"`
-        - `id_to_obj` maps node ids to original objects (node labels and edge tuples)
+        - `g` is a `networkx.Graph` (or DiGraph for DirectedHypergraph)
+        - `id_to_obj` maps node ids to original objects
 
         If `return_obj_to_id=True`, returns `(g, id_to_obj, obj_to_id)`.
+
+    Raises
+    ------
+    ValueError
+        If mode is not "bipartite" or "extra_node".
 
     Notes
     -----
     This function is deterministic given `node_order` and `edge_order`.
-    Without them, the mapping depends on the insertion/iteration order of `h`.
+
+    Examples
+    --------
+    >>> h = Hypergraph()
+    >>> h.add_edges([(1, 2), (1, 2, 3)])
+
+    >>> # Bipartite mode: all edges become nodes
+    >>> g_bip, _ = bipartite_projection(h, mode="bipartite")
+    >>> g_bip.nodes()
+    # ['N0', 'N1', 'N2', 'E0', 'E1']
+
+    >>> # Extra-node mode: binary edges stay as edges
+    >>> g_ext, _ = bipartite_projection(h, mode="extra_node")
+    >>> g_ext.nodes()
+    # [1, 2, 3, 'E0']
+    >>> g_ext.edges()
+    # [(1, 2), (1, 'E0'), (2, 'E0'), (3, 'E0')]
     """
+    if mode not in {"bipartite", "extra_node"}:
+        raise ValueError(f"mode must be 'bipartite' or 'extra_node', got '{mode}'")
+
     g = nx.Graph()
     id_to_obj = {}
     obj_to_id = {}
     idx = 0
 
+    # Detect if directed
+    isDirected = isinstance(h, DirectedHypergraph)
+    if isDirected:
+        g = g.to_directed()
+
+    # Add nodes
     nodes = h.get_nodes() if node_order is None else list(node_order)
-    for node in nodes:
-        id_to_obj["N" + str(idx)] = node
-        obj_to_id[node] = "N" + str(idx)
-        idx += 1
-        g.add_node(obj_to_id[node], bipartite=0)
 
+    if mode == "bipartite":
+        # Bipartite mode: nodes get "N" prefix
+        for node in nodes:
+            id_to_obj["N" + str(idx)] = node
+            obj_to_id[node] = "N" + str(idx)
+            g.add_node(obj_to_id[node], bipartite=0)
+            idx += 1
+    else:  # extra_node mode
+        # Extra-node mode: nodes keep original IDs
+        for node in nodes:
+            id_to_obj[node] = node
+            obj_to_id[node] = node
+            g.add_node(node, is_edge="node")
+
+    # Add edges
     idx = 0
-
     edges = h.get_edges() if edge_order is None else list(edge_order)
-    for edge in edges:
-        edge_key = h._normalize_edge(edge)
-        obj_to_id[edge_key] = "E" + str(idx)
-        id_to_obj["E" + str(idx)] = edge_key
-        idx += 1
-        g.add_node(obj_to_id[edge_key], bipartite=1)
 
-        for node in edge_key:
-            g.add_edge(obj_to_id[edge_key], obj_to_id[node])
+    for edge in edges:
+        original_edge = edge
+
+        # Normalize edge representation
+        if isDirected:
+            compressed_edge = []
+            for node in edge[0]:
+                compressed_edge.append(node)
+            for node in edge[1]:
+                compressed_edge.append(node)
+            edge_key = tuple(compressed_edge)
+        else:
+            edge_key = tuple(sorted(edge))
+
+        # Get weight if weighted
+        weight = 1
+        if h.is_weighted():
+            weight = h.get_weight(original_edge)
+
+        # EXTRA-NODE MODE: binary edges become direct edges
+        if mode == "extra_node" and len(edge_key) == 2:
+            g.add_edge(edge_key[0], edge_key[1], weight=weight)
+
+        # BIPARTITE MODE or higher-order edges: create extra node
+        else:
+            edge_id = "E" + str(idx)
+            obj_to_id[edge_key] = edge_id
+            id_to_obj[edge_id] = edge_key
+
+            if mode == "bipartite":
+                g.add_node(edge_id, bipartite=1, weight=weight)
+            else:  # extra_node
+                g.add_node(edge_id, weight=weight, is_edge="edge")
+
+            # Connect edge node to its constituent nodes
+            if isDirected:
+                for node in original_edge[0]:
+                    g.add_edge(obj_to_id[node], edge_id, weight=weight)
+                for node in original_edge[1]:
+                    g.add_edge(edge_id, obj_to_id[node], weight=weight)
+            else:
+                for node in original_edge:
+                    g.add_edge(obj_to_id[node], edge_id, weight=weight)
+
+            idx += 1
 
     if return_obj_to_id:
         return g, id_to_obj, obj_to_id
@@ -115,6 +196,61 @@ def clique_projection(h: Hypergraph, keep_isolated=False):
                 g.add_edge(edge[i], edge[j])
 
     return g
+
+def set_projection(h: Hypergraph) -> [nx.Graph,list]:
+    """
+    Returns a graph representation of the hypergraph using the extra-node projection method.
+    Parameters
+    ----------
+    h : Hypergraph
+        The hypergraph to be projected.
+    Returns
+    -------
+    networkx.Graph
+        The graph representation of the hypergraph.
+    """
+    g = nx.Graph()
+    id_to_obj = {}
+    obj_to_id = {}
+    idx = 0
+
+    #Add normal nodes
+    for node in h.get_nodes():
+        id_to_obj[idx] = node
+        obj_to_id[node] = idx
+        idx += 1
+        g.add_node(node,is_edge = "node")
+
+    idx = 0
+    #Manage Hyperedges
+    for edge in h.get_edges():
+        #Manage binary relations
+        if len(edge) == 2:
+            weight = 1
+            if h.is_weighted():
+                weight = h.get_weight(edge)
+            g.add_edge(edge[0], edge[1], weight=weight)
+        #Any other type of relation
+        else:
+            obj_to_id[tuple(edge)] = 'E' + str(idx)
+            id_to_obj['E' + str(idx)] = edge
+            weight = 1
+            if h.is_weighted():
+                weight = h.get_weight(edge)
+            g.add_node(obj_to_id[tuple(edge)], weight=weight, is_edge = "edge")
+            for node in edge:
+                g.add_edge(node, obj_to_id[tuple(edge)], weight=weight)
+            for i in range(len(edge) - 1):
+                    if h.is_weighted():
+                        g.add_edge(edge[i], edge[i+1], weight=h.get_weight(edge))
+                    else:
+                        g.add_edge(edge[i], edge[i+1])
+            if h.is_weighted():
+                g.add_edge(edge[-1], edge[0], weight=h.get_weight(edge))
+            else:
+                g.add_edge(edge[-1], edge[0])
+        idx += 1
+    return g, obj_to_id
 
 
 def line_graph(

@@ -3,11 +3,11 @@ from enum import Enum
 import hypergraphx
 from PyQt5.QtCore import QObject, pyqtSignal
 
-from hypergraphx import Hypergraph, TemporalHypergraph, DirectedHypergraph
+from hypergraphx import Hypergraph, TemporalHypergraph, DirectedHypergraph, MissingNodeError
 from hypergraphx.generation import random_hypergraph
 from hypergraphx.generation.random import random_uniform_hypergraph
 from hypergraphx.readwrite import save_hypergraph
-from hypergraphx.utils.cc import connected_components
+from hypergraphx.utils import connected_components
 from hypergraphx.viz.interactive_view.drawing_view.drawing_thread import PlotWorker
 
 
@@ -60,9 +60,10 @@ class Controller(QObject):
         for node in node_list:
             try:
                 self.actual_hypergraph.remove_node(node, True)
-            except KeyError:
+            except MissingNodeError:
                 self.actual_hypergraph.remove_node(int(node), True)
-            except Exception:
+            except Exception as e:
+                print(f"Error when removing nodes: {e}")
                 pass
         self.cc = connected_components(self.actual_hypergraph)
         self.update_hypergraph()
@@ -152,7 +153,7 @@ class Controller(QObject):
             weights = None
             if self.actual_hypergraph.is_weighted():
                 weights = cc_hg.get_weights()
-            self.showed_hypergraph.add_edges(cc_hg.get_edges(), weights, cc_hg.get_all_edges_metadata())
+            self.showed_hypergraph.add_edges(cc_hg.get_edges(), weights, cc_hg.get_all_edges_metadata().values())
         self.update_hypergraph(updated_ccs=True)
 
     def change_hypergraph(self, hypergraph):
