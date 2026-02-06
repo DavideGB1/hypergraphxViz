@@ -265,6 +265,7 @@ def plot_motifs(
     annotate_bars: bool = False,
     annotate_fmt: str = "{:+.2f}",
     hover_labels: bool = False,
+    ax = None
 ):
     try:
         import matplotlib.pyplot as plt  # type: ignore
@@ -338,9 +339,18 @@ def plot_motifs(
     motif_patterns = _sort_for_visualization(motif_patterns)
     cols = [neg_color if (x < 0) else pos_color for x in motifs]
     labels = ["I", "II", "III", "IV", "V", "VI"]
+    fig = None
+    if ax is not None:
+        fig = ax.figure
+        if not roman_numbers:
+            ax.remove()
+
     if roman_numbers:
-        fig = plt.gcf()
-        ax_bar = fig.add_subplot(111)
+        if ax is None:
+            fig = plt.gcf()
+            ax_bar = fig.add_subplot(111)
+        else:
+            ax_bar = ax
         idx = list(range(len(motifs)))
         _style_axes(ax_bar, grid_axis=None)
         bars = ax_bar.bar(
@@ -384,7 +394,8 @@ def plot_motifs(
             except Exception:
                 pass
     else:
-        fig = plt.figure(figsize=(max(8, 0.6 * len(motifs)), 5))
+        if fig is None:
+             fig = plt.figure(figsize=(max(8, 0.6 * len(motifs)), 5))
         gs = fig.add_gridspec(2, 1, height_ratios=[2.4, 0.6], hspace=0.01)
 
         ax_bar = fig.add_subplot(gs[0])

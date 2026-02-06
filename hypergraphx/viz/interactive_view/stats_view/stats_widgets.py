@@ -104,7 +104,7 @@ class MotifsWidget(QWidget):
         else:
             self.axes = self.figure.subplots(1, 1)
 
-        plot_motifs(ax = self.axes, motifs = data, title="Motifs", save_name=None)
+        plot_motifs(ax = self.axes, motifs = data,  save_name=None, show=False, show_motif_labels=True)
         self.figure.subplots_adjust(wspace=self.drawing_params.get('wspace', 0.5),
                                     hspace=self.drawing_params.get('hspace', 0.5))
         self.canvas.draw()
