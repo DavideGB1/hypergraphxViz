@@ -90,10 +90,22 @@ class BaseGraphicOptionsWidget(QWidget):
         return color_picker
 
     def add_combobox(self, name: str, value: str):
-        translation = {'.': "Small Circle", 'o': "Big Circle", 'v': "Down Triangle", '^': "Up Triangle",
-                       '<': "Left Triangle", '>': "Right Triangle", '8': "Octagon", 's': "Square", 'p': "Pentagon",
-                       '*': "Star", 'h': "Vertical Hexagon", 'H': "Horizontal Hexagon", 'D': "Regular Rhombus",
-                       'd': "Rhombus", 'P': "Plus", 'X': "Cross"}
+        translation = {
+            'o': "Circle",
+            's': "Square",
+            't': "Triangle",
+            'd': "Rombus",
+            '+': "Plus",
+            'p': "Pentagon",
+            'h': "Vertical Hexagon",
+            'x': "Cross",
+            'crosshair': "Crosshair",
+            'arrow_up': "Arrow Up",
+            'arrow_down': "Arrow Down",
+            'arrow_left': "Arrow Left",
+            'arrow_right': "Arrow Right",
+            'star': "Star",
+        }
 
         combobox = ComboBoxCustomWindget(name, value, translation, self)
 

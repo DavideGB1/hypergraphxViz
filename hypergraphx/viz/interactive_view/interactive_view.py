@@ -88,5 +88,5 @@ h = Hypergraph([
     (19,23,24,25),
     (23,24,25),
     (24,26),
-    (23,27)])
+    (23,27)], weighted=False)
 start_interactive_view(h)

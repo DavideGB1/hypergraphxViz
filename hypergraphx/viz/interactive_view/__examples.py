@@ -26,7 +26,11 @@ def examples_generator():
     - Temporal Hypergraph (Weighted and Unweighted)
     """
     examples = dict()
-    normal = Hypergraph([(1,2,3),(4,5,6),(6,7,8,9),(10,11,12,1,4),(4,1),(3,6)])
+    normal = Hypergraph(
+        [(1,2,3),(4,5,6),(6,7,8,9),(10,11,12,1,4),(4,1),(3,6)],
+        weighted=False
+    )
+
     examples["Normal"] = normal
     weighted = Hypergraph(weighted=True)
     weighted.add_edge((1,2,3),12)

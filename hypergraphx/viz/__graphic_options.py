@@ -52,7 +52,7 @@ class GraphicOptions:
     def __init__(
             self,
             node_shape: Optional[str | dict] = "o",
-            edge_shape: Optional[str | dict] = '8',
+            edge_shape: Optional[str | dict] = 's',
             node_color: Optional[str | dict] = "#2899e5",
             node_facecolor: Optional[str | dict] = "#000000",
             label_color: Optional[str] = "#000000",
@@ -62,7 +62,7 @@ class GraphicOptions:
             edge_color: Optional[str | dict] = "#000000",
             edge_size: Optional[float | dict] = 2.0,
             label_size: Optional[int] = 10,
-            node_size: Optional[int | dict] = 300,
+            node_size: Optional[int | dict] = 25,
             weight_size: Optional[int] = 20,
 
             time_font_size: int = 18,
@@ -78,7 +78,7 @@ class GraphicOptions:
             default_edge_shape: Optional[str] = "8",
             default_label_size: Optional[int] = 10,
             default_label_color: Optional[str] = "#000000",
-            default_node_size: Optional[int] = 300,
+            default_node_size: Optional[int] = 25,
             default_weight_size: Optional[int] = 20,
 
             default_time_font_size: int = 18,

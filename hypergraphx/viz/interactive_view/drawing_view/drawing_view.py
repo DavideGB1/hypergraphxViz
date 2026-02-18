@@ -4,21 +4,39 @@ import math
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QMainWindow, QStackedLayout
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+import pyqtgraph as pg
 
+from hypergraphx.viz.interactive_view.pyqtgraph_functions.draw_projections_pyqtgraph import _draw_bipartite_pyqtgraph, \
+    _draw_clique_pyqtgraph, _draw_extra_node_pyqtgraph
+from hypergraphx.viz.interactive_view.pyqtgraph_functions.radial_pyqtgraph import _draw_radial_elements_pyqt
+from hypergraphx.viz.interactive_view.pyqtgraph_functions.set_pyqtgraph import _draw_set_pyqtgraph
+
+pg.setConfigOption('background', 'w')  # 'w' = white
+
+# Imposta il colore degli assi e della griglia
+pg.setConfigOptions(antialias=True)
+
+# Configura lo stile predefinito degli assi
+axis_pen = pg.mkPen(color='k', width=1)
+grid_pen = pg.mkPen(color='k', width=0.5, style=pg.QtCore.Qt.DashLine)
+
+# Monkey patch per impostare i colori di default
+original_setStyle = pg.AxisItem.setStyle
+
+def new_setStyle(self, **kwds):
+    original_setStyle(self, **kwds)
+    self.setPen(axis_pen)
+    self.setTextPen('k')
+    self.setZValue(-1000)
+
+pg.AxisItem.setStyle = new_setStyle
 from hypergraphx.viz.__graphic_options import GraphicOptions
-from hypergraphx.viz.draw_PAOH import draw_paoh_from_data
-from hypergraphx.viz.draw_projections import _draw_extra_node_on_ax, _draw_bipartite_on_ax, _draw_clique_on_ax
-from hypergraphx.viz.draw_radial import _draw_radial_elements
-from hypergraphx.viz.draw_sets import _draw_set_elements
 from hypergraphx.viz.interactive_view.community_options.__community_option_menu import CommunityOptionsDict
 from hypergraphx.viz.interactive_view.controller import HypergraphType
 from hypergraphx.viz.interactive_view.custom_widgets.loading_screen import LoadingScreen
 from hypergraphx.viz.interactive_view.custom_widgets.slider_dock_widget import SliderDockWidget
 from hypergraphx.viz.interactive_view.drawing_view.drawing_options_dockedwidget import DrawingOptionsDockWidget
-from hypergraphx.viz.interactive_view.drawing_view.drawing_thread import PlotWorker
+from hypergraphx.viz.interactive_view.pyqtgraph_functions.PAOH_pyqtgraph import draw_paoh_pyqtgraph
 
 
 class HypergraphDrawingWidget(QMainWindow):
@@ -54,12 +72,14 @@ class HypergraphDrawingWidget(QMainWindow):
             "hyperedge_alpha": 0.8,
             "rounding_radius_factor": 0.1,
             "polygon_expansion_factor": 1.8,
+            "axis_labels_size": 16,
+            "nodes_name_size": 12
         }
         self.graphic_options = GraphicOptions()
         self.slider = None
         self.community_option_menu = None
         self.option_menu = None
-        self.figure = Figure()
+        self.pyqtgraph_widget = None
         self.drawing_options = None
         self.last_pos = dict()
         self.loading = False
@@ -68,13 +88,17 @@ class HypergraphDrawingWidget(QMainWindow):
         self.setContextMenuPolicy(Qt.NoContextMenu)
 
         self.community_model = None
-        # Sliders Management
+
+        # Container per il plot PyQtGraph
+        self.plot_container = QWidget()
+        self.plot_layout = QVBoxLayout(self.plot_container)
+        self.plot_layout.setContentsMargins(0, 0, 0, 0)
+
         # Create layout and add everything
         self.loading_container = LoadingScreen()
-        self.canvas = FigureCanvas(self.figure)
-        self.setCentralWidget(self.canvas)
+
         self.stacked = QStackedLayout()
-        self.stacked.addWidget(self.canvas)
+        self.stacked.addWidget(self.plot_container)
         self.stacked.addWidget(self.loading_container)
         self.central_widget = QWidget()
         self.central_widget.setLayout(self.stacked)
@@ -86,25 +110,8 @@ class HypergraphDrawingWidget(QMainWindow):
             "use_polygonal_simplification": False
         }
 
-        self.toolbar = NavigationToolbar(parent=self, canvas=self.canvas)
-        home_icon = QIcon("icons/home.svg")
-        self.toolbar._actions['home'].setIcon(home_icon)
-        back_icon = QIcon("icons/left.svg")
-        self.toolbar._actions['back'].setIcon(back_icon)
-        forward_icon = QIcon("icons/right.svg")
-        self.toolbar._actions['forward'].setIcon(forward_icon)
-        pan_icon = QIcon("icons/move.svg")
-        self.toolbar._actions['pan'].setIcon(pan_icon)
-        zoom_icon = QIcon("icons/zoom.svg")
-        self.toolbar._actions['zoom'].setIcon(zoom_icon)
-        configure_subplots_icon = QIcon("icons/options.svg")
-        self.toolbar._actions['configure_subplots'].setIcon(configure_subplots_icon)
-        edit_parameters_icon = QIcon("icons/settings.svg")
-        self.toolbar._actions['edit_parameters'].setIcon(edit_parameters_icon)
-        save_icon = QIcon("icons/save.svg")
-        self.toolbar._actions['save_figure'].setIcon(save_icon)
-
-        self.addToolBar(Qt.TopToolBarArea, self.toolbar)
+        # Rimuovi la toolbar di matplotlib (opzionale, puoi tenerla se serve)
+        # Se vuoi una toolbar personalizzata per PyQtGraph, puoi aggiungerla qui
 
         self.slider = SliderDockWidget(self.controller.get_hypergraph().max_size(), parent=self)
         self.slider.setTitleBarWidget(QWidget())
@@ -120,14 +127,27 @@ class HypergraphDrawingWidget(QMainWindow):
                 hypergraph_type = "directed"
             case HypergraphType.TEMPORAL:
                 hypergraph_type = "temporal"
-        self.drawing_options_widget = DrawingOptionsDockWidget(weighted= self.controller.get_hypergraph().is_weighted(), hypergraph_type=hypergraph_type,n_nodes=self.controller.get_hypergraph().num_nodes(),
-                                                               parent=self)
+        self.drawing_options_widget = DrawingOptionsDockWidget(
+            weighted=self.controller.get_hypergraph().is_weighted(),
+            hypergraph_type=hypergraph_type,
+            n_nodes=self.controller.get_hypergraph().num_nodes(),
+            parent=self
+        )
         self.drawing_options_widget.setTitleBarWidget(QWidget())
         suggested_width = self.drawing_options_widget.sizeHint().width()
         self.drawing_options_widget.setFixedWidth(int(suggested_width * 1.45))
         self.drawing_options_widget.update_value.connect(self.get_new_drawing_options)
         self.addDockWidget(Qt.RightDockWidgetArea, self.drawing_options_widget)
         self.use_default()
+
+    def _clear_plot_container(self):
+        """Pulisce il container del plot rimuovendo tutti i widget"""
+        while self.plot_layout.count():
+            item = self.plot_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        self.pyqtgraph_widget = None
+        gc.collect()
 
     def update_hypergraph(self):
         """
@@ -145,11 +165,23 @@ class HypergraphDrawingWidget(QMainWindow):
         self.slider_value = (2, self.controller.get_hypergraph().max_size())
         match self.controller.hypergraph_type:
             case HypergraphType.NORMAL:
-                self.drawing_options_widget.update_hypergraph(hypergraph_type = "normal", n_nodes = self.controller.get_hypergraph().num_nodes(), weighted = self.controller.get_hypergraph().is_weighted())
+                self.drawing_options_widget.update_hypergraph(
+                    hypergraph_type="normal",
+                    n_nodes=self.controller.get_hypergraph().num_nodes(),
+                    weighted=self.controller.get_hypergraph().is_weighted()
+                )
             case HypergraphType.DIRECTED:
-                self.drawing_options_widget.update_hypergraph(hypergraph_type = "directed", n_nodes = self.controller.get_hypergraph().num_nodes(), weighted = self.controller.get_hypergraph().is_weighted())
+                self.drawing_options_widget.update_hypergraph(
+                    hypergraph_type="directed",
+                    n_nodes=self.controller.get_hypergraph().num_nodes(),
+                    weighted=self.controller.get_hypergraph().is_weighted()
+                )
             case HypergraphType.TEMPORAL:
-                self.drawing_options_widget.update_hypergraph(hypergraph_type = "temporal", n_nodes = self.controller.get_hypergraph().num_nodes(), weighted = self.controller.get_hypergraph().is_weighted())
+                self.drawing_options_widget.update_hypergraph(
+                    hypergraph_type="temporal",
+                    n_nodes=self.controller.get_hypergraph().num_nodes(),
+                    weighted=self.controller.get_hypergraph().is_weighted()
+                )
 
         self.slider.update_max(self.controller.get_hypergraph().max_size())
         self.use_default()
@@ -192,90 +224,108 @@ class HypergraphDrawingWidget(QMainWindow):
         self.use_last = False
 
     def drawn(self):
+        """
+        Disegna il grafico usando PyQtGraph dopo che i dati sono pronti
+        """
         data = self.controller.drawing_result[0]
         n_times = self.controller.drawing_result[2]
         self.graphic_options.add_centrality_factor_dict(self.controller.drawing_result[1])
-        self.figure.clf()
+
+        self._clear_plot_container()
         gc.collect()
-        if self.current_function == "PAOH":
-            ax = self.figure.add_subplot(111)
-            draw_paoh_from_data(
-                ax=ax,
-                data=data[0],
-                graphicOptions=self.graphic_options.copy(),
-                axis_labels_size=self.extra_attributes["axis_labels_size"],
-                nodes_name_size=self.extra_attributes["nodes_name_size"]
-            )
+
+        if n_times == 1:
+            if self.current_function == "PAOH":
+                self.pyqtgraph_widget = draw_paoh_pyqtgraph(
+                    data=data[0],
+                    widget=None,
+                    graphicOptions=self.graphic_options.copy(),
+                    axis_labels_size=self.extra_attributes["axis_labels_size"],
+                    nodes_name_size=self.extra_attributes["nodes_name_size"]
+
+                )
+            elif self.current_function == "Radial":
+                self.pyqtgraph_widget = _draw_radial_elements_pyqt(
+                    data=data[0],
+                    widget=None,
+                    graphicOptions=self.graphic_options.copy(),
+                    draw_labels=self.algorithm_options_dict["draw_labels"],
+                    font_spacing_factor=self.extra_attributes["font_spacing_factor"],
+                )
+            elif self.current_function == "Bipartite":
+                self.pyqtgraph_widget = _draw_bipartite_pyqtgraph(
+                    data=data[0],
+                    widget=None,
+                    graphicOptions=self.graphic_options.copy(),
+                    draw_labels=self.algorithm_options_dict["draw_labels"],
+                    align=self.algorithm_options_dict["align"],
+                    u=self.community_model,
+                )
+            elif self.current_function == "Clique":
+                self.pyqtgraph_widget = _draw_clique_pyqtgraph(
+                    data=data[0],
+                    widget=None,
+                    graphicOptions=self.graphic_options.copy(),
+                    draw_labels=self.algorithm_options_dict["draw_labels"],
+                    u=self.community_model,
+                )
+            elif self.current_function == "Extra-Node":
+                self.pyqtgraph_widget = _draw_extra_node_pyqtgraph(
+                    data=data[0],
+                    widget=None,
+                    u=self.community_model,
+                    show_edge_nodes=self.algorithm_options_dict["show_edge_nodes"],
+                    draw_labels=self.algorithm_options_dict["draw_labels"],
+                    graphicOptions=self.graphic_options.copy()
+                )
+            elif self.current_function == "Sets":
+                self.pyqtgraph_widget = _draw_set_pyqtgraph(
+                    data=data[0],
+                    widget=None,
+                    draw_labels=self.algorithm_options_dict["draw_labels"],
+                    graphicOptions=self.graphic_options.copy()
+                )
+            self.plot_layout.addWidget(self.pyqtgraph_widget)
         else:
-            axs_flat = []
-            if n_times != 1:
-                n_rows = math.ceil(math.sqrt(n_times))
-                n_cols = math.ceil(n_times / n_rows)
-                for i in range(n_times):
-                    axs_flat.append(self.figure.add_subplot(n_rows, n_cols, i + 1))
-            else:
-                axs_flat.append(self.figure.add_subplot(111))
+            from PyQt5.QtWidgets import QGridLayout
+
+            grid_widget = QWidget()
+            grid_layout = QGridLayout(grid_widget)
+            grid_layout.setSpacing(5)
+
+            n_rows = math.ceil(math.sqrt(n_times))
+            n_cols = math.ceil(n_times / n_rows)
 
             for i, (time, timed_data) in enumerate(data.items()):
-                if self.current_function == "Sets":
-                    _draw_set_elements(
-                        ax=axs_flat[i],
-                        data=timed_data,
-                        draw_labels=self.algorithm_options_dict["draw_labels"],
-                        graphicOptions=self.graphic_options.copy()
-                    )
-                elif self.current_function == "PAOH":
-                    draw_paoh_from_data(
-                        ax=axs_flat[i],
-                        data=timed_data,
-                        graphicOptions=self.graphic_options.copy(),
-                        axis_labels_size=self.extra_attributes["axis_labels_size"],
-                        nodes_name_size=self.extra_attributes["nodes_name_size"]
-                    )
-                elif self.current_function == "Radial":
-                    _draw_radial_elements(
-                        ax=axs_flat[i],
-                        data=timed_data,
-                        draw_labels=self.algorithm_options_dict["draw_labels"],
-                        font_spacing_factor=self.extra_attributes["font_spacing_factor"],
-                        graphicOptions=self.graphic_options.copy()
-                    )
-                elif self.current_function == "Extra-Node":
-                    _draw_extra_node_on_ax(
-                        ax=axs_flat[i],
-                        data=timed_data,
-                        u=self.community_model,
-                        show_edge_nodes=self.algorithm_options_dict["show_edge_nodes"],
-                        draw_labels=self.algorithm_options_dict["draw_labels"],
-                        graphicOptions=self.graphic_options.copy()
-                    )
-                elif self.current_function == "Bipartite":
-                    _draw_bipartite_on_ax(
-                        ax=axs_flat[i],
-                        data=timed_data,
-                        u=self.community_model,
-                        draw_labels=self.algorithm_options_dict["draw_labels"],
-                        align=self.algorithm_options_dict["align"],
-                        graphicOptions=self.graphic_options.copy()
-                    )
-                elif self.current_function == "Clique":
-                    _draw_clique_on_ax(
-                        ax=axs_flat[i],
-                        data=timed_data,
-                        u=self.community_model,
-                        draw_labels=self.algorithm_options_dict["draw_labels"],
-                        graphicOptions=self.graphic_options.copy()
-                    )
-                if n_times != 1:
-                    axs_flat[i].set_title(f"Hypergraph at time {time}")
+                row = i // n_cols
+                col = i % n_cols
 
-            if n_times != 1:
-                for ax in axs_flat[n_times:]:
-                    ax.set_visible(False)
-        if self.current_function != "PAOH" and n_times == 1:
-            self.figure.gca().axis('off')
-        self.figure.tight_layout()
-        self.canvas.draw()
+                widget = _draw_radial_elements_pyqt(
+                    data=timed_data,
+                    widget=None,
+                    graphicOptions=self.graphic_options.copy(),
+                    draw_labels=self.algorithm_options_dict["draw_labels"],
+                    font_spacing_factor=self.extra_attributes["font_spacing_factor"],
+                )
+
+                # Aggiungi titolo per timestamp multipli
+                from PyQt5.QtWidgets import QLabel, QVBoxLayout
+                timestamp_container = QWidget()
+                timestamp_layout = QVBoxLayout(timestamp_container)
+                timestamp_layout.setContentsMargins(0, 0, 0, 0)
+
+                title_label = QLabel(f"Hypergraph at time {time}")
+                title_label.setStyleSheet("font-weight: bold; font-size: 12pt;")
+                title_label.setAlignment(Qt.AlignCenter)
+
+                timestamp_layout.addWidget(title_label)
+                timestamp_layout.addWidget(widget)
+
+                grid_layout.addWidget(timestamp_container, row, col)
+
+            self.plot_layout.addWidget(grid_widget)
+
+        # Cambia focus e pulisce
         self.change_focus()
         if self.thread:
             self.thread = None
@@ -301,24 +351,7 @@ class HypergraphDrawingWidget(QMainWindow):
         Parameters
         ----------
         input_dictionary : dict
-            A dictionary containing configurations and options for updating drawing parameters. Expected keys include:
-            - "%_heaviest_edges" : Sets the value for `heaviest_edges_value`.
-            - "drawing_options" : Specifies the drawing function to assign to `current_function`, options include "Sets", "PAOH", "Radial", "Extra-Node", "Bipartite", "Clique".
-            - "centrality" : Specifies the type of centrality to use, options include "No Centrality", "Degree Centrality", "Betweenness Centrality", "Adjacency Factor (t=1)", and "Adjacency Factor (t=2)".
-            - "community_options" : Updates the `community_options_dict` with existing options in the input.
-            - "use_last" : Boolean flag denoting whether to reuse the last community configuration.
-            - "community_detection_algorithm" : Specifies the community detection algorithm to be used when `use_last` is False. Options include "None", "Hypergraph Spectral Clustering", "Hypergraph-MT", and "Hy-MMSBM".
-            - "weight_influence" : Specifies the relationship for weight positioning, options include "No Relationship", "Directly Proportional", and "Inversely Proportional".
-            - "algorithm_options" : Specifies additional algorithm-related options to configure.
-            - "graphic_options" : Specifies graphic-related options for plotting.
-            - "extra_attributes" : Additional attributes for the plot.
-
-        Notes
-        -----
-        Certain keys in the input dictionary trigger specific functions or calculations based on their values.
-        The function ties together drawing settings, centrality calculations, community detection algorithms, and plotting configurations.
-        This function involves normalization of centrality measures in applicable cases.
-        The function updates graphical rendering and custom attributes before finalizing with `plot()`.
+            A dictionary containing configurations and options for updating drawing parameters.
         """
         self.heaviest_edges_value = input_dictionary["%_heaviest_edges"]
         self.current_function = input_dictionary["drawing_options"]
@@ -353,21 +386,9 @@ class HypergraphDrawingWidget(QMainWindow):
 
     def use_default(self):
         """
-        Determines and sets the appropriate drawing function based on the type of the hypergraph attribute and then executes the plotting operation.
-
-        Notes
-        -----
-        - If `hypergraph` is an instance of `TemporalHypergraph`, the drawing function is set to `draw_PAOH`.
-        - If `hypergraph` is an instance of `DirectedHypergraph`, the drawing function is set to `draw_extra_node`.
-        - For other types of `hypergraph`, the drawing function defaults to `draw_sets`.
+        Determina e imposta la funzione di disegno appropriata.
+        Ora forza sempre PAOH indipendentemente dal tipo di ipergrafo.
         """
-        match self.controller.hypergraph_type:
-            case HypergraphType.TEMPORAL:
-                self.current_function = "PAOH"
-            case HypergraphType.DIRECTED:
-                self.current_function = "Extra-Node"
-            case HypergraphType.NORMAL:
-                self.current_function = "Sets"
-            case _:
-                self.current_function = "PAOH"
+        # Forza sempre PAOH
+        self.current_function = "PAOH"
         self.plot()

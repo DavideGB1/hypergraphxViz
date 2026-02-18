@@ -153,7 +153,10 @@ class Controller(QObject):
             weights = None
             if self.actual_hypergraph.is_weighted():
                 weights = cc_hg.get_weights()
-            self.showed_hypergraph.add_edges(cc_hg.get_edges(), weights, cc_hg.get_all_edges_metadata().values())
+                self.showed_hypergraph.add_edges(cc_hg.get_edges(), weights, cc_hg.get_all_edges_metadata().values())
+            else:
+                self.showed_hypergraph.add_edges(cc_hg.get_edges(), metadata = cc_hg.get_all_edges_metadata().values())
+
         self.update_hypergraph(updated_ccs=True)
 
     def change_hypergraph(self, hypergraph):
