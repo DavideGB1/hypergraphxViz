@@ -2,17 +2,15 @@ import collections
 import inspect
 import itertools
 import math
-import colorcet as cc
 from math import trunc
-from typing import Tuple
-import matplotlib
+
 import networkx as nx
 import numpy as np
-import seaborn as sns
+from matplotlib import pyplot as plt
 from networkx.drawing.nx_pylab import FancyArrowFactory
 
 from hypergraphx import Hypergraph, DirectedHypergraph, TemporalHypergraph
-from matplotlib import pyplot as plt
+
 
 def __check_edge_intersection(set1, set2):
     """
@@ -189,8 +187,8 @@ def __cardinality_hypergraph(
                 hypergraph.remove_edge(edge)
     return hypergraph
 
-def __filter_hypergraph(
-        h: Hypergraph | TemporalHypergraph | DirectedHypergraph,
+def filter_hypergraph(
+        hypergraph: Hypergraph | TemporalHypergraph | DirectedHypergraph,
         cardinality: int | tuple[int,int],
         x_heaviest: float
     ) -> Hypergraph | TemporalHypergraph | DirectedHypergraph:
@@ -209,9 +207,7 @@ def __filter_hypergraph(
     hypergraph: Hypergraph | TemporalHypergraph | DirectedHypergraph
     """
     if cardinality != -1:
-        hypergraph = __cardinality_hypergraph(h, cardinality)
-    else:
-        hypergraph = h
+        hypergraph = __cardinality_hypergraph(hypergraph, cardinality)
     if x_heaviest != 1.0:
         if hypergraph.is_weighted():
             hypergraph = __x_heaviest_edges_hypergraph(hypergraph, x_heaviest)
@@ -259,30 +255,7 @@ def __support_to_normal_hypergraph(
             new_hypergraph.set_edge_metadata(compressed_edge, "I/O")
     return new_hypergraph, edge_directed_mapping
 
-def extract_pie_properties(
-    i: int, u: np.array, colors: dict, threshold: float = 0.1
-) -> Tuple[np.array, np.array]:
-    """Given a node, it extracts the wedge sizes and the respective colors for the pie chart
-    that represents its membership.
-
-    Parameters
-    ----------
-    i: node id.
-    u: membership matrix.
-    colors: dictionary of colors, where key represent the group id and values are colors.
-    threshold: threshold for node membership.
-
-    Returns
-    -------
-    wedge_sizes: wedge sizes.
-    wedge_colors: sequence of colors through which the pie chart will cycle.
-    """
-    valid_groups = np.where(u[i] > threshold)[0]
-    wedge_sizes = u[i][valid_groups]
-    wedge_colors = [colors[k] for k in valid_groups]
-    return wedge_sizes, wedge_colors
-
-def _draw_node_community(ax, node, center, ratios, colors, graphicOptions,scale=17,**kwargs):
+def _draw_node_community(ax, node, center, ratios, colors, graphicOptions,zorder=4,**kwargs):
     if len(ratios) > 1:
         if len(ratios) != len(colors):
             raise ValueError("Number of ratios and colors must be equal.")
@@ -296,30 +269,26 @@ def _draw_node_community(ax, node, center, ratios, colors, graphicOptions,scale=
             y_vals = np.sin(2 * np.pi * np.linspace(start_angle, end_angle))
             xy = np.row_stack([[0, 0], np.column_stack([x_vals, y_vals])])
 
-            ax.plot(center[0], center[1], marker=xy, ms=graphicOptions.node_size[node]/scale, markerfacecolor=colors[i],
-                    markeredgecolor=graphicOptions.node_facecolor[node])
-
+            ax.plot(
+                center[0], center[1],
+                marker=xy,
+                ms=graphicOptions.node_size[node],
+                markerfacecolor=colors[i],
+                markeredgecolor=graphicOptions.node_facecolor[node],
+                zorder=zorder
+            )
             cumulative_ratio = end_angle
     else:
-        ax.plot(center[0], center[1],
-                marker=graphicOptions.node_shape[node],
-                color=colors[0],
-                markeredgecolor=graphicOptions.node_facecolor[node],
-                markersize=graphicOptions.node_size[node] / scale, **kwargs)
+        ax.plot(
+            center[0], center[1],
+            marker=graphicOptions.node_shape[node],
+            color=colors[0],
+            markeredgecolor=graphicOptions.node_facecolor[node],
+            markersize=graphicOptions.node_size[node],
+            zorder=zorder,
+            **kwargs
+        )
 
-
-def _get_community_info(hypergraph, p = 2,col=None,):
-    _, mappingID2Name = hypergraph.binary_incidence_matrix(return_mapping=True)
-    mappingName2ID = {n: i for i, n in mappingID2Name.items()}
-    if col is None:
-        cmap = sns.color_palette(cc.glasbey, n_colors=p)
-        col = {k: matplotlib.colors.to_hex(cmap[k], keep_alpha=False) for k in np.arange(p)}
-    return mappingName2ID, col
-def _get_node_community(mappingName2ID, node, u, col,threshold ):
-    wedge_sizes, wedge_colors = extract_pie_properties(
-        mappingName2ID[node], u, col, threshold=threshold
-    )
-    return wedge_sizes, wedge_colors
 
 import matplotlib as mpl
 class CurvedArrowText(mpl.text.Text):

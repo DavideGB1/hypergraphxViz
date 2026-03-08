@@ -14,8 +14,14 @@ temporal.add_edge((6, 7, 8, 9, 1), 2)
 temporal.add_edge((1, 2, 5), 3)
 temporal.add_edge((4, 5, 6, 3), 3)
 temporal.add_edge((6, 7, 8), 3)
+temporal.add_edge((1,2), 3)
+temporal.add_edge((7, 8), 3)
+temporal.add_edge((9, 8), 3)
+temporal.add_edge((6,7), 3)
+
+
 temporal.add_edge((1, 2), 6)
-temporal.add_edge((1, 2), 7)
+temporal.add_edge((1, 2), 5)
 
 def find_intervals(timeline: list):
     timeline = sorted(timeline)
@@ -49,7 +55,11 @@ def find_intervals(timeline: list):
         res.append((starting_element, prev_element))
     return res
 
-def draw_timeline(h: TemporalHypergraph, ax = None, figsize: tuple = (12, 7)):
+def draw_timeline(
+        h: TemporalHypergraph,
+        ax = None,
+        figsize: tuple = (12, 7)
+):
     if ax is None:
         plt.figure(figsize=figsize)
         plt.subplot(1, 1, 1)
@@ -67,17 +77,24 @@ def draw_timeline(h: TemporalHypergraph, ax = None, figsize: tuple = (12, 7)):
             time, edge = values
         if time not in edges_by_time.keys():
             edges_by_time[time] = list()
+        edge = tuple(sorted(edge))
         edges_by_time[time].append(edge)
         actual_edge_time[(edge, time)] = time
-
+    max_edges_in_time = max(len(edges) for edges in edges_by_time.values())
+    add_value = 1/max_edges_in_time
     for time in edges_by_time.keys():
         edge_list = edges_by_time[time]
         if len(edge_list) > 1:
-            for i in range(len(edge_list)-1):
-                edge1 = set(sorted(edge_list[i]))
-                edge2 = set(sorted(edge_list[i+1]))
-                if len(edge1.intersection(edge2)) > 0:
-                    actual_edge_time[(edge_list[i+1], time)] = actual_edge_time[(edge_list[i], time)]+0.1
+            for i in range(len(edge_list)):
+                for j in range(len(edge_list)):
+                    if i != j:
+                        edge1 = set(sorted(edge_list[i]))
+                        edge2 = set(sorted(edge_list[j]))
+                        if len(edge1.intersection(edge2)) > 0:
+                            edge1 = tuple(sorted(edge1))
+                            edge2 = tuple(sorted(edge2))
+                            if actual_edge_time[(edge1, time)] == actual_edge_time[(edge2, time)]:
+                                actual_edge_time[(edge2, time)] = actual_edge_time[(edge1, time)]+add_value
 
     nodes_timeline = dict()
     for node in h.get_nodes():
@@ -94,16 +111,21 @@ def draw_timeline(h: TemporalHypergraph, ax = None, figsize: tuple = (12, 7)):
                 ax.plot(start, node, "bo")
             else:
                 ax.plot([start, end], [node, node], color="k")
-
+    idx = 0
     for (edge, time), actual_time in actual_edge_time.items():
+        name = f"E{idx}" if "name" not in h.get_edge_metadata(edge, time).keys() else h.get_edge_metadata(edge, time)["name"]
+        ax.text(actual_time,max(edge)+0.25, name, horizontalalignment= "center")
         for i in range(len(edge)-1):
             ax.plot([actual_time, actual_time], [edge[i]-0.1,edge[i+1]+0.1], color = "b", lw=6, solid_capstyle='round')
         for node in edge:
             ax.plot(actual_time, node, marker = 'o', color='r')
+        idx += 1
 
     node_list = h.get_nodes()
     ax.set_yticks(node_list)
     ax.set_xlabel("Epochs")
     ax.set_ylabel("Nodes")
-draw_timeline(temporal)
+
+"""draw_timeline(temporal)
 plt.show()
+"""

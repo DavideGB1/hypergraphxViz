@@ -1,21 +1,22 @@
-from typing import Optional, Any, Dict
+from typing import Optional, Dict
 
 from PyQt5 import QtGui
 import pyqtgraph as pg
 
 from hypergraphx.viz.__graphic_options import GraphicOptions
 from hypergraphx.viz.interactive_view.pyqtgraph_functions.support import _draw_single_node_pyqt, _draw_community_nodes
+from hypergraphx.viz.layout_calculation.__layout_data import PAOHLayoutData, CommunityData
 
 
 def draw_paoh_pyqtgraph(
-        data: Dict[str, Any],
+        layout_data: PAOHLayoutData,
         widget: Optional[pg.GraphicsLayoutWidget] = None,
         graphicOptions: Optional[GraphicOptions] = None,
         y_label: str = "Nodes",
         x_label: str = "Edges",
         axis_labels_size: int = 16,
         nodes_name_size: int = 12,
-        **kwargs
+        community_data: Optional[CommunityData] = None
 ) -> pg.GraphicsLayoutWidget:
     """
     Disegna un PAOH plot usando PyQtGraph partendo dai dati calcolati da calculate_paoh_layout.
@@ -44,18 +45,15 @@ def draw_paoh_pyqtgraph(
     """
 
     # Unpack the data
-    hypergraph = data["hypergraph"]
-    node_mapping = data["node_mapping"]
-    isDirected = data["isDirected"]
-    isTemporal = data["isTemporal"]
-    isWeighted = data["isWeighted"]
-    timestamps_layout = data["timestamps_layout"]
-    timestamp_mapping = data["timestamp_mapping"]
-    edge_directed_mapping = data["edge_directed_mapping"]
-    u = data["u"]
-    community_mapping = data["community_mapping"]
-    community_colors = data["community_colors"]
-    final_idx_width = data["final_idx_width"]
+    hypergraph = layout_data.hypergraph
+    node_mapping = layout_data.node_mapping
+    isDirected = layout_data.is_directed
+    isTemporal = layout_data.is_temporal
+    isWeighted = hypergraph.is_weighted()
+    timestamps_layout = layout_data.timestamps_layout
+    timestamp_mapping = layout_data.timestamp_mapping
+    edge_directed_mapping = layout_data.edge_directed_mapping
+    final_idx_width = PAOHLayoutData.final_idx_width
 
     # Get and Validate the Graphic Options
     if graphicOptions is None:
@@ -72,10 +70,10 @@ def draw_paoh_pyqtgraph(
     plot.setLabel('left', y_label, **{'font-size': f'{axis_labels_size}pt'})
     plot.setLabel('bottom', x_label, **{'font-size': f'{axis_labels_size}pt'})
     plot.showGrid(x=False, y=True, alpha=0.3)
+    plot.setAspectLocked(True)
 
     # Prepara i dati per i nodi
     sorted_nodes = sorted(node_mapping.keys(), key=lambda n: node_mapping[n])
-    max_node_y = len(sorted_nodes) - 0.5
 
     # Configura l'asse Y con i nomi dei nodi
     y_ticks = [(node_mapping[node], str(node)) for node in sorted_nodes]
@@ -92,6 +90,14 @@ def draw_paoh_pyqtgraph(
     idx = 0
     idx_timestamp = 0
     max_timestamp = len(timestamps_layout) - 1
+    vb = max(plot.getViewBox().pixelSize())
+    size = max(graphicOptions.node_size.values()) * vb
+
+    size += 1
+    node_mapping = {node: idx * size for node, idx in node_mapping.items()}
+    y_ticks = [(node_mapping[node], str(node)) for node in sorted_nodes]
+    plot.getAxis('left').setTicks([y_ticks])
+    max_node_y  = max(y_ticks, key=lambda x: x[0])[0]+size
 
     # Main drawing cycle
     for timestamp_group in timestamps_layout:
@@ -127,7 +133,7 @@ def draw_paoh_pyqtgraph(
                 if isWeighted:
                     weight_val = hypergraph.get_weight(edge, ts_key) if isTemporal else hypergraph.get_weight(edge)
                     weight_text = pg.TextItem(str(weight_val), anchor=(0.5, 0), color = (0,0,0))
-                    weight_text.setPos(idx, y2 + 1)
+                    weight_text.setPos(idx, y1 - (size-size/4))
                     weight_text.setFont(QtGui.QFont('Arial', graphicOptions.weight_size))
                     weight_text.setZValue(100)
                     plot.addItem(weight_text)
@@ -141,49 +147,58 @@ def draw_paoh_pyqtgraph(
                     # Nodi in ingresso
                     for node in true_edge_in:
                         _draw_single_node_pyqt(
-                            plot, idx, node_mapping[node],
-                            node, graphicOptions,
-                            node_color=in_color
+                            plot,
+                            idx, node_mapping[node],
+                            node_color=in_color,
+                            edge_color=graphicOptions.node_facecolor[node],
+                            size=graphicOptions.node_size[node]*vb,
+                            shape=graphicOptions.node_shape[node],
                         )
 
                     # Nodi in uscita
                     for node in true_edge_out:
                         _draw_single_node_pyqt(
-                            plot, idx, node_mapping[node],
-                            node, graphicOptions,
-                            node_color=out_color
+                            plot,
+                            idx, node_mapping[node],
+                            node_color=out_color,
+                            edge_color=graphicOptions.node_facecolor[node],
+                            size=graphicOptions.node_size[node] * vb,
+                            shape=graphicOptions.node_shape[node],
+
                         )
                 else:
                     # Nodi normali
                     for node in edge:
                         _draw_single_node_pyqt(
                             plot, idx, node_mapping[node],
-                            node, graphicOptions
+                            node_color=graphicOptions.node_color[node],
+                            edge_color=graphicOptions.node_facecolor[node],
+                            size=graphicOptions.node_size[node] * vb,
+                            shape=graphicOptions.node_shape[node],
                         )
 
-            idx += 0.5
+            idx += size
 
         # Disegna le community se presenti
-        if u is not None:
+        if community_data is not None:
             for node in hypergraph.get_nodes():
-                from hypergraphx.viz.__support import _get_node_community
-                wedge_sizes, wedge_colors = _get_node_community(
-                    community_mapping, node, u, community_colors, 0.1
-                )
+                wedge_sizes, wedge_colors = community_data.node_community_mapping[node]
                 _draw_community_nodes(
                     plot,
-                    pos=(-0.35, node_mapping[node]),
-                    data = wedge_sizes, wedge_colors = wedge_colors,
-                    node = node, graphicOptions = graphicOptions,
-
+                    pos=(-(size+size/2), node_mapping[node]),
+                    data = wedge_sizes,
+                    wedge_colors = wedge_colors,
+                    edge_color=graphicOptions.node_facecolor[node],
+                    size=graphicOptions.node_size[node] * vb
                 )
 
         # Disegna la linea di separazione temporale
         if isTemporal and idx_timestamp != max_timestamp:
+            idx += size/2
             sep_pen = pg.mkPen(color=graphicOptions.time_separation_line_color, width=graphicOptions.time_separation_line_size)
-            sep_line = pg.PlotDataItem([idx, idx], [-0.5, max_node_y], pen=sep_pen)
+            sep_line = pg.PlotDataItem([idx, idx], [-size/2, max_node_y], pen=sep_pen)
             plot.addItem(sep_line)
             idx_timestamp += 1
-            idx += 0.5
-
+            idx += size
+    plot.setLimits(xMin=-(size*2+size/2))
     return widget

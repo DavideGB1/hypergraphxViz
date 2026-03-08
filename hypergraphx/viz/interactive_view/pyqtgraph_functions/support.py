@@ -13,7 +13,7 @@ class PieNodeItem(QtWidgets.QGraphicsObject):
         self.y = y
         self.data = data
         self.colors = [pg.mkColor(c) for c in colors]
-        self.size = size/500
+        self.size = size
         self.border_color = border_color
         self.total = sum(data)
 
@@ -49,33 +49,21 @@ def _draw_single_node_pyqt(
         plot: pg.PlotItem,
         x: float,
         y: float,
-        node: Any,
-        graphicOptions: GraphicOptions,
-        node_color: Optional[str] = None,
-        edge_node: bool = False
+        node_color: str,
+        edge_color: str,
+        size: int,
+        shape:str,
 ) -> None:
     """
     Disegna un singolo nodo nel plot PyQtGraph.
     """
     # Ottieni le proprietà del nodo
-    plot.setAspectLocked(True)
-    if edge_node:
-        color = node_color if node_color else graphicOptions.edge_node_color.get(node, 'r')
-    else:
-        color = node_color if node_color else graphicOptions.node_color.get(node, 'r')
-    if edge_node:
-        shape = graphicOptions.edge_shape.get(node, 'o')
-    else:
-        shape = graphicOptions.node_shape.get(node, 'o')
-    edge_color = graphicOptions.node_facecolor.get(node, 'k')
-    size = graphicOptions.node_size.get(node, 20)
-
     # Disegna il nodo
     scatter = pg.ScatterPlotItem(
         [x], [y],
-        size=size/500,
+        size=size,
         symbol=shape,
-        brush=pg.mkBrush(color),
+        brush=pg.mkBrush(node_color),
         pen=pg.mkPen(edge_color, width=1),
         pxMode=False
     )
@@ -84,42 +72,35 @@ def _draw_single_node_pyqt(
 
 
 
-# --- Classe per il Nodo PieChart ---
-
-
-# --- Funzione richiesta ---
-
 def _draw_community_nodes(
         plot: pg.PlotItem,
-        node, graphicOptions: GraphicOptions,
         pos: tuple[float, float],
         data: list[float],
         wedge_colors: list,
+        edge_color: str,
+        size: int,
 ) -> None:
     """
     Disegna un nodo a forma di pie chart in una specifica posizione del plot.
     """
     x, y = pos
     if len(data) > 1:
-        border_color = graphicOptions.node_facecolor.get(node, 'k')
-        size = graphicOptions.node_size.get(node, 20)
-
         pie_node = PieNodeItem(
             x=x,
             y=y,
             data=data,
             colors=wedge_colors,
             size=size,
-            border_color=border_color
+            border_color=edge_color
         )
-
-        # Lo aggiungiamo al plot
         plot.addItem(pie_node)
     else:
         _draw_single_node_pyqt(
             plot, x, y,
-            node, graphicOptions,
-            node_color = wedge_colors[0]
+            node_color = wedge_colors[0],
+            edge_color = edge_color,
+            size = size,
+            shape = "o",
         )
 
 def _draw_node_label(
@@ -132,7 +113,7 @@ def _draw_node_label(
 ):
     label = pg.TextItem(str(text), anchor=(0.5, 0.5), color=text_color)
     label.setPos(x,y)
-    label.setFont(QtGui.QFont('Arial', font_size))
+    label.setFont(QtGui.QFont('Arial', int(font_size)))
     label.setZValue(100)
     plot.addItem(label)
 

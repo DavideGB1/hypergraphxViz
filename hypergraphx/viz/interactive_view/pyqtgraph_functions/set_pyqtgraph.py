@@ -1,4 +1,3 @@
-import math
 from typing import Optional
 
 import numpy as np
@@ -7,9 +6,9 @@ from IPython.external.qt_for_kernel import QtCore
 from PyQt5 import QtGui
 
 from hypergraphx.viz.__graphic_options import GraphicOptions
-from hypergraphx.viz.__support import _get_node_community
 from hypergraphx.viz.interactive_view.pyqtgraph_functions.support import _draw_community_nodes, _draw_single_node_pyqt, \
     _draw_edge, _draw_node_label
+from hypergraphx.viz.layout_calculation.__layout_data import SetLayoutData, CommunityData
 
 
 def create_fixed_rounded_polygon(points, radius):
@@ -53,24 +52,28 @@ def create_fixed_rounded_polygon(points, radius):
     return path
 
 def _draw_set_pyqtgraph(
-        data: dict,
+        layout_data: SetLayoutData,
         draw_labels: bool,
         graphicOptions: GraphicOptions,
         widget: Optional[pg.GraphicsLayoutWidget] = None,
-        **kwargs
+        community_data: Optional[CommunityData] = None
 ) -> pg.GraphicsLayoutWidget:
     """
     Draws the elements of the set visualization onto a given matplotlib Axes object.
     This function uses pre-computed layout and style information.
     """
-    pos, G, dummy_nodes = data["pos"], data["G"], data["dummy_nodes"]
+    pos = layout_data.pos
+    graph = layout_data.graph
+    dummy_nodes = layout_data.dummy_nodes
+    hyperedges_to_draw = layout_data.hyperedges_to_draw
+    edge_labels_info = layout_data.edge_labels_info
     if widget is None:
         widget = pg.GraphicsLayoutWidget()
         widget.resize(1000, 800)
 
     if graphicOptions is None:
         graphicOptions = GraphicOptions()
-    graphicOptions.check_if_options_are_valid(G)
+    graphicOptions.check_if_options_are_valid(graph)
 
     plot = widget.addPlot()
     plot.setLabel('left', "", **{'font-size': '0pt'})
@@ -78,20 +81,16 @@ def _draw_set_pyqtgraph(
     plot.showGrid(x=False, y=True, alpha=0.3)
     plot.getAxis('bottom').setTicks([])
     plot.getAxis('left').setTicks([])
-
+    plot.setAspectLocked(True)
 
     # 1. Draw higher-order hyperedges
-    for hye_info in data["hyperedges_to_draw"]:
+    for hye_info in hyperedges_to_draw:
         facecolor = QtGui.QColor(hye_info["facecolor"])
         facecolor.setAlpha(int(255 * hye_info["alpha"]))
         face_brush = pg.mkBrush(color=facecolor)
         edge_pen = pg.mkPen(color=hye_info["color"], width=1.5)
 
         if hye_info["rounded"]:
-            """_draw_hyperedge_set(
-                points=hye_info["points"], radius=hye_info["radius"], hyperedge_alpha=hye_info["alpha"],
-                border_color=hye_info["color"], face_color=hye_info["facecolor"], ax=ax
-            )"""
             rounded_path = create_fixed_rounded_polygon(points=hye_info["points"], radius=hye_info["radius"],)
             polygon = pg.QtWidgets.QGraphicsPathItem(rounded_path)
         else:
@@ -112,16 +111,16 @@ def _draw_set_pyqtgraph(
             )
 
     # 2. Draw binary edges and their labels
-    if data["edge_labels_info"]:
-        labels, pos_higher = data["edge_labels_info"]
-    for edge in G.edges():
+    if edge_labels_info:
+        labels, pos_higher = edge_labels_info
+    for edge in graph.edges():
         _draw_edge(
             plot=plot,
             pos_source=pos[edge[0]], pos_destination=pos[edge[1]],
             width=graphicOptions.edge_size[edge],
             edge_color=graphicOptions.edge_color[edge],
         )
-        if data["edge_labels_info"]:
+        if edge_labels_info:
             pos_x = (pos[edge[0]][0]+pos[edge[1]][0])/2
             pos_y = (pos[edge[0]][1]+pos[edge[1]][1])/2
 
@@ -133,30 +132,33 @@ def _draw_set_pyqtgraph(
                 text_color=graphicOptions.label_color
             )
 
+    pixel_size = max(plot.getViewBox().viewPixelSize())
     # 3. Draw nodes
-    community_info = data["community_info"]
-    for node in G.nodes():
+    for node in graph.nodes():
         if node not in dummy_nodes:
-            if not community_info:
-
+            if not community_data:
                 _draw_single_node_pyqt(
                     plot=plot,
                     x=pos[node][0], y=pos[node][1],
-                    node=node, graphicOptions=graphicOptions,
+                    node_color=graphicOptions.node_color[node],
+                    edge_color=graphicOptions.node_facecolor[node],
+                    size=graphicOptions.node_size[node] * pixel_size,
+                    shape=graphicOptions.node_shape[node]
                 )
             else:
-                mapping, col, u = community_info
-                wedge_sizes, wedge_colors = _get_node_community(mapping, node, u, col, 0.1)
+                wedge_sizes, wedge_colors = community_data.node_community_mapping[node]
                 _draw_community_nodes(
                     plot=plot,
-                    node=node, graphicOptions=graphicOptions,
                     pos=pos[node],
-                    data=wedge_sizes, wedge_colors=wedge_colors
+                    data=wedge_sizes,
+                    wedge_colors=wedge_colors,
+                    edge_color=graphicOptions.node_facecolor[node],
+                    size=graphicOptions.node_size[node] * pixel_size
                 )
 
     # 4. Draw node labels
     if draw_labels:
-        labels = {n: n for n in G.nodes() if n not in dummy_nodes}
+        labels = {n: n for n in graph.nodes() if n not in dummy_nodes}
         for node in labels.keys():
             _draw_node_label(
                 plot=plot,

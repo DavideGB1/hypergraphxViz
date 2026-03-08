@@ -20,58 +20,15 @@ def motifs_calculations(hypergraph):
     return motifs3_profile
 
 
-def draw_adjacency(axes, values_list, **kwargs):
-    df = pd.DataFrame(values_list[1].todense(), index=values_list[0][1], columns=values_list[0][1])
-    sns.heatmap(data = df, ax=axes[1], annot = True, **kwargs)
-    axes[1].set_title("Adjacency Matrix")
-    axes[1].set_yticks(np.arange(len(values_list[0][1]))+ 0.5)
-    axes[1].set_yticklabels(values_list[0][1], rotation=0, va='center')
-
-    axes[1].set_xticks(np.arange(len(values_list[0][1]))+ 0.5)
-    axes[1].set_xticklabels(values_list[0][1], rotation=0, ha='center')
-
-    sns.regplot(
-        data=values_list[2],
-        x='Betweenness Centrality',
-        y='Adjacency Factor (t=1)',
-        scatter_kws={'s': 100},
-        ax=axes[2]
-    )
-    axes[2].set_title("Adjacency Factor (t=1) - Node Centrality Correlation")
-    sns.barplot(x=list(values_list[0][1]), y=list(values_list[0][0].values()), color='skyblue', ax=axes[0],
-                label='Adjacency Factor (t=1) Values')
-    axes[0].set_title("Adjacency Factor (t=1) Distribution")
-
-
-
 #Adjacency
 def adjacency_calculations_pool(hypergraph):
-    results = []
-    adj_factor_matrix = hypergraph.adjacency_factor(1)
-    adj_factor_keys_label, adj_factor_label = generate_key(adj_factor_matrix)
-    results.append([adj_factor_matrix, adj_factor_keys_label, adj_factor_label])
     adj_matrix = None
     if isinstance(hypergraph, TemporalHypergraph):
-        adj_matrix = hypergraph.annealed_adjacency_matrix()
+        adj_matrix, mapping = hypergraph.annealed_adjacency_matrix(return_mapping=True)
     else:
-        adj_matrix = hypergraph.adjacency_matrix()
-    results.append(adj_matrix)
+        adj_matrix, mapping = hypergraph.adjacency_matrix(return_mapping=True)
 
-    centrality = None
-    if isinstance(hypergraph, TemporalHypergraph):
-        centrality = s_betweenness_nodes_averaged(hypergraph)
-    else:
-        centrality = s_betweenness_nodes(hypergraph)
-    data_list = []
-    for node in centrality:
-        degree = centrality[node]
-        adj_factor = adj_factor_matrix.get(node, None)
-        if adj_factor is not None:
-            data_list.append((node, degree, adj_factor))
-
-    df_adj_degree = pd.DataFrame(data_list, columns=['Node', 'Betweenness Centrality', 'Adjacency Factor (t=1)'])
-    results.append(df_adj_degree)
-    return results
+    return [adj_matrix, mapping]
 
 #Centrality
 def calculate_centrality_pool(hypergraph):
@@ -168,64 +125,13 @@ def draw_centrality(axes, values_list, **kwargs):
 # Degree
 def degree_calculations(hypergraph):
     degree_distribution = hypergraph.degree_distribution()
-    ddo = compute_binned_degree_distributions(hypergraph)
-    sizes = dict()
-    for edge in hypergraph.get_edges():
-        if len(edge) not in sizes.keys():
-            sizes[len(edge)] = 0
-        sizes[len(edge)] += 1
-    return [degree_distribution, ddo]
-
-def draw_degree(axes, value_list, **kwargs):
-
-    df = pd.DataFrame(list(value_list[0].items()), columns=['Degree', 'Frequency'])
-
-    sns.barplot(x='Degree', y='Frequency', data=df, hue = 'Degree', legend=False, ax = axes[0])
-
-    axes[0].set_title('Node Degree Distribution', fontsize=16)
-    axes[0].set_xlabel('Degree', fontsize=12)
-    axes[0].set_ylabel('Frequency', fontsize=12)
-
-    for p in axes[0].patches:
-        axes[0].annotate(f'{int(p.get_height())}',
-                    (p.get_x() + p.get_width() / 2., p.get_height()),
-                    ha='center', va='center',
-                    xytext=(0, 9),
-                    textcoords='offset points')
-
-    draw_degree_distribution_plot(value_list[1],ax = axes[1])
+    return [degree_distribution]
 
 # Weight
 def calculate_weight_distribution(hypergraph):
     weight_distribution = {}
-    value_list = []
     for weight in hypergraph.get_weights():
         if weight not in weight_distribution:
             weight_distribution[weight] = 0
-            value_list.append(len(value_list))
         weight_distribution[weight] += 1
-    return [weight_distribution, value_list]
-
-def draw_weight(axes, value_list, **kwargs):
-    axes[0].set_xlabel('Weights')
-    axes[0].set_title('Weights Frequency')
-    sns.barplot(x=list(value_list[0].keys()), y=list(value_list[0].values()), color='skyblue', ax=axes[0], label='Weight Frequency')
-
-    weights_list = [weight for weight, count in value_list[0].items() for _ in range(count)]
-    axes[1].set_xlabel('Weights')
-    axes[1].set_title('Weights Distribution')
-    sns.histplot(data=weights_list, kde=True, stat="density", bins=20, ax = axes[1])
-
-#Similarity
-def draw_similarity(ax, data):
-    matrix, mapping = data
-    labels = sorted(mapping.keys())
-    df = pd.DataFrame(matrix, index=labels, columns=labels)
-    sns.heatmap(data = df, ax=ax, annot = True)
-    ax.set_yticks(np.arange(len(labels))+ 0.5)
-    ax.set_yticklabels(labels, rotation=0, va='center')
-
-    ax.set_xticks(np.arange(len(labels))+ 0.5)
-    ax.set_xticklabels(labels, rotation=0, ha='center')
-    ax.set_title(f'Jaccard Similarity Matrix', fontsize=16)
-
+    return [weight_distribution]

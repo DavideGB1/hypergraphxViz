@@ -9,11 +9,14 @@ from hypergraphx.communities.hypergraph_mt.model import HypergraphMT
 from hypergraphx.measures.degree import degree_sequence
 from hypergraphx.measures.s_centralities import s_betweenness_nodes_averaged, s_betweenness_nodes
 from hypergraphx.utils import normalize_array
+from hypergraphx.viz.__support import filter_hypergraph
 from hypergraphx.viz.draw_PAOH import calculate_paoh_layout
-from hypergraphx.viz.draw_projections import _compute_extra_node_drawing_data, _compute_bipartite_drawing_data, \
-    _compute_clique_drawing_data
 from hypergraphx.viz.draw_radial import _compute_radial_layout
 from hypergraphx.viz.draw_sets import _compute_set_layout
+from hypergraphx.viz.layout_calculation.bipartite_layout import _compute_bipartite_drawing_data
+from hypergraphx.viz.layout_calculation.clique_layout import _compute_clique_drawing_data
+from hypergraphx.viz.layout_calculation.extra_node_layout import _compute_extra_node_drawing_data
+from hypergraphx.viz.layout_calculation.__layout_data import CommunityData
 from hypergraphx.viz.simplification_methods.agglomerative_simplification import agglomerative_simplification
 from hypergraphx.viz.simplification_methods.polygonal_symplification import polygonal_simplification, unstrangle_edges
 
@@ -60,34 +63,24 @@ def create_figure(draw_function, hypergraph, dictionary):
     output = dict()
     if draw_function == "PAOH":
         result = calculate_paoh_layout(
-            h=hypergraph,
-            u=dictionary["community_model"],
-            k=dictionary["community_options_dict"]["number_communities"],
-            cardinality=dictionary["slider_value"],
-            x_heaviest=dictionary["heaviest_edges_value"],
-            space_optimization=dictionary["algorithm_options_dict"]["space_optimization"],
-            sort_nodes_by=dictionary["algorithm_options_dict"]["sort_nodes_by"],
-            sorting_mapping = centrality,
+                    hypergraph=hypergraph,
+                    space_optimization=dictionary["algorithm_options_dict"]["space_optimization"],
+                    sort_nodes_by=dictionary["algorithm_options_dict"]["sort_nodes_by"],
+                    sorting_mapping = centrality,
         )
+        output[0]=result
         centrality = None
-        output[0] = result
-        n_times = 1
     else:
         hypergraphs = dict()
         if isinstance(hypergraph, TemporalHypergraph):
             hypergraphs = hypergraph.subhypergraph()
         else:
             hypergraphs[0] = hypergraph
-        n_times = len(hypergraphs)
         for time, hypergraph in hypergraphs.items():
             if draw_function == "Sets":
                 result = _compute_set_layout(
                     hypergraph= hypergraph,
-                    u=dictionary["community_model"],
-                    k=dictionary["community_options_dict"]["number_communities"],
                     weight_positioning = dictionary["weight_positioning"],
-                    cardinality=dictionary["slider_value"],
-                    x_heaviest=dictionary["heaviest_edges_value"],
                     iterations=dictionary["algorithm_options_dict"]["iterations"],
                     pos=None,
                     rounded_polygon = dictionary["algorithm_options_dict"]["rounded_polygon"],
@@ -100,11 +93,7 @@ def create_figure(draw_function, hypergraph, dictionary):
                 )
             elif draw_function == "PAOH":
                 result = calculate_paoh_layout(
-                    h=hypergraph,
-                    u=dictionary["community_model"],
-                    k=dictionary["community_options_dict"]["number_communities"],
-                    cardinality=dictionary["slider_value"],
-                    x_heaviest=dictionary["heaviest_edges_value"],
+                    hypergraph=hypergraph,
                     space_optimization=dictionary["algorithm_options_dict"]["space_optimization"],
                     sort_nodes_by=dictionary["algorithm_options_dict"]["sort_nodes_by"],
                     sorting_mapping = centrality,
@@ -112,50 +101,30 @@ def create_figure(draw_function, hypergraph, dictionary):
                 centrality = None
             elif draw_function == "Radial":
                 result = _compute_radial_layout(
-                    h=hypergraph,
-                    u=dictionary["community_model"],
-                    k=dictionary["community_options_dict"]["number_communities"],
-                    cardinality=dictionary["slider_value"],
-                    x_heaviest=dictionary["heaviest_edges_value"],
+                    hypergraph=hypergraph,
                     radius_scale_factor=dictionary["extra_attributes"]["radius_scale_factor"],
                 )
             elif draw_function == "Extra-Node":
                 result = _compute_extra_node_drawing_data(
-                    h=hypergraph,
-                    cardinality=dictionary["slider_value"],
-                    x_heaviest=dictionary["heaviest_edges_value"],
+                    hypergraph=hypergraph,
                     ignore_binary_relations=dictionary["algorithm_options_dict"]["ignore_binary_relations"],
                     weight_positioning=dictionary["weight_positioning"],
                     respect_planarity=dictionary["algorithm_options_dict"]["respect_planarity"],
                     iterations=dictionary["algorithm_options_dict"]["iterations"],
-                    pos=None,
-                    u=dictionary["community_model"],
-                    k=dictionary["community_options_dict"]["number_communities"],
-                    draw_edge_graph=False
                 )
             elif draw_function == "Bipartite":
                 result = _compute_bipartite_drawing_data(
-                    h=hypergraph,
-                    u=dictionary["community_model"],
-                    k=dictionary["community_options_dict"]["number_communities"],
-                    pos = None,
-                    cardinality=dictionary["slider_value"],
-                    x_heaviest=dictionary["heaviest_edges_value"],
-                    align=dictionary["algorithm_options_dict"]["align"],
+                    hypergraph=hypergraph,
+                    align=dictionary["algorithm_options_dict"]["align"]
                 )
             elif draw_function == "Clique":
                 result = _compute_clique_drawing_data(
-                    h=hypergraph,
-                    cardinality=dictionary["slider_value"],
-                    x_heaviest=dictionary["heaviest_edges_value"],
+                    hypergraph=hypergraph,
                     iterations=dictionary["algorithm_options_dict"]["iterations"],
-                    pos=None,
-                    weight_positioning = dictionary["weight_positioning"],
-                    u=dictionary["community_model"],
-                    k=dictionary["community_options_dict"]["number_communities"],
+                    weight_positioning = dictionary["weight_positioning"]
                 )
             output[time] = result
-    return [output,centrality, n_times]
+    return [output,centrality]
 
 def run_community_detection(hypergraph, algorithm, community_options):
     """
@@ -215,13 +184,18 @@ def run_community_detection(hypergraph, algorithm, community_options):
 
         community_model = normalize_array(best_model.u, axis=1)
     elif algorithm == "None":
-        community_model = None
+        return None
     else:
         raise ValueError(f"Unknown community detection algorithm: {algorithm}")
-    return community_model
+    result = CommunityData(
+        hypergraph=hypergraph,
+        u = community_model,
+        community_number=community_options["number_communities"]
+    )
+    return result
 
 class PlotWorker(QThread):
-    progress = pyqtSignal(list)
+    progress = pyqtSignal(dict)
 
     def __init__(self, draw_function, hypergraph, input_dictionary, model, community_algorithm, community_options, use_last, aggregation_options, parent=None):
         super(PlotWorker, self).__init__(parent)
@@ -236,6 +210,11 @@ class PlotWorker(QThread):
         self._is_cancelled = False
 
     def run(self):
+        self.hypergraph = filter_hypergraph(
+            hypergraph = self.hypergraph,
+            cardinality=self.input_dictionary["slider_value"],
+            x_heaviest=self.input_dictionary["heaviest_edges_value"],
+        )
         try:
             if self._is_cancelled:
                 return
@@ -245,13 +224,12 @@ class PlotWorker(QThread):
                 self.hypergraph = agglomerative_simplification(self.hypergraph, self.aggregation_options["aggregation_threshold"])
                 if self.aggregation_options["use_polygonal_simplification"] and self.draw_function == "Sets":
                     self.hypergraph = unstrangle_edges(self.hypergraph)
-
+            community_data = None
             if not self.use_last:
                 with multiprocessing.Pool(processes=1, maxtasksperchild=1) as pool:
-                    self.model = pool.apply(run_community_detection,
+                    community_data = pool.apply(run_community_detection,
                                             args=(self.hypergraph, self.community_algorithm, self.community_options))
 
-                self.input_dictionary["community_model"] = self.model
             else:
                 self.model = self.input_dictionary["community_model"]
 
@@ -259,13 +237,17 @@ class PlotWorker(QThread):
                 return
 
             with multiprocessing.Pool(processes=1, maxtasksperchild=1) as pool:
-                results = pool.apply(create_figure, args=(self.draw_function, self.hypergraph, self.input_dictionary))
+                layout_data = pool.apply(create_figure, args=(self.draw_function, self.hypergraph, self.input_dictionary))
 
             if self._is_cancelled:
                 return
-
-            results.append(self.model)
-            self.progress.emit(results)
+            result = {
+                "draw_function": self.draw_function,
+                "layout_data": layout_data[0],
+                "community_data": community_data,
+                "centrality": layout_data[1]
+            }
+            self.progress.emit(result)
         except Exception as e:
             print(f"Error in PlotWorker: {e}")
 

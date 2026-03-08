@@ -1,156 +1,25 @@
 import math
 from math import cos, sin
-from typing import Optional, Any
+from typing import Optional
 
 import numpy as np
 from matplotlib import pyplot as plt
 
-from hypergraphx.viz.__support import __check_edge_intersection, __filter_hypergraph, __ignore_unused_args, \
-    __support_to_normal_hypergraph, _get_node_community, _draw_node_community, _get_community_info
-from hypergraphx import Hypergraph, DirectedHypergraph, TemporalHypergraph
+from hypergraphx import Hypergraph, DirectedHypergraph
 from hypergraphx.viz.__graphic_options import GraphicOptions
+from hypergraphx.viz.__support import _draw_node_community
 from hypergraphx.viz.draw_projections import __convert_temporal_to_list
+from hypergraphx.viz.layout_calculation.__layout_data import CommunityData, RadialLayoutData
+from hypergraphx.viz.layout_calculation.radial_layout import _compute_radial_layout
 
 
-def __radial_edge_placement_calculation(h: Hypergraph) -> (list, list):
-    """
-    Calculate how to place the edges in order to optimize space in the grid.
-    Parameters
-    ----------
-    h : Hypergraph.
-        The hypergraph to be projected.
-    Returns
-    -------
-    sector_list : List of Set of Edges
-        The sectors' list. Each sector contain various edges
-    """
-    sector_found = False
-    good_sector_set = True
-    sector_list = list()
-    sector_list.append(set())
-    binary_edges = list()
-    # For each edge decide in which sector place them
-    for edge in h.get_edges():
-        if len(edge) != 2:
-            for sector_set in sector_list:
-                # We check if there are intersections in the current sector that we are exploring
-                for edge_in_column in sector_set:
-                    set1 = set(edge_in_column)
-                    set2 = set(edge)
-                    if __check_edge_intersection(set1, set2):
-                        good_sector_set = False
-                # If the sector has been found we stop
-                if good_sector_set:
-                    sector_found = True
-                    sector_set.add(edge)
-                    break
-                else:
-                    good_sector_set = True
-        else:
-            # No sector if the relationship is binary
-            binary_edges.append(edge)
-            sector_found = True
-        if not sector_found:
-            # If no sector has been found we simply add a new one
-            sector_list.append(set())
-            sector_list[len(sector_list) - 1].add(edge)
-
-        sector_found = False
-        good_sector_set = True
-
-    return sector_list, binary_edges
-
-
-def __calculate_node_position(h: Hypergraph, alpha: float, radius: float) -> dict:
-    """
-    Calculate the position of each node in the image.
-    Parameters
-    ----------
-    h : Hypergraph.
-        The hypergraph to be projected.
-    alpha : float
-        Starting angle position needed for the edge placement.
-    radius : float
-        Radius of the inner circle.
-    Returns
-    -------
-    pos : Dictionary
-        Dictionary with the position of each node
-    """
-    pos = dict()
-    for node in h.get_nodes():
-        nodes_mapping = h.get_mapping()
-        value_x = cos(alpha * nodes_mapping.transform([node])[0]) * radius
-        value_x = round(value_x, 2)
-        value_y = sin(alpha * nodes_mapping.transform([node])[0]) * radius
-        value_y = round(value_y, 2)
-        pos[node] = (value_x, value_y)
-
-    return pos
-
-
-def _compute_radial_layout(
-        h: Hypergraph | DirectedHypergraph,
-        u,
-        k,
-        cardinality,
-        x_heaviest,
-        radius_scale_factor,
-) -> dict[str, Any]:
-    """
-    Performs all calculations for the radial layout without drawing.
-    This includes filtering, positioning, sector allocation, and data preparation.
-    """
-    hypergraph = __filter_hypergraph(h, cardinality, x_heaviest)
-
-    is_directed = False
-    edge_directed_mapping = None
-    if isinstance(hypergraph, DirectedHypergraph):
-        hypergraph, edge_directed_mapping = __support_to_normal_hypergraph(hypergraph)
-        is_directed = True
-
-    # Remove isolated nodes
-    isolated_nodes = [node for node in hypergraph.get_nodes() if hypergraph.degree(node) == 0]
-    hypergraph.remove_nodes(isolated_nodes)
-
-    # Calculate core layout parameters
-    num_nodes = hypergraph.num_nodes()
-    if num_nodes == 0:
-        return {"hypergraph": hypergraph, "pos": {}}  # Handle empty graph case
-
-    radius = (num_nodes * radius_scale_factor) / (2 * np.pi)
-    alpha = (2 * np.pi) / num_nodes
-
-    # Perform calculations
-    nodes_mapping = hypergraph.get_mapping()
-    sector_list, binary_edges = __radial_edge_placement_calculation(hypergraph)
-    pos = __calculate_node_position(hypergraph, alpha, radius)
-
-    community_info = None
-    if u is not None:
-        mapping, col = _get_community_info(hypergraph, k)
-        community_info = (mapping, col, u)
-
-    return {
-        "hypergraph": hypergraph,
-        "pos": pos,
-        "radius": radius,
-        "alpha": alpha,
-        "nodes_mapping": nodes_mapping,
-        "sector_list": sector_list,
-        "binary_edges": binary_edges,
-        "is_directed": is_directed,
-        "edge_directed_mapping": edge_directed_mapping,
-        "community_info": community_info,
-    }
-
-
-def _draw_radial_elements(
+def __draw_radial_single_layout(
     ax: plt.Axes,
-    data: dict,
-    draw_labels: bool,
-    font_spacing_factor: float,
+    layout_data: RadialLayoutData,
     graphicOptions: GraphicOptions,
+    community_data: Optional[CommunityData] = None,
+    draw_labels: bool = False,
+    font_spacing_factor: float = 1.5,
     **kwargs
 ) -> None:
     """
@@ -158,25 +27,37 @@ def _draw_radial_elements(
     Draws the elements of the radial layout onto a given matplotlib Axes object.
     """
     # Unpack computed data for clarity
-    h = data["hypergraph"]
+    h = layout_data.hypergraph
     if h.num_nodes() == 0:
         return  # Nothing to draw
 
-    pos = data["pos"]
-    radius, alpha = data["radius"], data["alpha"]
-    nodes_mapping = data["nodes_mapping"]
-    sector_list, binary_edges = data["sector_list"], data["binary_edges"]
-    is_directed, edge_directed_mapping = data["is_directed"], data["edge_directed_mapping"]
-    community_info = data["community_info"]
+    pos = layout_data.pos
+    radius, alpha = layout_data.radius, layout_data.alpha
+    nodes_mapping = layout_data.nodes_mapping
+    sector_list, binary_edges = layout_data.sector_list, layout_data.binary_edges
+    is_directed, edge_directed_mapping = layout_data.is_directed, layout_data.edge_directed_mapping
+
     graphicOptions.check_if_options_are_valid(h)
 
     # Draw binary edges
     for edge in binary_edges:
         p1, p2 = pos[edge[0]], pos[edge[1]]
-        ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color=graphicOptions.edge_color[edge], linewidth=graphicOptions.edge_size[edge], zorder=-1,
-                **kwargs)
+        ax.plot(
+            [p1[0], p2[0]], [p1[1], p2[1]],
+            color=graphicOptions.edge_color[edge],
+            linewidth=graphicOptions.edge_size[edge],
+            zorder=3,
+            **kwargs
+        )
         if h.is_weighted():
-            ax.text((p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2, str(h.get_weight(edge)))
+            ax.text(
+                (p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2,
+                s=str(h.get_weight(edge)),
+                horizontalalignment='center',
+                fontsize=graphicOptions.weight_size,
+                zorder=5,
+                **kwargs
+            )
 
     # Draw nodes and labels
     bounds = {"max_x": -math.inf, "min_x": math.inf, "max_y": -math.inf, "min_y": math.inf}
@@ -185,16 +66,37 @@ def _draw_radial_elements(
         bounds["max_x"], bounds["min_x"] = max(bounds["max_x"], vx), min(bounds["min_x"], vx)
         bounds["max_y"], bounds["min_y"] = max(bounds["max_y"], vy), min(bounds["min_y"], vy)
 
-        if community_info:
-            mapping, col, u = community_info
-            wedge_sizes, wedge_colors = _get_node_community(mapping, node, u, col, 0.1)
-            _draw_node_community(ax, node, (vx, vy), wedge_sizes, wedge_colors, graphicOptions, 30, **kwargs)
+        if community_data:
+            wedge_sizes, wedge_colors = community_data.node_community_mapping[node]
+            _draw_node_community(
+                ax, node,
+                center=(vx, vy),
+                ratios=wedge_sizes,
+                colors=wedge_colors,
+                graphicOptions=graphicOptions,
+                zoder=4,
+                **kwargs
+            )
         else:
-            ax.plot(vx, vy, graphicOptions.node_shape[node], color=graphicOptions.node_color[node], markersize=graphicOptions.node_size[node] / 30,
-                markeredgecolor=graphicOptions.node_facecolor[node], zorder=-1, **kwargs)
+            ax.plot(
+                vx, vy,
+                marker=graphicOptions.node_shape[node],
+                color=graphicOptions.node_color[node],
+                markersize=graphicOptions.node_size[node],
+                markeredgecolor=graphicOptions.node_facecolor[node],
+                zorder=4,
+                **kwargs
+            )
         if draw_labels:
             lx, ly = vx * font_spacing_factor, vy * font_spacing_factor
-            ax.text(lx, ly, node, fontsize=graphicOptions.label_size, color=graphicOptions.label_color, **kwargs)
+            ax.text(
+                lx, ly,
+                s = node,
+                fontsize=graphicOptions.label_size,
+                color=graphicOptions.label_color,
+                zorder=5,
+                **kwargs
+            )
             bounds["max_x"], bounds["min_x"] = max(bounds["max_x"], lx), min(bounds["min_x"], lx)
             bounds["max_y"], bounds["min_y"] = max(bounds["max_y"], ly), min(bounds["min_y"], ly)
 
@@ -210,7 +112,13 @@ def _draw_radial_elements(
             theta = np.linspace(alpha * start_idx, alpha * end_idx, 100)
             arc_x = [round(cos(a), 5) * radius * sector_depth for a in theta]
             arc_y = [round(sin(a), 5) * radius * sector_depth for a in theta]
-            ax.plot(arc_x, arc_y, color=graphicOptions.edge_color[edge], linewidth=graphicOptions.edge_size[edge], zorder=-1, **kwargs)
+            ax.plot(
+                arc_x, arc_y,
+                color=graphicOptions.edge_color[edge],
+                linewidth=graphicOptions.edge_size[edge],
+                zorder=3,
+                **kwargs
+            )
 
             # Place nodes along the arc
             for node in sorted_edge_nodes:
@@ -221,20 +129,40 @@ def _draw_radial_elements(
                 if is_directed:
                     true_edge = edge_directed_mapping[edge]
                     color = graphicOptions.in_edge_color if node in true_edge[0] else graphicOptions.out_edge_color
-                    ax.plot(vx, vy, marker=graphicOptions.node_shape[node], color=color,
-                            markeredgecolor=graphicOptions.node_facecolor[node],
-                            markersize=graphicOptions.node_size[node] / 30, **kwargs)
+                    ax.plot(
+                        vx, vy,
+                        marker=graphicOptions.edge_shape[node],
+                        color=color,
+                        markeredgecolor=graphicOptions.node_facecolor[node],
+                        markersize=graphicOptions.node_size[node],
+                        zorder=4,
+                        **kwargs
+                    )
                 else:
-                    ax.plot(vx, vy, graphicOptions.edge_shape[node], color=graphicOptions.edge_node_color[node],
-                            markersize=graphicOptions.node_size[node] / 30,
-                            markeredgecolor=graphicOptions.node_facecolor[node], **kwargs)
+                    ax.plot(
+                        vx, vy,
+                        marker=graphicOptions.edge_shape[node],
+                        color=graphicOptions.edge_node_color[node],
+                        markersize=graphicOptions.node_size[node],
+                        markeredgecolor=graphicOptions.node_facecolor[node],
+                        zorder=4,
+                        **kwargs
+                    )
 
             # Draw weight labels for hyperedges
             if h.is_weighted():
                 mid_angle = (alpha * start_idx + alpha * end_idx) / 2
                 wx = round(cos(mid_angle), 5) * radius * (sector_depth + 0.15)
                 wy = round(sin(mid_angle), 5) * radius * (sector_depth + 0.15)
-                ax.text(wx, wy, str(h.get_weight(edge)), ha='center', va='center', fontsize=graphicOptions.weight_size)
+                ax.text(
+                    wx, wy,
+                    s = str(h.get_weight(edge)),
+                    ha='center', va='center',
+                    fontsize=graphicOptions.weight_size,
+                    color=graphicOptions.label_color,
+                    zorder=5,
+                    **kwargs
+                )
 
         sector_depth += 0.35
 
@@ -249,20 +177,20 @@ def _draw_radial_elements(
     ax.axis("off")
 
 
-@__ignore_unused_args
 def draw_radial_layout(
-        h: Hypergraph | DirectedHypergraph,
-        u=None,
-        k=2,
-        cardinality: tuple[int, int] | int = -1,
-        x_heaviest: float = 1.0,
+        hypergraph: Hypergraph | DirectedHypergraph,
+        community_data: Optional[CommunityData] = None,
+
         draw_labels: bool = True,
         radius_scale_factor: float = 1.0,
         font_spacing_factor: float = 1.5,
+
         ax: Optional[plt.Axes] = None,
         figsize: tuple[float, float] = (10, 10),
         dpi: int = 300,
+
         graphicOptions: Optional[GraphicOptions] = None,
+
         **kwargs) -> None:
     """
     Draws a Radial representation of the hypergraph.
@@ -300,21 +228,23 @@ def draw_radial_layout(
     if graphicOptions is None:
         graphicOptions = GraphicOptions()
 
-    hypergraphs, n_times, axs_flat = __convert_temporal_to_list(h, figsize, dpi, ax)
+    hypergraphs, n_times, axs_flat = __convert_temporal_to_list(hypergraph, figsize, dpi, ax)
     for i, (time, hypergraph) in enumerate(hypergraphs.items()):
         if n_times != 1:
             ax = axs_flat[i]
         else:
             ax = axs_flat
         computed_data = _compute_radial_layout(
-            hypergraph, u, k, cardinality, x_heaviest, radius_scale_factor
+            hypergraph = hypergraph,
+            radius_scale_factor = radius_scale_factor
         )
-        _draw_radial_elements(
-            ax,
-            computed_data,
-            draw_labels,
-            font_spacing_factor,
-            graphicOptions,
+        __draw_radial_single_layout(
+            ax=ax,
+            layout_data = computed_data,
+            graphicOptions = graphicOptions,
+            community_data=community_data,
+            draw_labels = draw_labels,
+            font_spacing_factor = font_spacing_factor,
             **kwargs
         )
         ax.set_aspect('auto')

@@ -67,7 +67,7 @@ class HypergraphDrawingWidget(QMainWindow):
         self.centrality = None
         self.options_dict = dict()
         self.vbox = QVBoxLayout()
-        self.current_function = "PAOH"
+        self.current_function = "Sets"
         self.extra_attributes = {
             "hyperedge_alpha": 0.8,
             "rounding_radius_factor": 0.1,
@@ -218,72 +218,71 @@ class HypergraphDrawingWidget(QMainWindow):
         input_values["community_options_dict"] = self.community_options_dict
         input_values["aggregation_options"] = self.aggregation_options
         input_values["use_last"] = self.use_last
-
         self.controller.plot_graph(input_values)
-
+        self.drawing_options = dictionary.copy()
         self.use_last = False
 
-    def drawn(self):
+    def drawn(self, result):
         """
         Disegna il grafico usando PyQtGraph dopo che i dati sono pronti
         """
-        data = self.controller.drawing_result[0]
-        n_times = self.controller.drawing_result[2]
-        self.graphic_options.add_centrality_factor_dict(self.controller.drawing_result[1])
-
+        draw_function = result["draw_function"]
+        layout_data = result["layout_data"]
+        self.community_model = result["community_data"]
+        n_times = len(layout_data)
+        self.graphic_options.add_centrality_factor_dict(result["centrality"])
         self._clear_plot_container()
         gc.collect()
-
         if n_times == 1:
-            if self.current_function == "PAOH":
+            if draw_function == "PAOH":
                 self.pyqtgraph_widget = draw_paoh_pyqtgraph(
-                    data=data[0],
+                    layout_data=layout_data[0],
+                    community_data=self.community_model,
                     widget=None,
                     graphicOptions=self.graphic_options.copy(),
-                    axis_labels_size=self.extra_attributes["axis_labels_size"],
-                    nodes_name_size=self.extra_attributes["nodes_name_size"]
+                    axis_labels_size=self.drawing_options["extra_attributes"]["axis_labels_size"],
+                    nodes_name_size=self.drawing_options["extra_attributes"]["nodes_name_size"]
 
                 )
-            elif self.current_function == "Radial":
+            elif draw_function == "Radial":
                 self.pyqtgraph_widget = _draw_radial_elements_pyqt(
-                    data=data[0],
+                    layout_data=layout_data[0],
+                    community_data=self.community_model,
                     widget=None,
                     graphicOptions=self.graphic_options.copy(),
-                    draw_labels=self.algorithm_options_dict["draw_labels"],
-                    font_spacing_factor=self.extra_attributes["font_spacing_factor"],
+                    draw_labels=self.drawing_options["algorithm_options_dict"]["draw_labels"],
+                    font_spacing_factor=self.drawing_options["extra_attributes"]["font_spacing_factor"],
                 )
-            elif self.current_function == "Bipartite":
+            elif draw_function == "Bipartite":
                 self.pyqtgraph_widget = _draw_bipartite_pyqtgraph(
-                    data=data[0],
-                    widget=None,
+                    layout_data=layout_data[0],
                     graphicOptions=self.graphic_options.copy(),
-                    draw_labels=self.algorithm_options_dict["draw_labels"],
-                    align=self.algorithm_options_dict["align"],
-                    u=self.community_model,
+                    draw_labels=self.drawing_options["algorithm_options_dict"]["draw_labels"],
+                    align=self.drawing_options["algorithm_options_dict"]["align"],
+                    community_data=self.community_model,
                 )
-            elif self.current_function == "Clique":
+            elif draw_function == "Clique":
                 self.pyqtgraph_widget = _draw_clique_pyqtgraph(
-                    data=data[0],
-                    widget=None,
+                    layout_data=layout_data[0],
                     graphicOptions=self.graphic_options.copy(),
-                    draw_labels=self.algorithm_options_dict["draw_labels"],
-                    u=self.community_model,
+                    draw_labels=self.drawing_options["algorithm_options_dict"]["draw_labels"],
+                    community_data=self.community_model,
                 )
-            elif self.current_function == "Extra-Node":
+            elif draw_function == "Extra-Node":
                 self.pyqtgraph_widget = _draw_extra_node_pyqtgraph(
-                    data=data[0],
-                    widget=None,
-                    u=self.community_model,
-                    show_edge_nodes=self.algorithm_options_dict["show_edge_nodes"],
-                    draw_labels=self.algorithm_options_dict["draw_labels"],
+                    layout_data=layout_data[0],
+                    community_data=self.community_model,
+                    show_edge_nodes=self.drawing_options["algorithm_options_dict"]["show_edge_nodes"],
+                    draw_labels=self.drawing_options["algorithm_options_dict"]["draw_labels"],
                     graphicOptions=self.graphic_options.copy()
                 )
-            elif self.current_function == "Sets":
+            elif draw_function == "Sets":
                 self.pyqtgraph_widget = _draw_set_pyqtgraph(
-                    data=data[0],
+                    layout_data=layout_data[0],
                     widget=None,
-                    draw_labels=self.algorithm_options_dict["draw_labels"],
-                    graphicOptions=self.graphic_options.copy()
+                    draw_labels=self.drawing_options["algorithm_options_dict"]["draw_labels"],
+                    graphicOptions=self.graphic_options.copy(),
+                    community_data = self.community_model
                 )
             self.plot_layout.addWidget(self.pyqtgraph_widget)
         else:
@@ -295,18 +294,47 @@ class HypergraphDrawingWidget(QMainWindow):
 
             n_rows = math.ceil(math.sqrt(n_times))
             n_cols = math.ceil(n_times / n_rows)
-
-            for i, (time, timed_data) in enumerate(data.items()):
+            for i, (time, timed_data) in enumerate(layout_data.items()):
                 row = i // n_cols
                 col = i % n_cols
 
-                widget = _draw_radial_elements_pyqt(
-                    data=timed_data,
-                    widget=None,
-                    graphicOptions=self.graphic_options.copy(),
-                    draw_labels=self.algorithm_options_dict["draw_labels"],
-                    font_spacing_factor=self.extra_attributes["font_spacing_factor"],
-                )
+                if draw_function == "Radial":
+                    widget = _draw_radial_elements_pyqt(
+                        data=timed_data,
+                        graphicOptions=self.graphic_options.copy(),
+                        draw_labels=self.algorithm_options_dict["draw_labels"],
+                        font_spacing_factor=self.drawing_options["extra_attributes"]["font_spacing_factor"],
+                    )
+                elif draw_function == "Bipartite":
+                    widget = _draw_bipartite_pyqtgraph(
+                        layout_data=timed_data,
+                        graphicOptions=self.graphic_options.copy(),
+                        draw_labels=self.drawing_options["algorithm_options_dict"]["draw_labels"],
+                        align=self.drawing_options["algorithm_options_dict"]["align"],
+                        community_data=self.community_model
+                    )
+                elif draw_function == "Clique":
+                    widget = _draw_clique_pyqtgraph(
+                        layout_data=timed_data,
+                        graphicOptions=self.graphic_options.copy(),
+                        draw_labels=self.drawing_options["algorithm_options_dict"]["draw_labels"],
+                        community_data=self.community_model
+                    )
+                elif draw_function == "Extra-Node":
+                    widget = _draw_extra_node_pyqtgraph(
+                        layout_data=timed_data,
+                        community_data=self.community_model,
+                        show_edge_nodes=self.drawing_options["algorithm_options_dict"]["show_edge_nodes"],
+                        draw_labels=self.drawing_options["algorithm_options_dict"]["draw_labels"],
+                        graphicOptions=self.graphic_options.copy()
+                    )
+                elif draw_function == "Sets":
+                    widget = _draw_set_pyqtgraph(
+                        layout_data=timed_data,
+                        draw_labels=self.drawing_options["algorithm_options_dict"]["draw_labels"],
+                        graphicOptions=self.graphic_options.copy(),
+                        community_data = self.community_model
+                    )
 
                 # Aggiungi titolo per timestamp multipli
                 from PyQt5.QtWidgets import QLabel, QVBoxLayout
@@ -386,9 +414,21 @@ class HypergraphDrawingWidget(QMainWindow):
 
     def use_default(self):
         """
-        Determina e imposta la funzione di disegno appropriata.
-        Ora forza sempre PAOH indipendentemente dal tipo di ipergrafo.
+        Determines and sets the appropriate drawing function based on the type of the hypergraph attribute and then executes the plotting operation.
+
+        Notes
+        -----
+        - If `hypergraph` is an instance of `TemporalHypergraph`, the drawing function is set to `draw_PAOH`.
+        - If `hypergraph` is an instance of `DirectedHypergraph`, the drawing function is set to `draw_extra_node`.
+        - For other types of `hypergraph`, the drawing function defaults to `draw_sets`.
         """
-        # Forza sempre PAOH
-        self.current_function = "PAOH"
+        match self.controller.hypergraph_type:
+            case HypergraphType.TEMPORAL:
+                self.current_function = "PAOH"
+            case HypergraphType.DIRECTED:
+                self.current_function = "Extra-Node"
+            case HypergraphType.NORMAL:
+                self.current_function = "Sets"
+            case _:
+                self.current_function = "PAOH"
         self.plot()

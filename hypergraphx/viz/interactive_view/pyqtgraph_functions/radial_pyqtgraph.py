@@ -6,24 +6,25 @@ import pyqtgraph as pg
 from PyQt5 import QtGui
 
 from hypergraphx.viz.__graphic_options import GraphicOptions
-from hypergraphx.viz.__support import _get_node_community
 from hypergraphx.viz.interactive_view.pyqtgraph_functions.support import _draw_community_nodes, _draw_single_node_pyqt
+from hypergraphx.viz.layout_calculation.__layout_data import RadialLayoutData, CommunityData
 
 
 def _draw_radial_elements_pyqt(
-    data: dict,
-    draw_labels: bool,
-    font_spacing_factor: float,
-    graphicOptions: GraphicOptions,
+    layout_data: RadialLayoutData,
+    draw_labels: bool = False,
+    font_spacing_factor: float = 1.5,
     widget: Optional[pg.GraphicsLayoutWidget] = None,
-    **kwargs
+    graphicOptions: Optional[GraphicOptions] = None,
+    community_data: Optional[CommunityData] = None
+
 ) -> pg.GraphicsLayoutWidget:
     """
 
     Draws the elements of the radial layout onto a given matplotlib Axes object.
     """
     # Unpack computed data for clarity
-    h = data["hypergraph"]
+    h = layout_data.hypergraph
     if widget is None:
         widget = pg.GraphicsLayoutWidget()
         widget.resize(1000, 800)
@@ -31,12 +32,11 @@ def _draw_radial_elements_pyqt(
     if h.num_nodes() == 0:
         return  widget
 
-    pos = data["pos"]
-    radius, alpha = data["radius"], data["alpha"]
-    nodes_mapping = data["nodes_mapping"]
-    sector_list, binary_edges = data["sector_list"], data["binary_edges"]
-    is_directed, edge_directed_mapping = data["is_directed"], data["edge_directed_mapping"]
-    community_info = data["community_info"]
+    pos = layout_data.pos
+    radius, alpha = layout_data.radius, layout_data.alpha
+    nodes_mapping = layout_data.nodes_mapping
+    sector_list, binary_edges = layout_data.sector_list, layout_data.binary_edges
+    is_directed, edge_directed_mapping = layout_data.is_directed, layout_data.edge_directed_mapping
     if graphicOptions is None:
         graphicOptions = GraphicOptions()
     graphicOptions.check_if_options_are_valid(h)
@@ -48,7 +48,7 @@ def _draw_radial_elements_pyqt(
     plot.getAxis('bottom').setTicks([])
     plot.getAxis('left').setTicks([])
 
-
+    vb = max(plot.getViewBox().viewPixelSize())*13
     # Draw binary edges
     for edge in binary_edges:
         p1, p2 = pos[edge[0]], pos[edge[1]]
@@ -79,23 +79,23 @@ def _draw_radial_elements_pyqt(
         bounds["max_x"], bounds["min_x"] = max(bounds["max_x"], vx), min(bounds["min_x"], vx)
         bounds["max_y"], bounds["min_y"] = max(bounds["max_y"], vy), min(bounds["min_y"], vy)
 
-        if community_info:
-            mapping, col, u = community_info
-            wedge_sizes, wedge_colors = _get_node_community(mapping, node, u, col, 0.1)
+        if community_data:
+            wedge_sizes, wedge_colors = community_data.node_community_mapping[node]
             _draw_community_nodes(
                 plot = plot,
-                node = node,
-                graphicOptions = graphicOptions,
                 pos = pos[node],
                 data=wedge_sizes,
-                wedge_colors = wedge_colors,
+                wedge_colors=wedge_colors,
+                edge_color=graphicOptions.node_facecolor[node],
+                size=graphicOptions.node_size[node] * vb
             )
         else:
             _draw_single_node_pyqt(
-                plot=plot,
-                x=vx, y=vy,
-                node=node,
-                graphicOptions = graphicOptions,
+                plot=plot, x=vx, y=vy,
+                node_color=graphicOptions.node_color[node],
+                edge_color=graphicOptions.node_facecolor[node],
+                size=graphicOptions.node_size[node] * vb,
+                shape=graphicOptions.node_shape[node]
             )
         if draw_labels:
             lx, ly = vx * font_spacing_factor, vy * font_spacing_factor
@@ -134,21 +134,25 @@ def _draw_radial_elements_pyqt(
                 if is_directed:
                     true_edge = edge_directed_mapping[edge]
                     color = graphicOptions.in_edge_color if node in true_edge[0] else graphicOptions.out_edge_color
+
                     _draw_single_node_pyqt(
                         plot=plot,
                         x=vx, y=vy,
-                        node=node,
-                        graphicOptions=graphicOptions,
                         node_color=color,
-                        edge_node=True
+                        edge_color=graphicOptions.node_facecolor[node],
+                        size=graphicOptions.node_size[node] * vb,
+                        shape=graphicOptions.edge_shape[node],
+
                     )
                 else:
                     _draw_single_node_pyqt(
                         plot=plot,
                         x=vx, y=vy,
-                        node=node,
-                        graphicOptions = graphicOptions,
-                        edge_node=True
+                        node_color=graphicOptions.edge_node_color[node],
+                        edge_color=graphicOptions.node_facecolor[node],
+                        size=graphicOptions.node_size[node] * vb,
+                        shape=graphicOptions.edge_shape[node],
+
                     )
 
             # Draw weight labels for hyperedges

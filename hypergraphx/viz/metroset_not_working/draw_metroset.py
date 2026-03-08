@@ -1,5 +1,6 @@
 import random
 import sys
+import time
 from typing import Optional
 
 from matplotlib import pyplot as plt
@@ -591,3 +592,9 @@ def draw_metroset(
     refined_graph, paths = __calculate_new_paths(paths, initial_layout, iterations)
     initial_layout = chivers_rodgers(refined_graph, paths, initial_layout, edgeLength=edge_lenght)
     __draw_metrograph(refined_graph, paths, initial_layout, draw_labels = draw_labels, graphicOptions = graphicOptions, palette = palette, ax = ax)
+
+"""start_time = time.time()
+hypergraph = Hypergraph([(6,7,8,9),(7,8,15),(8,9,14),(3,6),(1,2,3),(4,5,6),(4,5,12,16,17),(17,18,2),(1,4,10,11,12),(10,11,13),(5,6,17,18),(4,12,16,17),(16,17,20),(17,19,20,22),(18,19,21),(16,17,18,19,21),(19,22),(19,23,24,25),(23,24,25),(24,26),(23,27)])
+draw_metroset(hypergraph)
+plt.show()
+print("--- %s seconds ---" % (time.time() - start_time))"""

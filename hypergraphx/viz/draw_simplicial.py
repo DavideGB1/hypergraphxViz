@@ -76,7 +76,6 @@ def draw_simplicial(
                 for node in triplet:
                     x_coor.append(pos[node][0])
                     y_coor.append(pos[node][1])
-                # print(triplet)
 
                 plt.fill(x_coor, y_coor, alpha=alpha, c=color)
 
@@ -97,3 +96,9 @@ def draw_simplicial(
 
 def draw_SC(*args, **kwargs):
     return draw_simplicial(*args, **kwargs)
+normal = Hypergraph(
+    [(1,2,3),(4,5,6),(6,7,8,9),(10,11,12,1,4),(4,1),(3,6)],
+    weighted=False
+)
+draw_simplicial(normal)
+plt.show()

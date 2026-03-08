@@ -520,7 +520,7 @@ QTableWidget {
 QHeaderView::section:horizontal {
     background-color: #2c3e50;
     color: white;
-    padding: 6px;
+    padding: 20px;
     border: 1px solid #34495e;
     font-weight: bold;
     font-size: 15px;
@@ -540,7 +540,19 @@ QTableWidget::item:selected {
     background-color: #3498db;
     color: white;
 }
+QHeaderView::down-arrow {
+    image: url(icons/dropdown_arrow_white.svg);
+    width: 12px;
+    height: 12px;
+    padding-right: 5px;
+}
 
+QHeaderView::up-arrow {
+    image: url(icons/dropdown_uparrow_white.svg);
+    width: 12px;
+    height: 12px;
+    padding-right: 5px;
+}
 QSpinBox {
     background-color: white;
     border: 1px solid #BDBDBD;
